@@ -1,0 +1,28 @@
+{
+	"@type":"Subset",
+	"Name":"PLI_FbyVL_C35~V217~L26",
+	"Elements":
+	[
+		{
+			"@id":"Dimensions('Placeholder Franchise Values')/Hierarchies('Placeholder Franchise Values')/Elements('Any')"
+		},
+		{
+			"@id":"Dimensions('Placeholder Franchise Values')/Hierarchies('Placeholder Franchise Values')/Elements('NHL')"
+		},
+		{
+			"@id":"Dimensions('Placeholder Franchise Values')/Hierarchies('Placeholder Franchise Values')/Elements('Madden NFL')"
+		},
+		{
+			"@id":"Dimensions('Placeholder Franchise Values')/Hierarchies('Placeholder Franchise Values')/Elements('PGA Tour')"
+		},
+		{
+			"@id":"Dimensions('Placeholder Franchise Values')/Hierarchies('Placeholder Franchise Values')/Elements('FIFA')"
+		},
+		{
+			"@id":"Dimensions('Placeholder Franchise Values')/Hierarchies('Placeholder Franchise Values')/Elements('F1')"
+		},
+		{
+			"@id":"Dimensions('Placeholder Franchise Values')/Hierarchies('Placeholder Franchise Values')/Elements('College Football')"
+		}
+	]
+}

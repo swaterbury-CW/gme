@@ -1,0 +1,21 @@
+{
+	"@type":"Cube",
+	"Name":"Merch Warranty Calculation",
+	"Dimensions":
+	[
+		{
+			"@id":"Dimensions('Merch Version')"
+		},
+		{
+			"@id":"Dimensions('Merch Time Period')"
+		},
+		{
+			"@id":"Dimensions('Merch SKU')"
+		},
+		{
+			"@id":"Dimensions('Warranty Calc Measure')"
+		}
+	],
+	"Rules@Code.link":"Merch Warranty Calculation.rules",
+	"Views@Code.links":[]
+}

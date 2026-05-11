@@ -1,0 +1,148 @@
+{
+	"@type":"Subset",
+	"Name":"PLI_FbyVL_Apparel~L55~V11",
+	"Elements":
+	[
+		{
+			"@id":"Dimensions('Placeholder Franchise Values')/Hierarchies('Placeholder Franchise Values')/Elements('Any')"
+		},
+		{
+			"@id":"Dimensions('Placeholder Franchise Values')/Hierarchies('Placeholder Franchise Values')/Elements('The Nightmare Before Christmas')"
+		},
+		{
+			"@id":"Dimensions('Placeholder Franchise Values')/Hierarchies('Placeholder Franchise Values')/Elements('Star Wars')"
+		},
+		{
+			"@id":"Dimensions('Placeholder Franchise Values')/Hierarchies('Placeholder Franchise Values')/Elements('Spider-Man')"
+		},
+		{
+			"@id":"Dimensions('Placeholder Franchise Values')/Hierarchies('Placeholder Franchise Values')/Elements('Stranger Things')"
+		},
+		{
+			"@id":"Dimensions('Placeholder Franchise Values')/Hierarchies('Placeholder Franchise Values')/Elements('Naruto')"
+		},
+		{
+			"@id":"Dimensions('Placeholder Franchise Values')/Hierarchies('Placeholder Franchise Values')/Elements('Fortnite')"
+		},
+		{
+			"@id":"Dimensions('Placeholder Franchise Values')/Hierarchies('Placeholder Franchise Values')/Elements('My Hero Academia')"
+		},
+		{
+			"@id":"Dimensions('Placeholder Franchise Values')/Hierarchies('Placeholder Franchise Values')/Elements('X-Men')"
+		},
+		{
+			"@id":"Dimensions('Placeholder Franchise Values')/Hierarchies('Placeholder Franchise Values')/Elements('Marvel')"
+		},
+		{
+			"@id":"Dimensions('Placeholder Franchise Values')/Hierarchies('Placeholder Franchise Values')/Elements('Dragon Ball')"
+		},
+		{
+			"@id":"Dimensions('Placeholder Franchise Values')/Hierarchies('Placeholder Franchise Values')/Elements('Deadpool')"
+		},
+		{
+			"@id":"Dimensions('Placeholder Franchise Values')/Hierarchies('Placeholder Franchise Values')/Elements('Overwatch')"
+		},
+		{
+			"@id":"Dimensions('Placeholder Franchise Values')/Hierarchies('Placeholder Franchise Values')/Elements('Five Nights At Freddy''s')"
+		},
+		{
+			"@id":"Dimensions('Placeholder Franchise Values')/Hierarchies('Placeholder Franchise Values')/Elements('Game of Thrones')"
+		},
+		{
+			"@id":"Dimensions('Placeholder Franchise Values')/Hierarchies('Placeholder Franchise Values')/Elements('Batman')"
+		},
+		{
+			"@id":"Dimensions('Placeholder Franchise Values')/Hierarchies('Placeholder Franchise Values')/Elements('Toy Story')"
+		},
+		{
+			"@id":"Dimensions('Placeholder Franchise Values')/Hierarchies('Placeholder Franchise Values')/Elements('Disney')"
+		},
+		{
+			"@id":"Dimensions('Placeholder Franchise Values')/Hierarchies('Placeholder Franchise Values')/Elements('WWE')"
+		},
+		{
+			"@id":"Dimensions('Placeholder Franchise Values')/Hierarchies('Placeholder Franchise Values')/Elements('Avatar: The Last Airbender')"
+		},
+		{
+			"@id":"Dimensions('Placeholder Franchise Values')/Hierarchies('Placeholder Franchise Values')/Elements('Harry Potter')"
+		},
+		{
+			"@id":"Dimensions('Placeholder Franchise Values')/Hierarchies('Placeholder Franchise Values')/Elements('Masters of the Universe')"
+		},
+		{
+			"@id":"Dimensions('Placeholder Franchise Values')/Hierarchies('Placeholder Franchise Values')/Elements('Godzilla')"
+		},
+		{
+			"@id":"Dimensions('Placeholder Franchise Values')/Hierarchies('Placeholder Franchise Values')/Elements('Captain America')"
+		},
+		{
+			"@id":"Dimensions('Placeholder Franchise Values')/Hierarchies('Placeholder Franchise Values')/Elements('Thor')"
+		},
+		{
+			"@id":"Dimensions('Placeholder Franchise Values')/Hierarchies('Placeholder Franchise Values')/Elements('Iron Man')"
+		},
+		{
+			"@id":"Dimensions('Placeholder Franchise Values')/Hierarchies('Placeholder Franchise Values')/Elements('DC')"
+		},
+		{
+			"@id":"Dimensions('Placeholder Franchise Values')/Hierarchies('Placeholder Franchise Values')/Elements('Gremlins')"
+		},
+		{
+			"@id":"Dimensions('Placeholder Franchise Values')/Hierarchies('Placeholder Franchise Values')/Elements('Venom')"
+		},
+		{
+			"@id":"Dimensions('Placeholder Franchise Values')/Hierarchies('Placeholder Franchise Values')/Elements('The Simpsons')"
+		},
+		{
+			"@id":"Dimensions('Placeholder Franchise Values')/Hierarchies('Placeholder Franchise Values')/Elements('The Office')"
+		},
+		{
+			"@id":"Dimensions('Placeholder Franchise Values')/Hierarchies('Placeholder Franchise Values')/Elements('Black Clover')"
+		},
+		{
+			"@id":"Dimensions('Placeholder Franchise Values')/Hierarchies('Placeholder Franchise Values')/Elements('Jurassic World')"
+		},
+		{
+			"@id":"Dimensions('Placeholder Franchise Values')/Hierarchies('Placeholder Franchise Values')/Elements('Alien')"
+		},
+		{
+			"@id":"Dimensions('Placeholder Franchise Values')/Hierarchies('Placeholder Franchise Values')/Elements('Transformers')"
+		},
+		{
+			"@id":"Dimensions('Placeholder Franchise Values')/Hierarchies('Placeholder Franchise Values')/Elements('Thundercats')"
+		},
+		{
+			"@id":"Dimensions('Placeholder Franchise Values')/Hierarchies('Placeholder Franchise Values')/Elements('Harley Quinn')"
+		},
+		{
+			"@id":"Dimensions('Placeholder Franchise Values')/Hierarchies('Placeholder Franchise Values')/Elements('Star Wars: The Book of Boba Fett')"
+		},
+		{
+			"@id":"Dimensions('Placeholder Franchise Values')/Hierarchies('Placeholder Franchise Values')/Elements('Fantastic Four')"
+		},
+		{
+			"@id":"Dimensions('Placeholder Franchise Values')/Hierarchies('Placeholder Franchise Values')/Elements('Wonder Woman')"
+		},
+		{
+			"@id":"Dimensions('Placeholder Franchise Values')/Hierarchies('Placeholder Franchise Values')/Elements('Umbrella Academy')"
+		},
+		{
+			"@id":"Dimensions('Placeholder Franchise Values')/Hierarchies('Placeholder Franchise Values')/Elements('Eternals')"
+		},
+		{
+			"@id":"Dimensions('Placeholder Franchise Values')/Hierarchies('Placeholder Franchise Values')/Elements('Shang-Chi and the Legend of the Ten Rings')"
+		},
+		{
+			"@id":"Dimensions('Placeholder Franchise Values')/Hierarchies('Placeholder Franchise Values')/Elements('Hulk')"
+		},
+		{
+			"@id":"Dimensions('Placeholder Franchise Values')/Hierarchies('Placeholder Franchise Values')/Elements('Monsters, Inc.')"
+		},
+		{
+			"@id":"Dimensions('Placeholder Franchise Values')/Hierarchies('Placeholder Franchise Values')/Elements('Minions')"
+		},
+		{
+			"@id":"Dimensions('Placeholder Franchise Values')/Hierarchies('Placeholder Franchise Values')/Elements('BTS')"
+		}
+	]
+}

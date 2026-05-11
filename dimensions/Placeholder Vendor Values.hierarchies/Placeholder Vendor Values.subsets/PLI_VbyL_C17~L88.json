@@ -1,0 +1,67 @@
+{
+	"@type":"Subset",
+	"Name":"PLI_VbyL_C17~L88",
+	"Elements":
+	[
+		{
+			"@id":"Dimensions('Placeholder Vendor Values')/Hierarchies('Placeholder Vendor Values')/Elements('COKeM Int''l LTD - DSV')"
+		},
+		{
+			"@id":"Dimensions('Placeholder Vendor Values')/Hierarchies('Placeholder Vendor Values')/Elements('ThinkGeek VGA - 225 Days')"
+		},
+		{
+			"@id":"Dimensions('Placeholder Vendor Values')/Hierarchies('Placeholder Vendor Values')/Elements('M&S Accessory Network, Corp')"
+		},
+		{
+			"@id":"Dimensions('Placeholder Vendor Values')/Hierarchies('Placeholder Vendor Values')/Elements('TD SYNNEX CORPORATION')"
+		},
+		{
+			"@id":"Dimensions('Placeholder Vendor Values')/Hierarchies('Placeholder Vendor Values')/Elements('PETRA INDUSTRIES INC-DSV')"
+		},
+		{
+			"@id":"Dimensions('Placeholder Vendor Values')/Hierarchies('Placeholder Vendor Values')/Elements('D & H - DSV')"
+		},
+		{
+			"@id":"Dimensions('Placeholder Vendor Values')/Hierarchies('Placeholder Vendor Values')/Elements('Ingram Micro CE -Drop Ship')"
+		},
+		{
+			"@id":"Dimensions('Placeholder Vendor Values')/Hierarchies('Placeholder Vendor Values')/Elements('Ingram Micro')"
+		},
+		{
+			"@id":"Dimensions('Placeholder Vendor Values')/Hierarchies('Placeholder Vendor Values')/Elements('FUNAI CORPORATION INC')"
+		},
+		{
+			"@id":"Dimensions('Placeholder Vendor Values')/Hierarchies('Placeholder Vendor Values')/Elements('CASE-MATE INC')"
+		},
+		{
+			"@id":"Dimensions('Placeholder Vendor Values')/Hierarchies('Placeholder Vendor Values')/Elements('3B Tech Inc')"
+		},
+		{
+			"@id":"Dimensions('Placeholder Vendor Values')/Hierarchies('Placeholder Vendor Values')/Elements('Virtual Supply Inc.')"
+		},
+		{
+			"@id":"Dimensions('Placeholder Vendor Values')/Hierarchies('Placeholder Vendor Values')/Elements('Cokem International, Ltd - Acc')"
+		},
+		{
+			"@id":"Dimensions('Placeholder Vendor Values')/Hierarchies('Placeholder Vendor Values')/Elements('LIFI LABS INC DBA LIFX')"
+		},
+		{
+			"@id":"Dimensions('Placeholder Vendor Values')/Hierarchies('Placeholder Vendor Values')/Elements('WITHIT HOLDINGS LLC')"
+		},
+		{
+			"@id":"Dimensions('Placeholder Vendor Values')/Hierarchies('Placeholder Vendor Values')/Elements('VITEC IMAGING DISTRIBUTION INC')"
+		},
+		{
+			"@id":"Dimensions('Placeholder Vendor Values')/Hierarchies('Placeholder Vendor Values')/Elements('CURV GROUP LLC DBA KEYSMART')"
+		},
+		{
+			"@id":"Dimensions('Placeholder Vendor Values')/Hierarchies('Placeholder Vendor Values')/Elements('Tzumi Electronics, LLC')"
+		},
+		{
+			"@id":"Dimensions('Placeholder Vendor Values')/Hierarchies('Placeholder Vendor Values')/Elements('Amazon.com KYDC LLC - M')"
+		},
+		{
+			"@id":"Dimensions('Placeholder Vendor Values')/Hierarchies('Placeholder Vendor Values')/Elements('Doria International Inc.')"
+		}
+	]
+}

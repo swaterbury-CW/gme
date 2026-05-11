@@ -1,0 +1,19 @@
+{
+	"@type":"Subset",
+	"Name":"PLI_FbyVL_C23~V58~L44",
+	"Elements":
+	[
+		{
+			"@id":"Dimensions('Placeholder Franchise Values')/Hierarchies('Placeholder Franchise Values')/Elements('Pokemon')"
+		},
+		{
+			"@id":"Dimensions('Placeholder Franchise Values')/Hierarchies('Placeholder Franchise Values')/Elements('Minecraft')"
+		},
+		{
+			"@id":"Dimensions('Placeholder Franchise Values')/Hierarchies('Placeholder Franchise Values')/Elements('Godzilla')"
+		},
+		{
+			"@id":"Dimensions('Placeholder Franchise Values')/Hierarchies('Placeholder Franchise Values')/Elements('Hot Wheels')"
+		}
+	]
+}

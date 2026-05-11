@@ -1,0 +1,48 @@
+SKIPCHECK;
+#Region : Rule Header
+#############################
+##~~ Start Rule File ~~##
+#############################
+# DEVELOPER : Steve Waterbury
+# CUBE       : Merch PreOwned Inventory
+# COMMENTS:
+# Pre-Owned inventory roll. Actual and Calculated-closed cells STET to stored loaded values.
+# CHANGE HISTORY:
+# 2026-04-03 Steve Waterbury Initial creation
+# 2026-04-19 Steve Waterbury Added STET guard for Actual and Calculated-closed
+#EndRegion
+
+#Region : Version STET Guard
+['Actual'] = N: STET;
+[] = N: IF(ATTRS('Merch Version',!Merch Version,'Version_Type')@='Static',STET,CONTINUE);
+[] = N: IF(ATTRS('Merch Version',!Merch Version,'Version_Type')@<>'Calculated',CONTINUE, IF(ATTRN('Merch Version',!Merch Version,'Last_Closed_Period')<>0 & ATTRN('Merch Time Period',!Merch Time Period,'Start_Date')<=ATTRN('Merch Version',!Merch Version,'Last_Closed_Period'), STET,CONTINUE));
+#EndRegion
+
+#Region : Inventory Calculations
+['Sales Outflow'] = N: DB('Merch PreOwned Forecast', !Merch Version, !Merch Time Period, !Merch PreOwned Category, 'Sales Units');
+['BOH Units'] = N: IF(ATTRS('Merch Time Period', !Merch Time Period, 'Previous Week') @= '', STET, DB('Merch PreOwned Inventory', !Merch Version, ATTRS('Merch Time Period', !Merch Time Period, 'Previous Week'), !Merch PreOwned Category, 'EOH Units'));
+['EOH Units'] = N: ['BOH Units'] + ['Trade Receipts'] + ['External Purchases'] - ['Sales Outflow'] - ['Destroys'] + ['Inventory Adjustment'];
+['WOS'] = N: IF(['Sales Outflow'] = 0, 0, ['EOH Units'] \ ['Sales Outflow']);
+#EndRegion
+
+#Region : C-level
+['BOH Units'] = C: IF(DTYPE('Merch Time Period', !Merch Time Period) @= 'N', CONTINUE, DB('Merch PreOwned Inventory', !Merch Version, ATTRS('Merch Time Period', !Merch Time Period, 'First Leaf Week'), !Merch PreOwned Category, 'BOH Units'));
+['EOH Units'] = C: IF(DTYPE('Merch Time Period', !Merch Time Period) @= 'N', CONTINUE, DB('Merch PreOwned Inventory', !Merch Version, ATTRS('Merch Time Period', !Merch Time Period, 'Last Leaf Week'), !Merch PreOwned Category, 'EOH Units'));
+['WOS'] = C: IF(['Sales Outflow'] = 0, 0, ['EOH Units'] \ ['Sales Outflow']);
+#EndRegion
+
+FEEDERS;
+#Region : Feeders
+['Trade Receipts'] => ['EOH Units'];
+['External Purchases'] => ['EOH Units'];
+['Destroys'] => ['EOH Units'];
+['Inventory Adjustment'] => ['EOH Units'];
+['Trade Receipts'] => ['BOH Units'];
+['Trade Receipts'] => ['WOS'];
+#EndRegion
+
+#Region : Rule Footer
+#############################
+##~~ End Rule File ~~##
+#############################
+#EndRegion

@@ -1,0 +1,34 @@
+{
+	"@type":"Subset",
+	"Name":"PLI_FbyVL_C16~V91~L36",
+	"Elements":
+	[
+		{
+			"@id":"Dimensions('Placeholder Franchise Values')/Hierarchies('Placeholder Franchise Values')/Elements('Any')"
+		},
+		{
+			"@id":"Dimensions('Placeholder Franchise Values')/Hierarchies('Placeholder Franchise Values')/Elements('GameStop')"
+		},
+		{
+			"@id":"Dimensions('Placeholder Franchise Values')/Hierarchies('Placeholder Franchise Values')/Elements('The Nightmare Before Christmas')"
+		},
+		{
+			"@id":"Dimensions('Placeholder Franchise Values')/Hierarchies('Placeholder Franchise Values')/Elements('Star Wars')"
+		},
+		{
+			"@id":"Dimensions('Placeholder Franchise Values')/Hierarchies('Placeholder Franchise Values')/Elements('Lilo and Stitch')"
+		},
+		{
+			"@id":"Dimensions('Placeholder Franchise Values')/Hierarchies('Placeholder Franchise Values')/Elements('Metal Gear')"
+		},
+		{
+			"@id":"Dimensions('Placeholder Franchise Values')/Hierarchies('Placeholder Franchise Values')/Elements('Disney')"
+		},
+		{
+			"@id":"Dimensions('Placeholder Franchise Values')/Hierarchies('Placeholder Franchise Values')/Elements('Teenage Mutant Ninja Turtles')"
+		},
+		{
+			"@id":"Dimensions('Placeholder Franchise Values')/Hierarchies('Placeholder Franchise Values')/Elements('Terminator')"
+		}
+	]
+}

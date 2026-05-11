@@ -1,0 +1,94 @@
+{
+	"@type":"Subset",
+	"Name":"PLI_VbyL_Tech & Entertainment~L85",
+	"Elements":
+	[
+		{
+			"@id":"Dimensions('Placeholder Vendor Values')/Hierarchies('Placeholder Vendor Values')/Elements('GameStop, Inc.')"
+		},
+		{
+			"@id":"Dimensions('Placeholder Vendor Values')/Hierarchies('Placeholder Vendor Values')/Elements('DEAL RISE LLC')"
+		},
+		{
+			"@id":"Dimensions('Placeholder Vendor Values')/Hierarchies('Placeholder Vendor Values')/Elements('Power Play Marketing Group LLC')"
+		},
+		{
+			"@id":"Dimensions('Placeholder Vendor Values')/Hierarchies('Placeholder Vendor Values')/Elements('ThinkGeek VGA - 225 Days')"
+		},
+		{
+			"@id":"Dimensions('Placeholder Vendor Values')/Hierarchies('Placeholder Vendor Values')/Elements('M&S Accessory Network, Corp')"
+		},
+		{
+			"@id":"Dimensions('Placeholder Vendor Values')/Hierarchies('Placeholder Vendor Values')/Elements('TD SYNNEX CORPORATION')"
+		},
+		{
+			"@id":"Dimensions('Placeholder Vendor Values')/Hierarchies('Placeholder Vendor Values')/Elements('PETRA INDUSTRIES INC-DSV')"
+		},
+		{
+			"@id":"Dimensions('Placeholder Vendor Values')/Hierarchies('Placeholder Vendor Values')/Elements('Voyetra/Turtle Beach')"
+		},
+		{
+			"@id":"Dimensions('Placeholder Vendor Values')/Hierarchies('Placeholder Vendor Values')/Elements('D & H - DSV')"
+		},
+		{
+			"@id":"Dimensions('Placeholder Vendor Values')/Hierarchies('Placeholder Vendor Values')/Elements('Ingram Micro')"
+		},
+		{
+			"@id":"Dimensions('Placeholder Vendor Values')/Hierarchies('Placeholder Vendor Values')/Elements('CASE-MATE INC')"
+		},
+		{
+			"@id":"Dimensions('Placeholder Vendor Values')/Hierarchies('Placeholder Vendor Values')/Elements('D & H Distributing Co. - M')"
+		},
+		{
+			"@id":"Dimensions('Placeholder Vendor Values')/Hierarchies('Placeholder Vendor Values')/Elements('Cokem International, Ltd - Acc')"
+		},
+		{
+			"@id":"Dimensions('Placeholder Vendor Values')/Hierarchies('Placeholder Vendor Values')/Elements('Emerge Technologies')"
+		},
+		{
+			"@id":"Dimensions('Placeholder Vendor Values')/Hierarchies('Placeholder Vendor Values')/Elements('ZAGG INC')"
+		},
+		{
+			"@id":"Dimensions('Placeholder Vendor Values')/Hierarchies('Placeholder Vendor Values')/Elements('Cellucom Distribution Ctr - DSV')"
+		},
+		{
+			"@id":"Dimensions('Placeholder Vendor Values')/Hierarchies('Placeholder Vendor Values')/Elements('Petra Industries Inc')"
+		},
+		{
+			"@id":"Dimensions('Placeholder Vendor Values')/Hierarchies('Placeholder Vendor Values')/Elements('Tzumi Electronics, LLC')"
+		},
+		{
+			"@id":"Dimensions('Placeholder Vendor Values')/Hierarchies('Placeholder Vendor Values')/Elements('ARKON RESOURCES INC')"
+		},
+		{
+			"@id":"Dimensions('Placeholder Vendor Values')/Hierarchies('Placeholder Vendor Values')/Elements('Voice Comm, LLC - DSV')"
+		},
+		{
+			"@id":"Dimensions('Placeholder Vendor Values')/Hierarchies('Placeholder Vendor Values')/Elements('GLOBAL TRADE AND TECHNOLOGY DBA RAPIDX')"
+		},
+		{
+			"@id":"Dimensions('Placeholder Vendor Values')/Hierarchies('Placeholder Vendor Values')/Elements('Amazon.com KYDC LLC - M')"
+		},
+		{
+			"@id":"Dimensions('Placeholder Vendor Values')/Hierarchies('Placeholder Vendor Values')/Elements('LINSAY - DSV')"
+		},
+		{
+			"@id":"Dimensions('Placeholder Vendor Values')/Hierarchies('Placeholder Vendor Values')/Elements('LeapFrog Enterprises Inc. - M')"
+		},
+		{
+			"@id":"Dimensions('Placeholder Vendor Values')/Hierarchies('Placeholder Vendor Values')/Elements('Linearflux USA Inc - DSV')"
+		},
+		{
+			"@id":"Dimensions('Placeholder Vendor Values')/Hierarchies('Placeholder Vendor Values')/Elements('Rush Charge - DSV')"
+		},
+		{
+			"@id":"Dimensions('Placeholder Vendor Values')/Hierarchies('Placeholder Vendor Values')/Elements('Cellular Empire dba Pom Gear')"
+		},
+		{
+			"@id":"Dimensions('Placeholder Vendor Values')/Hierarchies('Placeholder Vendor Values')/Elements('ZBA Inc')"
+		},
+		{
+			"@id":"Dimensions('Placeholder Vendor Values')/Hierarchies('Placeholder Vendor Values')/Elements('ION')"
+		}
+	]
+}

@@ -1,0 +1,79 @@
+#region Prolog
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+#Region : Header
+# PROCESS    : }Drill_PromoAURCalc
+# DEVELOPER  : Steve Waterbury
+# CREATED ON : 2026-04-06
+# LAST UPDATE: 2026-05-08
+# CHANGED BY : Steve Waterbury
+# CHANGE HISTORY:
+#   2026-04-06 | Steve Waterbury | Initial creation
+#   2026-05-08 | Steve Waterbury | Repointed body to Merch Promo Calendar (orphan AUR Calc cube retired); ORDER on Promo ID for stable 0001..0050 sort. Design plan 52f7d463ed97.
+#EndRegion
+
+cProcessName = GetProcessName();
+sLogLevel = CellGetS('ProcessControl', cProcessName, 'LoggingLevel');
+IF(sLogLevel @= ''); sLogLevel = 'OFF'; ENDIF;
+bLogInfo = 0;
+IF(sLogLevel @= 'INFO' % sLogLevel @= 'DEBUG'); bLogInfo = 1; ENDIF;
+
+IF(bLogInfo = 1);
+  LogOutput('INFO', cProcessName | ' | V=' | pVersion | ' TP=' | pTimePeriod | ' SKU=' | pSKU);
+ENDIF;
+
+sDestCube = 'Merch Promo Calendar';
+sView = '}Drill_PromoAURCalc_' | pVersion | '_' | pTimePeriod | '_' | pSKU;
+
+IF(ViewExists(sDestCube, sView) = 1);
+  ViewDestroy(sDestCube, sView);
+ENDIF;
+ViewCreate(sDestCube, sView);
+
+SubsetDestroy('Merch SKU', sView);
+SubsetCreatebyMDX(sView, '{DESCENDANTS([Merch SKU].[Merch SKU].[' | pSKU | '], 0)}', 0);
+ViewSubsetAssign(sDestCube, sView, 'Merch SKU', sView);
+
+SubsetDestroy('Merch Promo ID', sView);
+SubsetCreatebyMDX(sView, '{ORDER({TM1FILTERBYLEVEL({TM1SUBSETALL([Merch Promo ID])}, 0)}, [Merch Promo ID].CurrentMember.Name, BASC)}', 0);
+ViewSubsetAssign(sDestCube, sView, 'Merch Promo ID', sView);
+
+SubsetDestroy('Merch Promo Calendar Measure', sView);
+SubsetCreatebyMDX(sView, '{[Merch Promo Calendar Measure].[Merch Promo Calendar Measure].MEMBERS}', 0);
+ViewSubsetAssign(sDestCube, sView, 'Merch Promo Calendar Measure', sView);
+
+SubsetDestroy('Merch Version', sView);
+SubsetCreate('Merch Version', sView, 0);
+SubsetElementInsert('Merch Version', sView, pVersion, 1);
+ViewSubsetAssign(sDestCube, sView, 'Merch Version', sView);
+
+SubsetDestroy('Merch Time Period', sView);
+SubsetCreate('Merch Time Period', sView, 0);
+SubsetElementInsert('Merch Time Period', sView, pTimePeriod, 1);
+ViewSubsetAssign(sDestCube, sView, 'Merch Time Period', sView);
+
+ViewRowDimensionSet(sDestCube, sView, 'Merch SKU', 1);
+ViewRowDimensionSet(sDestCube, sView, 'Merch Promo ID', 2);
+ViewColumnDimensionSet(sDestCube, sView, 'Merch Promo Calendar Measure', 1);
+
+#endregion
+#region Metadata
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+
+#endregion
+#region Data
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+
+#endregion
+#region Epilog
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+ReturnViewHandle(sDestCube, sView);
+
+IF(bLogInfo = 1);
+  LogOutput('INFO', cProcessName | ' | View=' | sView);
+ENDIF;
+
+#endregion

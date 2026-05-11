@@ -1,0 +1,12 @@
+{
+	"@type":"Dimension",
+	"Name":"}Merch SKU Picklist",
+	"Hierarchies@Code.links":
+	[
+		"}Merch SKU Picklist.hierarchies/}Merch SKU Picklist.json"
+	],
+	"DefaultHierarchy":
+	{
+		"@id":"Dimensions('}Merch SKU Picklist')/Hierarchies('}Merch SKU Picklist')"
+	}
+}

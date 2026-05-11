@@ -1,0 +1,13 @@
+{
+	"@type":"Subset",
+	"Name":"PLI_FbyVL_C19~V18~L40",
+	"Elements":
+	[
+		{
+			"@id":"Dimensions('Placeholder Franchise Values')/Hierarchies('Placeholder Franchise Values')/Elements('Double Dragon')"
+		},
+		{
+			"@id":"Dimensions('Placeholder Franchise Values')/Hierarchies('Placeholder Franchise Values')/Elements('Transformers')"
+		}
+	]
+}

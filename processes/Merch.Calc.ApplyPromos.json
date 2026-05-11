@@ -1,0 +1,29 @@
+{
+	"@type":"Process",
+	"Name":"Merch.Calc.ApplyPromos",
+	"HasSecurityAccess":false,
+	"Code@Code.link":"Merch.Calc.ApplyPromos.ti",
+	"DataSource":
+	{
+		"Type":"None"
+	},
+	"Parameters":
+	[
+		{
+			"Name":"pVersion",
+			"Prompt":"Merch Version",
+			"Value":"",
+			"Type":"String"
+		},
+		{
+			"Name":"pPromoID",
+			"Prompt":"Single Promo ID (optional)",
+			"Value":"",
+			"Type":"String"
+		}
+	],
+	"Variables":[],
+	"UID": "1775679537000",
+	"UIData": "CubeAction=1511\fDataAction=1503\fCubeLogChanges=0\f",
+	"VariablesUIData": []
+}

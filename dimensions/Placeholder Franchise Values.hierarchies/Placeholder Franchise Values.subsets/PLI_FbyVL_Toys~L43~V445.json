@@ -1,0 +1,13 @@
+{
+	"@type":"Subset",
+	"Name":"PLI_FbyVL_Toys~L43~V445",
+	"Elements":
+	[
+		{
+			"@id":"Dimensions('Placeholder Franchise Values')/Hierarchies('Placeholder Franchise Values')/Elements('Disney')"
+		},
+		{
+			"@id":"Dimensions('Placeholder Franchise Values')/Hierarchies('Placeholder Franchise Values')/Elements('My Little Pony')"
+		}
+	]
+}

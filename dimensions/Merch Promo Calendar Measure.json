@@ -1,0 +1,12 @@
+{
+	"@type":"Dimension",
+	"Name":"Merch Promo Calendar Measure",
+	"Hierarchies@Code.links":
+	[
+		"Merch Promo Calendar Measure.hierarchies/Merch Promo Calendar Measure.json"
+	],
+	"DefaultHierarchy":
+	{
+		"@id":"Dimensions('Merch Promo Calendar Measure')/Hierarchies('Merch Promo Calendar Measure')"
+	}
+}

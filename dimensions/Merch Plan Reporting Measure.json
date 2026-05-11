@@ -1,0 +1,12 @@
+{
+	"@type":"Dimension",
+	"Name":"Merch Plan Reporting Measure",
+	"Hierarchies@Code.links":
+	[
+		"Merch Plan Reporting Measure.hierarchies/Merch Plan Reporting Measure.json"
+	],
+	"DefaultHierarchy":
+	{
+		"@id":"Dimensions('Merch Plan Reporting Measure')/Hierarchies('Merch Plan Reporting Measure')"
+	}
+}

@@ -1,0 +1,37 @@
+{
+	"@type":"Subset",
+	"Name":"PLI_VbyL_C23~L50",
+	"Elements":
+	[
+		{
+			"@id":"Dimensions('Placeholder Vendor Values')/Hierarchies('Placeholder Vendor Values')/Elements('ThinkGeek Coll. - 225 Days')"
+		},
+		{
+			"@id":"Dimensions('Placeholder Vendor Values')/Hierarchies('Placeholder Vendor Values')/Elements('ThinkGeek - Non Replen')"
+		},
+		{
+			"@id":"Dimensions('Placeholder Vendor Values')/Hierarchies('Placeholder Vendor Values')/Elements('JAZWARES LLC-IMPORT')"
+		},
+		{
+			"@id":"Dimensions('Placeholder Vendor Values')/Hierarchies('Placeholder Vendor Values')/Elements('LEARNING RESOURCES INC')"
+		},
+		{
+			"@id":"Dimensions('Placeholder Vendor Values')/Hierarchies('Placeholder Vendor Values')/Elements('Pokemon Company International')"
+		},
+		{
+			"@id":"Dimensions('Placeholder Vendor Values')/Hierarchies('Placeholder Vendor Values')/Elements('Ingram Micro CE -Drop Ship')"
+		},
+		{
+			"@id":"Dimensions('Placeholder Vendor Values')/Hierarchies('Placeholder Vendor Values')/Elements('Hasbro, Inc')"
+		},
+		{
+			"@id":"Dimensions('Placeholder Vendor Values')/Hierarchies('Placeholder Vendor Values')/Elements('Jakks Pacific(ToyMax), (Toys)')"
+		},
+		{
+			"@id":"Dimensions('Placeholder Vendor Values')/Hierarchies('Placeholder Vendor Values')/Elements('Innovative First Labs, Inc')"
+		},
+		{
+			"@id":"Dimensions('Placeholder Vendor Values')/Hierarchies('Placeholder Vendor Values')/Elements('HAPE INTERNATIONAL INC')"
+		}
+	]
+}

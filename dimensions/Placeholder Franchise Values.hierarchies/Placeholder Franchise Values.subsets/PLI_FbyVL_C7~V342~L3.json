@@ -1,0 +1,16 @@
+{
+	"@type":"Subset",
+	"Name":"PLI_FbyVL_C7~V342~L3",
+	"Elements":
+	[
+		{
+			"@id":"Dimensions('Placeholder Franchise Values')/Hierarchies('Placeholder Franchise Values')/Elements('Naruto')"
+		},
+		{
+			"@id":"Dimensions('Placeholder Franchise Values')/Hierarchies('Placeholder Franchise Values')/Elements('My Little Pony')"
+		},
+		{
+			"@id":"Dimensions('Placeholder Franchise Values')/Hierarchies('Placeholder Franchise Values')/Elements('Tokidoki')"
+		}
+	]
+}

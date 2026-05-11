@@ -1,0 +1,20 @@
+{
+	"@type":"Hierarchy",
+	"Name":"Merch Settings Parameter",
+	"Elements":
+	[
+		{
+			"Name":"Current Year",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Current Period",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Last Load Time",
+			"Type":"Numeric"
+		}
+	],
+	"Subsets@Code.links":[]
+}

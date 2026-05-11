@@ -1,0 +1,16 @@
+{
+	"@type":"Hierarchy",
+	"Name":"Merch Placeholder Conversion Measure",
+	"Elements":
+	[
+		{
+			"Name":"Calc Units",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Build/Debuild",
+			"Type":"Numeric"
+		}
+	],
+	"Subsets@Code.links":[]
+}

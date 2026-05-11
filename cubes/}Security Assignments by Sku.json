@@ -1,0 +1,17 @@
+{
+	"@type":"Cube",
+	"Name":"}Security Assignments by Sku",
+	"Dimensions":
+	[
+		{
+			"@id":"Dimensions('}Groups')"
+		},
+		{
+			"@id":"Dimensions('Merch SKU')"
+		},
+		{
+			"@id":"Dimensions('}Security Resolved Measure')"
+		}
+	],
+	"Views@Code.links":[]
+}

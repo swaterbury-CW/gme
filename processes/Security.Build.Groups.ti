@@ -1,0 +1,96 @@
+#region Prolog
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+#Region : Process Header
+##############################################
+##~~ Security.Build.Groups ~~##
+##############################################
+# DEVELOPER  : Rose Morgan
+# CREATED ON : 2026-05-08
+# LAST UPDATE: 2026-05-08
+# CHANGED BY : Rose Morgan
+# COMMENTS:
+# Idempotent rebuild of }Groups: ensures the canonical 51-name Roles-rollup
+# security group roster exists. Groups not in the roster (admin / Read Only /
+# unrelated existing groups) are untouched. Run after any change to the
+# Merch.Dim.BuildRolesHierarchy roster.
+#
+# CHANGE HISTORY:
+#   2026-05-08 | Rose Morgan | Creation
+#EndRegion
+
+#Region : Logging Configuration
+sLogLevel = CellGetS('ProcessControl', GetProcessName(), 'LoggingLevel');
+IF(sLogLevel @= '');
+  sLogLevel = 'OFF';
+ENDIF;
+bLogInfo = 0;
+IF(sLogLevel @= 'INFO' % sLogLevel @= 'DEBUG');
+  bLogInfo = 1;
+ENDIF;
+IF(bLogInfo = 1);
+  LogOutput('INFO', 'START: ' | GetProcessName());
+ENDIF;
+#EndRegion
+
+#Region : Constants and Counters
+cProcessName = GetProcessName();
+sDim = '}Groups';
+nEnsured = 0;
+nAdded = 0;
+#EndRegion
+
+#Region : Canonical Roles-Rollup Roster (51 names, pipe-delimited)
+# Top (1) + Director-2 (13) + Manager (15) + planner (22).
+# Mirror of Merch.Dim.BuildRolesHierarchy. Update both when roster changes.
+sRoster = 'Director|T&C Director|VG Director|TCG Director|Pre-Owned Director|Warranty Director|Digital Director|Other Director|Grading Director|Pre-Owned T&C Director|Pre-Owned TCG Director|Pre-Owned Digital Director|Pre-Owned Other Director|Loyalty Director|T&C Manager|VG SW Manager|VG HW Manager|VGA Manager|TCG Manager|Pre-Owned Manager|Warranty Manager|Digital Manager|Other Manager|Grading Manager|Pre-Owned T&C Manager|Pre-Owned TCG Manager|Pre-Owned Digital Manager|Pre-Owned Other Manager|Loyalty Manager|Toys planner|Collectibles planner|Apparel planner|Homewares planner|Board Games planner|1P SW planner|3P SW planner|Hardware planner|Controllers planner|1P VGA planner|3P VGA planner|TCG planner|Pre-Owned planner|Warranty planner|Digital planner|Other planner|Grading planner|Pre-Owned T&C planner|Pre-Owned TCG planner|Pre-Owned Digital planner|Pre-Owned Other planner|Loyalty planner|';
+#EndRegion
+
+#Region : Walk Roster and Ensure Each Group Exists
+sBuf = sRoster;
+nPipe = SCAN('|', sBuf);
+WHILE(nPipe > 0);
+  sName = SUBST(sBuf, 1, nPipe - 1);
+  IF(LONG(sName) > 0);
+    nEnsured = nEnsured + 1;
+    IF(DIMIX(sDim, sName) = 0);
+      DimensionElementInsert(sDim, '', sName, 'S');
+      nAdded = nAdded + 1;
+    ENDIF;
+  ENDIF;
+  sBuf = SUBST(sBuf, nPipe + 1, LONG(sBuf) - nPipe);
+  nPipe = SCAN('|', sBuf);
+END;
+#EndRegion
+
+#Region : Refresh and Record
+SecurityRefresh();
+
+IF(CellIsUpdateable('ProcessControl', cProcessName, 'SubsetCount') = 1);
+  CellPutN(nEnsured, 'ProcessControl', cProcessName, 'SubsetCount');
+ENDIF;
+
+IF(bLogInfo = 1);
+  LogOutput('INFO', cProcessName
+    | ' | Ensured=' | TRIM(STR(nEnsured, 10, 0))
+    | ' | Added=' | TRIM(STR(nAdded, 10, 0)));
+  LogOutput('INFO', 'END: ' | GetProcessName());
+ENDIF;
+#EndRegion
+
+#endregion
+#region Metadata
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+
+#endregion
+#region Data
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+
+#endregion
+#region Epilog
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+
+#endregion

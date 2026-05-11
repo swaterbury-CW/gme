@@ -1,0 +1,91 @@
+{
+	"@type":"Subset",
+	"Name":"PLI_VbyL_C19~L37",
+	"Elements":
+	[
+		{
+			"@id":"Dimensions('Placeholder Vendor Values')/Hierarchies('Placeholder Vendor Values')/Elements('ThinkGeek Coll. - 225 Days')"
+		},
+		{
+			"@id":"Dimensions('Placeholder Vendor Values')/Hierarchies('Placeholder Vendor Values')/Elements('GameStop, Inc.')"
+		},
+		{
+			"@id":"Dimensions('Placeholder Vendor Values')/Hierarchies('Placeholder Vendor Values')/Elements('Funko, LLC - FOB')"
+		},
+		{
+			"@id":"Dimensions('Placeholder Vendor Values')/Hierarchies('Placeholder Vendor Values')/Elements('Toynk Toys, LLC')"
+		},
+		{
+			"@id":"Dimensions('Placeholder Vendor Values')/Hierarchies('Placeholder Vendor Values')/Elements('Culture Fly LLC')"
+		},
+		{
+			"@id":"Dimensions('Placeholder Vendor Values')/Hierarchies('Placeholder Vendor Values')/Elements('ABYSSE AMERICA INC-ZLOOT')"
+		},
+		{
+			"@id":"Dimensions('Placeholder Vendor Values')/Hierarchies('Placeholder Vendor Values')/Elements('ThinkGeek - Non Replen')"
+		},
+		{
+			"@id":"Dimensions('Placeholder Vendor Values')/Hierarchies('Placeholder Vendor Values')/Elements('Rubber Road LimitedX')"
+		},
+		{
+			"@id":"Dimensions('Placeholder Vendor Values')/Hierarchies('Placeholder Vendor Values')/Elements('Diamond Comic Distributors')"
+		},
+		{
+			"@id":"Dimensions('Placeholder Vendor Values')/Hierarchies('Placeholder Vendor Values')/Elements('JAZWARES LLC-IMPORT')"
+		},
+		{
+			"@id":"Dimensions('Placeholder Vendor Values')/Hierarchies('Placeholder Vendor Values')/Elements('Funko LLC - Domestic')"
+		},
+		{
+			"@id":"Dimensions('Placeholder Vendor Values')/Hierarchies('Placeholder Vendor Values')/Elements('A Crowded Coop')"
+		},
+		{
+			"@id":"Dimensions('Placeholder Vendor Values')/Hierarchies('Placeholder Vendor Values')/Elements('ucc Distributing Inc. - V')"
+		},
+		{
+			"@id":"Dimensions('Placeholder Vendor Values')/Hierarchies('Placeholder Vendor Values')/Elements('COKeM International Ltd - Loot')"
+		},
+		{
+			"@id":"Dimensions('Placeholder Vendor Values')/Hierarchies('Placeholder Vendor Values')/Elements('Hasbro, Inc')"
+		},
+		{
+			"@id":"Dimensions('Placeholder Vendor Values')/Hierarchies('Placeholder Vendor Values')/Elements('FUNKO LLC IMPORT')"
+		},
+		{
+			"@id":"Dimensions('Placeholder Vendor Values')/Hierarchies('Placeholder Vendor Values')/Elements('Alliance Entertainment Holding Corporation LLC - z')"
+		},
+		{
+			"@id":"Dimensions('Placeholder Vendor Values')/Hierarchies('Placeholder Vendor Values')/Elements('TMP International (Toys)')"
+		},
+		{
+			"@id":"Dimensions('Placeholder Vendor Values')/Hierarchies('Placeholder Vendor Values')/Elements('Ultra Tokyo Connection LLC.')"
+		},
+		{
+			"@id":"Dimensions('Placeholder Vendor Values')/Hierarchies('Placeholder Vendor Values')/Elements('Youtooz, Inc')"
+		},
+		{
+			"@id":"Dimensions('Placeholder Vendor Values')/Hierarchies('Placeholder Vendor Values')/Elements('Royal Bobbles')"
+		},
+		{
+			"@id":"Dimensions('Placeholder Vendor Values')/Hierarchies('Placeholder Vendor Values')/Elements('BD&A - L')"
+		},
+		{
+			"@id":"Dimensions('Placeholder Vendor Values')/Hierarchies('Placeholder Vendor Values')/Elements('Enesco LLC')"
+		},
+		{
+			"@id":"Dimensions('Placeholder Vendor Values')/Hierarchies('Placeholder Vendor Values')/Elements('FIRST 4 FIGURES - z')"
+		},
+		{
+			"@id":"Dimensions('Placeholder Vendor Values')/Hierarchies('Placeholder Vendor Values')/Elements('PLAYMOBIL USA INC')"
+		},
+		{
+			"@id":"Dimensions('Placeholder Vendor Values')/Hierarchies('Placeholder Vendor Values')/Elements('THRILLJOY LLC - z')"
+		},
+		{
+			"@id":"Dimensions('Placeholder Vendor Values')/Hierarchies('Placeholder Vendor Values')/Elements('FUNKO LLC DOMESTIC2')"
+		},
+		{
+			"@id":"Dimensions('Placeholder Vendor Values')/Hierarchies('Placeholder Vendor Values')/Elements('Disburst LTD')"
+		}
+	]
+}

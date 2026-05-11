@@ -1,0 +1,37 @@
+{
+	"@type":"Subset",
+	"Name":"PL_000057",
+	"Elements":
+	[
+		{
+			"@id":"Dimensions('Placeholder Vendor Values')/Hierarchies('Placeholder Vendor Values')/Elements('Logitech (PC Accessories)')"
+		},
+		{
+			"@id":"Dimensions('Placeholder Vendor Values')/Hierarchies('Placeholder Vendor Values')/Elements('ThinkGeek VGA - 225 Days')"
+		},
+		{
+			"@id":"Dimensions('Placeholder Vendor Values')/Hierarchies('Placeholder Vendor Values')/Elements('Razer USA Ltd')"
+		},
+		{
+			"@id":"Dimensions('Placeholder Vendor Values')/Hierarchies('Placeholder Vendor Values')/Elements('D & H Distributors')"
+		},
+		{
+			"@id":"Dimensions('Placeholder Vendor Values')/Hierarchies('Placeholder Vendor Values')/Elements('Funko, LLC - FOB')"
+		},
+		{
+			"@id":"Dimensions('Placeholder Vendor Values')/Hierarchies('Placeholder Vendor Values')/Elements('ThinkGeek Coll. - 225 Days')"
+		},
+		{
+			"@id":"Dimensions('Placeholder Vendor Values')/Hierarchies('Placeholder Vendor Values')/Elements('Simon and Schuster')"
+		},
+		{
+			"@id":"Dimensions('Placeholder Vendor Values')/Hierarchies('Placeholder Vendor Values')/Elements('Diamond Comic Distributors')"
+		},
+		{
+			"@id":"Dimensions('Placeholder Vendor Values')/Hierarchies('Placeholder Vendor Values')/Elements('Dark Horse Comics, Inc.')"
+		},
+		{
+			"@id":"Dimensions('Placeholder Vendor Values')/Hierarchies('Placeholder Vendor Values')/Elements('AreYouGame - DSV')"
+		}
+	]
+}

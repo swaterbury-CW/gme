@@ -1,0 +1,16 @@
+{
+	"@type":"Subset",
+	"Name":"PL_000437",
+	"Elements":
+	[
+		{
+			"@id":"Dimensions('Placeholder Vendor Values')/Hierarchies('Placeholder Vendor Values')/Elements('Hasbro Int''l Trading, B.V. FOB')"
+		},
+		{
+			"@id":"Dimensions('Placeholder Vendor Values')/Hierarchies('Placeholder Vendor Values')/Elements('Hasbro, Inc')"
+		},
+		{
+			"@id":"Dimensions('Placeholder Vendor Values')/Hierarchies('Placeholder Vendor Values')/Elements('GEL BLASTER INC-ZLOOT')"
+		}
+	]
+}

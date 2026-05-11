@@ -1,0 +1,12 @@
+{
+	"@type":"Dimension",
+	"Name":"}HierarchyAttributes_Merch Channel",
+	"Hierarchies@Code.links":
+	[
+		"}HierarchyAttributes_Merch Channel.hierarchies/}HierarchyAttributes_Merch Channel.json"
+	],
+	"DefaultHierarchy":
+	{
+		"@id":"Dimensions('}HierarchyAttributes_Merch Channel')/Hierarchies('}HierarchyAttributes_Merch Channel')"
+	}
+}

@@ -1,0 +1,10 @@
+{
+	"@type":"Subset",
+	"Name":"PLI_FbyVL_PS4 Software~L26~V269",
+	"Elements":
+	[
+		{
+			"@id":"Dimensions('Placeholder Franchise Values')/Hierarchies('Placeholder Franchise Values')/Elements('Metal Gear')"
+		}
+	]
+}

@@ -1,0 +1,16 @@
+{
+	"@type":"Subset",
+	"Name":"PLI_SbyFVL_C2~F1~V252~L5",
+	"Elements":
+	[
+		{
+			"@id":"Dimensions('}Merch SKU Picklist')/Hierarchies('}Merch SKU Picklist')/Elements('432237')"
+		},
+		{
+			"@id":"Dimensions('}Merch SKU Picklist')/Hierarchies('}Merch SKU Picklist')/Elements('432235')"
+		},
+		{
+			"@id":"Dimensions('}Merch SKU Picklist')/Hierarchies('}Merch SKU Picklist')/Elements('432491')"
+		}
+	]
+}

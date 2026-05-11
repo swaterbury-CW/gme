@@ -1,0 +1,13 @@
+{
+	"@type":"Subset",
+	"Name":"PL_000238",
+	"Elements":
+	[
+		{
+			"@id":"Dimensions('Placeholder Franchise Values')/Hierarchies('Placeholder Franchise Values')/Elements('My Hero Academia')"
+		},
+		{
+			"@id":"Dimensions('Placeholder Franchise Values')/Hierarchies('Placeholder Franchise Values')/Elements('Sonic the Hedgehog')"
+		}
+	]
+}

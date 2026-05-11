@@ -1,0 +1,12 @@
+{
+	"@type":"Dimension",
+	"Name":"Merch Version SKU Attribute Measure",
+	"Hierarchies@Code.links":
+	[
+		"Merch Version SKU Attribute Measure.hierarchies/Merch Version SKU Attribute Measure.json"
+	],
+	"DefaultHierarchy":
+	{
+		"@id":"Dimensions('Merch Version SKU Attribute Measure')/Hierarchies('Merch Version SKU Attribute Measure')"
+	}
+}

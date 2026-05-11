@@ -1,0 +1,14 @@
+{
+	"@type":"Process",
+	"Name":"Merch.Load.Curves.BQ",
+	"HasSecurityAccess":false,
+	"Code@Code.link":"Merch.Load.Curves.BQ.ti",
+	"DataSource":
+	{
+		"Type":"None"
+	},
+	"Parameters":[],
+	"Variables":[],
+	"UID": "17781064800003",
+	"VariablesUIData": []
+}

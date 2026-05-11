@@ -1,0 +1,16 @@
+{
+	"@type":"Hierarchy",
+	"Name":"Clearance Color",
+	"Elements":
+	[
+		{
+			"Name":"Blue",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Orange",
+			"Type":"Numeric"
+		}
+	],
+	"Subsets@Code.links":[]
+}

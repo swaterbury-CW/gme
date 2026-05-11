@@ -1,0 +1,13 @@
+{
+	"@type":"Subset",
+	"Name":"PLI_FbyVL_C8~V53~L7",
+	"Elements":
+	[
+		{
+			"@id":"Dimensions('Placeholder Franchise Values')/Hierarchies('Placeholder Franchise Values')/Elements('MLB')"
+		},
+		{
+			"@id":"Dimensions('Placeholder Franchise Values')/Hierarchies('Placeholder Franchise Values')/Elements('NBA')"
+		}
+	]
+}

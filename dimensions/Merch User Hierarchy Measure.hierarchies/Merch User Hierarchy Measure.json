@@ -1,0 +1,53 @@
+{
+	"@type":"Hierarchy",
+	"Name":"Merch User Hierarchy Measure",
+	"Elements":
+	[
+		{
+			"Name":"Override Hierarchy 1",
+			"Type":"String"
+		},
+		{
+			"Name":"Override Hierarchy 2",
+			"Type":"String"
+		},
+		{
+			"Name":"Override Hierarchy 3",
+			"Type":"String"
+		},
+		{
+			"Name":"Override Hierarchy 4",
+			"Type":"String"
+		},
+		{
+			"Name":"Override Hierarchy 5",
+			"Type":"String"
+		},
+		{
+			"Name":"Applied Hierarchy 1",
+			"Type":"String"
+		},
+		{
+			"Name":"Applied Hierarchy 2",
+			"Type":"String"
+		},
+		{
+			"Name":"Applied Hierarchy 3",
+			"Type":"String"
+		},
+		{
+			"Name":"Applied Hierarchy 4",
+			"Type":"String"
+		},
+		{
+			"Name":"Applied Hierarchy 5",
+			"Type":"String"
+		}
+	],
+	"Subsets@Code.links":
+	[
+		"Merch User Hierarchy Measure.subsets/All Applied Measures.json",
+		"Merch User Hierarchy Measure.subsets/All Measures.json",
+		"Merch User Hierarchy Measure.subsets/All Override Measures.json"
+	]
+}

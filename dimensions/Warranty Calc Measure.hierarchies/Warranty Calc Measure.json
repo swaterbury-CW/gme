@@ -1,0 +1,28 @@
+{
+	"@type":"Hierarchy",
+	"Name":"Warranty Calc Measure",
+	"Elements":
+	[
+		{
+			"Name":"Forecast Units",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Attach Rate",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Warranty Amount",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Warranty Units",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Warranty Dollars",
+			"Type":"Numeric"
+		}
+	],
+	"Subsets@Code.links":[]
+}

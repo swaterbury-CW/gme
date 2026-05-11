@@ -1,0 +1,13 @@
+{
+	"@type":"Subset",
+	"Name":"PLI_FbyVL_Collectibles~L40~V407",
+	"Elements":
+	[
+		{
+			"@id":"Dimensions('Placeholder Franchise Values')/Hierarchies('Placeholder Franchise Values')/Elements('Sonic the Hedgehog')"
+		},
+		{
+			"@id":"Dimensions('Placeholder Franchise Values')/Hierarchies('Placeholder Franchise Values')/Elements('Apex Legends')"
+		}
+	]
+}

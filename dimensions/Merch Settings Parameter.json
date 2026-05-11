@@ -1,0 +1,12 @@
+{
+	"@type":"Dimension",
+	"Name":"Merch Settings Parameter",
+	"Hierarchies@Code.links":
+	[
+		"Merch Settings Parameter.hierarchies/Merch Settings Parameter.json"
+	],
+	"DefaultHierarchy":
+	{
+		"@id":"Dimensions('Merch Settings Parameter')/Hierarchies('Merch Settings Parameter')"
+	}
+}

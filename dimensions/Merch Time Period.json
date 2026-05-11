@@ -1,0 +1,12 @@
+{
+	"@type":"Dimension",
+	"Name":"Merch Time Period",
+	"Hierarchies@Code.links":
+	[
+		"Merch Time Period.hierarchies/Merch Time Period.json"
+	],
+	"DefaultHierarchy":
+	{
+		"@id":"Dimensions('Merch Time Period')/Hierarchies('Merch Time Period')"
+	}
+}

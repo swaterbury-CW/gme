@@ -1,0 +1,85 @@
+#region Prolog
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+#Region : Header
+#############################
+##~~ Start Process ~~##
+#############################
+# DEVELOPER : Steve Waterbury
+# CREATED ON : 2026-04-06
+# LAST UPDATE: 2026-04-06
+# COMMENTS:
+# Drill-through: Merch Forecast to Merch Version SKU Attributes.
+# DESCENDANTS on SKU. ReturnViewHandle in Epilog.
+#
+#### CHANGE HISTORY:
+### 2026-04-06  Steve Waterbury  Initial creation
+#
+#EndRegion
+
+cProcessName = GetProcessName();
+sLogLevel = CellGetS('ProcessControl', cProcessName, 'LoggingLevel');
+IF(sLogLevel @= ''); sLogLevel = 'OFF'; ENDIF;
+bLogInfo = 0;
+IF(sLogLevel @= 'INFO' % sLogLevel @= 'DEBUG'); bLogInfo = 1; ENDIF;
+
+IF(bLogInfo = 1);
+  LogOutput('INFO', cProcessName | ' | V=' | pVersion | ' SKU=' | pSKU);
+ENDIF;
+
+sDestCube = 'Merch Version SKU Attributes';
+sView = '}Drill_Attrs_' | pVersion | '_' | pSKU;
+
+sMDX = 'SELECT {TM1SUBSETALL([Merch Version SKU Attribute Measure])} ON COLUMNS, '
+     | 'NON EMPTY {DESCENDANTS([Merch SKU].[' | pSKU | '], 0)} ON ROWS '
+     | 'FROM [' | sDestCube | '] '
+     | 'WHERE ([Merch Version].[' | pVersion | '])';
+
+IF(ViewExists(sDestCube, sView) = 1);
+  ViewDestroy(sDestCube, sView);
+ENDIF;
+ViewCreate(sDestCube,sView);
+SubsetDestroy( 'Merch SKU', sView );
+
+SubsetCreatebyMDX( sView, '{DESCENDANTS([Merch SKU].[Merch Sku].[' | pSKU | '], 0)}', 0);
+ViewSubsetAssign( sDestCube, sView, 'Merch SKU', sview );
+
+SubsetDestroy( 'Merch Version SKU Attribute Measure', sView );
+
+SubsetCreatebyMDX( sView,'{[Merch Version SKU Attribute Measure].[Merch Version SKU Attribute Measure].MEMBERS}',0);
+ViewSubsetAssign( sDestCube, sView, 'Merch SKU', sview );
+
+SubsetDestroy( 'Merch Version', sView );
+SubsetCreate( 'Merch Version', sView, 0 );
+
+ViewSubsetAssign( sDestCube, sView, 'Merch Version', sView );
+ViewRowDimensionSet( sDestCube, sView, 'Merch Version SKU Attribute Measure', 1 );
+ViewColumnDimensionSet( sDestCube, sView, 'Merch SKU', 1 );
+
+
+
+
+
+
+
+
+#endregion
+#region Metadata
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+
+#endregion
+#region Data
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+
+#endregion
+#region Epilog
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+ReturnViewHandle(sDestCube, sView);
+
+IF(bLogInfo = 1);
+  LogOutput('INFO', cProcessName | ' | View=' | sView);
+ENDIF;
+#endregion

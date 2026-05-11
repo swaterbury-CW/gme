@@ -1,0 +1,10 @@
+{
+	"@type":"Subset",
+	"Name":"PLI_VbyL_C43~L83",
+	"Elements":
+	[
+		{
+			"@id":"Dimensions('Placeholder Vendor Values')/Hierarchies('Placeholder Vendor Values')/Elements('GameStop, Inc.')"
+		}
+	]
+}

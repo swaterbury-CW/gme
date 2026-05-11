@@ -1,0 +1,64 @@
+SKIPCHECK;
+#Region : Rule Header
+#############################
+##~~ Start Rule File ~~##
+#############################
+# DEVELOPER : Steve Waterbury
+# CREATED ON : 2026-04-24
+# LAST UPDATE: 2026-05-04
+# CUBE       : Merch Warranty Calculation
+# PURPOSE    : Calculate warranty Units and Dollars for SKUs eligible by
+#              versioned GPG_Eligible OR PRP_Eligible (case-insensitive Y/TRUE).
+#              Reads Settings.[Applied Attach Rate] and .[Applied Warranty Amount]
+#              (post-EP-2a Override/Applied refactor).
+#### CHANGE HISTORY:
+### 2026-04-24  Steve Waterbury  Initial creation (warranty Phase 2a.2)
+### 2026-05-01  Steve Waterbury  Versioned gate; OR GPG|PRP; UPPER-insensitive Y/TRUE
+### 2026-05-04  Steve Waterbury  Cut over Settings reads to Applied <X> (post EP-2a)
+#EndRegion
+
+#Region : Source measures (versioned GPG-or-PRP eligibility gate)
+['Forecast Units'] = N:
+  IF(
+    UPPER(DB('Merch Version SKU Attributes', !Merch Version, !Merch SKU, 'GPG_Eligible')) @= 'Y'
+    % UPPER(DB('Merch Version SKU Attributes', !Merch Version, !Merch SKU, 'GPG_Eligible')) @= 'TRUE'
+    % UPPER(DB('Merch Version SKU Attributes', !Merch Version, !Merch SKU, 'PRP_Eligible')) @= 'Y'
+    % UPPER(DB('Merch Version SKU Attributes', !Merch Version, !Merch SKU, 'PRP_Eligible')) @= 'TRUE',
+    DB('Merch Forecast', !Merch Version, !Merch Time Period, !Merch SKU, 'Units'),
+  0);
+
+['Attach Rate'] = N:
+  IF(
+    UPPER(DB('Merch Version SKU Attributes', !Merch Version, !Merch SKU, 'GPG_Eligible')) @= 'Y'
+    % UPPER(DB('Merch Version SKU Attributes', !Merch Version, !Merch SKU, 'GPG_Eligible')) @= 'TRUE'
+    % UPPER(DB('Merch Version SKU Attributes', !Merch Version, !Merch SKU, 'PRP_Eligible')) @= 'Y'
+    % UPPER(DB('Merch Version SKU Attributes', !Merch Version, !Merch SKU, 'PRP_Eligible')) @= 'TRUE',
+    DB('Merch Warranty Settings', !Merch Version, !Merch Time Period, !Merch SKU, 'Applied Attach Rate'),
+  0);
+
+['Warranty Amount'] = N:
+  IF(
+    UPPER(DB('Merch Version SKU Attributes', !Merch Version, !Merch SKU, 'GPG_Eligible')) @= 'Y'
+    % UPPER(DB('Merch Version SKU Attributes', !Merch Version, !Merch SKU, 'GPG_Eligible')) @= 'TRUE'
+    % UPPER(DB('Merch Version SKU Attributes', !Merch Version, !Merch SKU, 'PRP_Eligible')) @= 'Y'
+    % UPPER(DB('Merch Version SKU Attributes', !Merch Version, !Merch SKU, 'PRP_Eligible')) @= 'TRUE',
+    DB('Merch Warranty Settings', !Merch Version, !Merch Time Period, !Merch SKU, 'Applied Warranty Amount'),
+  0);
+#EndRegion
+
+#Region : Derived
+['Warranty Units']   = N: ['Forecast Units'] * ['Attach Rate'];
+['Warranty Dollars'] = N: ['Warranty Units'] * ['Warranty Amount'];
+#EndRegion
+
+FEEDERS;
+['Forecast Units'] => ['Attach Rate'];
+['Forecast Units'] => ['Warranty Amount'];
+['Forecast Units'] => ['Warranty Units'];
+['Forecast Units'] => ['Warranty Dollars'];
+
+#Region : Rule Footer
+#############################
+##~~ End Rule File ~~##
+#############################
+#EndRegion

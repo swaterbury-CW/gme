@@ -1,0 +1,149 @@
+#region Prolog
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+#Region : Process Header
+#############################
+##~~ Start Process ~~##
+#############################
+# DEVELOPER : Steve Waterbury
+# CREATED ON : 2026-03-15
+# LAST UPDATE: 2026-04-01
+# COMMENTS:
+# Creates a PA alternate hierarchy on a dimension based on a string attribute.
+# The hierarchy is named after the attribute (pAttrName).
+# Builds a 3-level hierarchy: All [AttrName] → distinct attribute values → leaf elements.
+# SKUs with blank/null attribute values go under 'No {AttrName}' consolidation.
+# If the hierarchy already exists it is destroyed and rebuilt.
+#
+# Parameters:
+#   pDimName  — Target dimension name (must exist)
+#   pAttrName — String attribute name to group by (must exist on dimension)
+#
+#### CHANGE HISTORY:
+### MODIFICATION DATE  CHANGED BY         COMMENT
+### 2026-03-15         Steve Waterbury    Creation of Process
+### 2026-03-22         Steve Waterbury    v12 rewrite (HierarchyCreate + Direct functions)
+### 2026-03-27         Steve Waterbury    Add 'No {AttrName}' rollup for blank/null values
+### 2026-04-01         Steve Waterbury    Code formatting: multi-line logging init
+#
+#EndRegion
+
+#Region : Logging Configuration
+sLogLevel = CellGetS( 'ProcessControl', GetProcessName(), 'LoggingLevel' );
+IF( sLogLevel @= '' ); sLogLevel = 'OFF'; ENDIF;
+bLogInfo = 0;
+bLogDebug = 0;
+IF( sLogLevel @= 'INFO' % sLogLevel @= 'DEBUG' );
+  bLogInfo = 1;
+ENDIF;
+IF( sLogLevel @= 'DEBUG' );
+  bLogDebug = 1;
+ENDIF;
+IF( bLogInfo = 1 );
+  LogOutput( 'INFO', 'START: ' | GetProcessName() | ' | pDimName=' | pDimName | ' | pAttrName=' | pAttrName );
+ENDIF;
+#EndRegion
+
+#Region : Constants
+cProcessName = GetProcessName();
+#EndRegion
+
+#Region : Parameter Validation
+IF( pDimName @= '' ); LogOutput( 'ERROR', cProcessName | ' | pDimName is empty' ); ProcessError; ENDIF;
+IF( pAttrName @= '' ); LogOutput( 'ERROR', cProcessName | ' | pAttrName is empty' ); ProcessError; ENDIF;
+IF( DimensionExists( pDimName ) = 0 ); LogOutput( 'ERROR', cProcessName | ' | Dimension not found: ' | pDimName ); ProcessError; ENDIF;
+
+nAttrFound = 0;
+nAttrDimSize = DIMSIZ( '}ElementAttributes_' | pDimName );
+nAttrIdx = 1;
+While( nAttrIdx <= nAttrDimSize );
+    sAttrEl = DIMNM( '}ElementAttributes_' | pDimName, nAttrIdx );
+    IF( sAttrEl @= pAttrName ); nAttrFound = 1; nAttrIdx = nAttrDimSize; ENDIF;
+    nAttrIdx = nAttrIdx + 1;
+End;
+IF( nAttrFound = 0 ); LogOutput( 'ERROR', cProcessName | ' | Attribute not found: ' | pAttrName ); ProcessError; ENDIF;
+#EndRegion
+
+#Region : Destroy Existing Hierarchy
+IF( pAttrName @<> pDimName );
+    IF( HierarchyExists( pDimName, pAttrName ) = 1 );
+        IF( bLogInfo = 1 ); LogOutput( 'INFO', cProcessName | ' | Destroying existing hierarchy: ' | pAttrName ); ENDIF;
+        HierarchyDestroy( pDimName, pAttrName );
+    ENDIF;
+ELSE;
+    LogOutput( 'ERROR', cProcessName | ' | Attribute name cannot match dimension name' ); ProcessError;
+ENDIF;
+#EndRegion
+
+#Region : Create Hierarchy from Attribute
+IF( bLogInfo = 1 ); LogOutput( 'INFO', cProcessName | ' | Creating hierarchy: ' | pAttrName ); ENDIF;
+
+HierarchyCreate( pDimName, pAttrName );
+sTopName = 'All ' | pAttrName;
+HierarchyElementInsertDirect( pDimName, pAttrName, '', sTopName, 'C' );
+
+sNoAttrName = 'No ' | pAttrName;
+
+nDimSize = DIMSIZ( pDimName );
+nIdx = 1;
+nLeafCount = 0;
+nGroupCount = 0;
+nNoAttrCount = 0;
+
+WHILE( nIdx <= nDimSize );
+    sElem = DIMNM( pDimName, nIdx );
+    IF( DTYPE( pDimName, sElem ) @= 'N' );
+        sAttrVal = ATTRS( pDimName, sElem, pAttrName );
+        IF( sAttrVal @<> '' );
+            IF( HierarchyElementExists( pDimName, pAttrName, sAttrVal ) = 0 );
+                HierarchyElementInsertDirect( pDimName, pAttrName, '', sAttrVal, 'C' );
+                HierarchyElementComponentAddDirect( pDimName, pAttrName, sTopName, sAttrVal, 1 );
+                nGroupCount = nGroupCount + 1;
+            ENDIF;
+            HierarchyElementInsertDirect( pDimName, pAttrName, '', sElem, 'N' );
+            HierarchyElementComponentAddDirect( pDimName, pAttrName, sAttrVal, sElem, 1 );
+            nLeafCount = nLeafCount + 1;
+        ELSE;
+            # No attribute value — add to 'No {AttrName}' rollup
+            IF( HierarchyElementExists( pDimName, pAttrName, sNoAttrName ) = 0 );
+                HierarchyElementInsertDirect( pDimName, pAttrName, '', sNoAttrName, 'C' );
+                HierarchyElementComponentAddDirect( pDimName, pAttrName, sTopName, sNoAttrName, 1 );
+            ENDIF;
+            HierarchyElementInsertDirect( pDimName, pAttrName, '', sElem, 'N' );
+            HierarchyElementComponentAddDirect( pDimName, pAttrName, sNoAttrName, sElem, 1 );
+            nNoAttrCount = nNoAttrCount + 1;
+            nLeafCount = nLeafCount + 1;
+        ENDIF;
+    ENDIF;
+    nIdx = nIdx + 1;
+END;
+
+IF( bLogInfo = 1 );
+    LogOutput( 'INFO', cProcessName | ' | Hierarchy created | Groups=' | TRIM(STR(nGroupCount, 10, 0)) | ' | Leaves=' | TRIM(STR(nLeafCount, 10, 0)) | ' | NoAttr=' | TRIM(STR(nNoAttrCount, 10, 0)) );
+ENDIF;
+#EndRegion
+
+#endregion
+#region Metadata
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+
+#endregion
+#region Data
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+
+#endregion
+#region Epilog
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+#Region : Epilog Logging
+IF( bLogInfo = 1 );
+    IF( HierarchyExists( pDimName, pAttrName ) = 1 );
+        LogOutput( 'INFO', 'END: ' | GetProcessName() | ' | Hierarchy=' | pAttrName | ' | Dim=' | pDimName | ' | Status=SUCCESS' );
+    ELSE;
+        LogOutput( 'WARN', 'END: ' | GetProcessName() | ' | Hierarchy=' | pAttrName | ' | Dim=' | pDimName | ' | Status=HIERARCHY_NOT_FOUND' );
+    ENDIF;
+ENDIF;
+#EndRegion
+#endregion

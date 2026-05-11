@@ -1,0 +1,29 @@
+{
+	"@type":"Subset",
+	"Name":"All Applied Measures",
+	"Alias":"MEMBER_NAME",
+	"Elements":
+	[
+		{
+			"@id":"Dimensions('Merch Curve Assignment Measure')/Hierarchies('Merch Curve Assignment Measure')/Elements('Start Mode')"
+		},
+		{
+			"@id":"Dimensions('Merch Curve Assignment Measure')/Hierarchies('Merch Curve Assignment Measure')/Elements('Applied Category Build Curve')"
+		},
+		{
+			"@id":"Dimensions('Merch Curve Assignment Measure')/Hierarchies('Merch Curve Assignment Measure')/Elements('Applied Seasonality Curve')"
+		},
+		{
+			"@id":"Dimensions('Merch Curve Assignment Measure')/Hierarchies('Merch Curve Assignment Measure')/Elements('Applied Velocity Curve')"
+		},
+		{
+			"@id":"Dimensions('Merch Curve Assignment Measure')/Hierarchies('Merch Curve Assignment Measure')/Elements('Applied Regime Curve')"
+		},
+		{
+			"@id":"Dimensions('Merch Curve Assignment Measure')/Hierarchies('Merch Curve Assignment Measure')/Elements('Applied Markdown Curve')"
+		},
+		{
+			"@id":"Dimensions('Merch Curve Assignment Measure')/Hierarchies('Merch Curve Assignment Measure')/Elements('Forecast Lock')"
+		}
+	]
+}

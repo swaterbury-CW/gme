@@ -1,0 +1,12 @@
+{
+	"@type":"Dimension",
+	"Name":"Merch Promo Winner Measure",
+	"Hierarchies@Code.links":
+	[
+		"Merch Promo Winner Measure.hierarchies/Merch Promo Winner Measure.json"
+	],
+	"DefaultHierarchy":
+	{
+		"@id":"Dimensions('Merch Promo Winner Measure')/Hierarchies('Merch Promo Winner Measure')"
+	}
+}

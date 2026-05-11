@@ -1,0 +1,13 @@
+{
+	"@type":"Subset",
+	"Name":"PLI_FbyVL_Apparel~L70~V88",
+	"Elements":
+	[
+		{
+			"@id":"Dimensions('Placeholder Franchise Values')/Hierarchies('Placeholder Franchise Values')/Elements('Disney')"
+		},
+		{
+			"@id":"Dimensions('Placeholder Franchise Values')/Hierarchies('Placeholder Franchise Values')/Elements('Alice in Wonderland')"
+		}
+	]
+}

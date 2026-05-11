@@ -1,0 +1,37 @@
+{
+	"@type":"Subset",
+	"Name":"Default",
+	"Elements":
+	[
+		{
+			"@id":"Dimensions('Merch Curve Name')/Hierarchies('Merch Curve Name')/Elements('Video Games Curve')"
+		},
+		{
+			"@id":"Dimensions('Merch Curve Name')/Hierarchies('Merch Curve Name')/Elements('Collectibles Curve')"
+		},
+		{
+			"@id":"Dimensions('Merch Curve Name')/Hierarchies('Merch Curve Name')/Elements('Plush')"
+		},
+		{
+			"@id":"Dimensions('Merch Curve Name')/Hierarchies('Merch Curve Name')/Elements('Mario- Curve 2025')"
+		},
+		{
+			"@id":"Dimensions('Merch Curve Name')/Hierarchies('Merch Curve Name')/Elements('Mario- Curve 2024')"
+		},
+		{
+			"@id":"Dimensions('Merch Curve Name')/Hierarchies('Merch Curve Name')/Elements('Housewares - 2025')"
+		},
+		{
+			"@id":"Dimensions('Merch Curve Name')/Hierarchies('Merch Curve Name')/Elements('Store Category Build')"
+		},
+		{
+			"@id":"Dimensions('Merch Curve Name')/Hierarchies('Merch Curve Name')/Elements('Test Markdown Curve')"
+		},
+		{
+			"@id":"Dimensions('Merch Curve Name')/Hierarchies('Merch Curve Name')/Elements('Test Sell-Through Curve')"
+		},
+		{
+			"@id":"Dimensions('Merch Curve Name')/Hierarchies('Merch Curve Name')/Elements('Test Category Build Curve')"
+		}
+	]
+}

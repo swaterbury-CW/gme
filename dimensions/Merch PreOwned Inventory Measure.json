@@ -1,0 +1,12 @@
+{
+	"@type":"Dimension",
+	"Name":"Merch PreOwned Inventory Measure",
+	"Hierarchies@Code.links":
+	[
+		"Merch PreOwned Inventory Measure.hierarchies/Merch PreOwned Inventory Measure.json"
+	],
+	"DefaultHierarchy":
+	{
+		"@id":"Dimensions('Merch PreOwned Inventory Measure')/Hierarchies('Merch PreOwned Inventory Measure')"
+	}
+}

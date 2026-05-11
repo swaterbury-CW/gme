@@ -1,0 +1,12 @@
+{
+	"@type":"Dimension",
+	"Name":"Security Category",
+	"Hierarchies@Code.links":
+	[
+		"Security Category.hierarchies/Security Category.json"
+	],
+	"DefaultHierarchy":
+	{
+		"@id":"Dimensions('Security Category')/Hierarchies('Security Category')"
+	}
+}

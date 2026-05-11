@@ -1,0 +1,14 @@
+{
+	"@type":"Process",
+	"Name":"run deletes",
+	"HasSecurityAccess":false,
+	"Code@Code.link":"run deletes.ti",
+	"DataSource":
+	{
+		"Type":"None"
+	},
+	"Parameters":[],
+	"Variables":[],
+	"UID": "1777916034000",
+	"VariablesUIData": []
+}

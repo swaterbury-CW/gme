@@ -1,0 +1,12 @@
+{
+	"@type":"Dimension",
+	"Name":"Clearance SKU Measure",
+	"Hierarchies@Code.links":
+	[
+		"Clearance SKU Measure.hierarchies/Clearance SKU Measure.json"
+	],
+	"DefaultHierarchy":
+	{
+		"@id":"Dimensions('Clearance SKU Measure')/Hierarchies('Clearance SKU Measure')"
+	}
+}

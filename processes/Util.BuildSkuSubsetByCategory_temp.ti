@@ -1,0 +1,46 @@
+#region Prolog
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+#Region : Process Header
+# DEVELOPER: Steve Waterbury
+# CREATED ON: 2026-05-06
+# LAST UPDATE: 2026-05-06
+# CHANGED BY: Steve Waterbury
+# CHANGE HISTORY:
+#   2026-05-06 | Steve Waterbury | Test scaffold: build a Merch SKU subset by SGM_Category (4-arg SubsetCreateByMDX)
+#EndRegion
+
+cProcessName = GetProcessName();
+
+IF(pCategory @= '' % pSubsetName @= '');
+  LogOutput('ERROR', cProcessName | ' | Missing param');
+  ProcessError;
+ENDIF;
+
+IF(SubsetExists('Merch SKU', pSubsetName) = 1);
+  SubsetDestroy('Merch SKU', pSubsetName);
+ENDIF;
+
+sMDX = '{FILTER({TM1FILTERBYLEVEL({TM1SUBSETALL([Merch SKU].[Merch SKU])}, 0)}, [Merch SKU].[Merch SKU].CurrentMember.Properties(' | CHAR(34) | 'SGM_Category' | CHAR(34) | ')=' | CHAR(34) | pCategory | CHAR(34) | ')}';
+
+SubsetCreateByMDX(pSubsetName, sMDX, 'Merch SKU', 0);
+
+nSize = SubsetGetSize('Merch SKU', pSubsetName);
+LogOutput('INFO', cProcessName | ' | Subset built: ' | pSubsetName | ' Cat=' | pCategory | ' Size=' | TRIM(STR(nSize, 12, 0)));
+
+#endregion
+#region Metadata
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+
+#endregion
+#region Data
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+
+#endregion
+#region Epilog
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+
+#endregion

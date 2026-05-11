@@ -1,0 +1,12 @@
+{
+	"@type":"Hierarchy",
+	"Name":"PreOwned_Forecast_Measure_temp",
+	"Elements":
+	[
+		{
+			"Name":"Category Calc Trades",
+			"Type":"Numeric"
+		}
+	],
+	"Subsets@Code.links":[]
+}

@@ -1,0 +1,44 @@
+SKIPCHECK;
+#Region : Rule Header
+#############################
+##~~ Start Rule File ~~##
+#############################
+# DEVELOPER : Steve Waterbury
+# CREATED ON : 2026-03-31
+# LAST UPDATE: 2026-04-01
+# CUBE       : }Merch Placeholder Conversion
+# COMMENTS:
+# Control cube for placeholder-to-real SKU conversion.
+# Build/Debuild C-level rule based on prior week Calc Units.
+#
+#### CHANGE HISTORY:
+### MODIFICATION DATE  CHANGED BY         COMMENT
+### 2026-03-31         Steve Waterbury    Initial creation
+### 2026-03-31         Steve Waterbury    Renamed to }Merch Placeholder Conversion (control cube)
+### 2026-04-01         Steve Waterbury    Applied guardrails header/footer template
+#
+#EndRegion
+
+#Region : Build/Debuild — C-level prior week ratio
+['Build/Debuild'] = C:
+  IF(ATTRS('Merch Time Period', !Merch Time Period, 'Previous Week') @= '', CONTINUE,
+  IF(DB('}Merch Placeholder Conversion', !Merch Version,
+        ATTRS('Merch Time Period', !Merch Time Period, 'Previous Week'),
+        !Merch SKU, !Merch Category, !Merch Placeholder SKU, 'Calc Units') = 0, 0,
+  ['Calc Units'] \
+    DB('}Merch Placeholder Conversion', !Merch Version,
+       ATTRS('Merch Time Period', !Merch Time Period, 'Previous Week'),
+       !Merch SKU, !Merch Category, !Merch Placeholder SKU, 'Calc Units')));
+#EndRegion
+
+FEEDERS;
+
+#Region : Feeders
+['Calc Units'] => ['Build/Debuild'];
+#EndRegion
+
+#Region : Rule Footer
+#############################
+##~~ End Rule File ~~##
+#############################
+#EndRegion

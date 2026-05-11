@@ -1,0 +1,12 @@
+{
+	"@type":"Dimension",
+	"Name":"Warranty Calc Measure",
+	"Hierarchies@Code.links":
+	[
+		"Warranty Calc Measure.hierarchies/Warranty Calc Measure.json"
+	],
+	"DefaultHierarchy":
+	{
+		"@id":"Dimensions('Warranty Calc Measure')/Hierarchies('Warranty Calc Measure')"
+	}
+}

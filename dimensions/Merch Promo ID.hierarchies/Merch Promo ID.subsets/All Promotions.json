@@ -1,0 +1,11 @@
+{
+	"@type":"Subset",
+	"Name":"All Promotions",
+	"Alias":"MEMBER_NAME",
+	"Elements":
+	[
+		{
+			"@id":"Dimensions('Merch Promo ID')/Hierarchies('Merch Promo ID')/Elements('All Promos')"
+		}
+	]
+}

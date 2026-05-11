@@ -1,0 +1,80 @@
+{
+	"@type":"Hierarchy",
+	"Name":"Merch Curve Measure",
+	"Elements":
+	[
+		{
+			"Name":"Markdown %",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Description",
+			"Type":"String"
+		},
+		{
+			"Name":"Seasonality",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Velocity",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Regime",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Level",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Source Units",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Source AUR",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Source FP AUR",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Source Cost",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Source Version",
+			"Type":"String"
+		},
+		{
+			"Name":"Created Date",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Last Applied Date",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Target Ending Inventory Pct",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Duration Weeks",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Curve Shape",
+			"Type":"String"
+		},
+		{
+			"Name":"Target Inventory Pct",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Build/Debuild",
+			"Type":"Numeric"
+		}
+	],
+	"Subsets@Code.links":[]
+}

@@ -1,0 +1,10 @@
+{
+	"@type":"Subset",
+	"Name":"Regime Curves",
+	"Elements":
+	[
+		{
+			"@id":"Dimensions('Merch Curve Name')/Hierarchies('Merch Curve Name')/Elements('Test Regime Curve')"
+		}
+	]
+}

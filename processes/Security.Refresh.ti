@@ -1,0 +1,37 @@
+#region Prolog
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+#Region : Process Header
+# DEVELOPER: Steve Waterbury
+# CREATED ON: 2026-04-30
+# LAST UPDATE: 2026-05-06
+# CHANGED BY: Steve Waterbury
+# COMMENTS: Thin wrapper around SecurityRefresh() with TIMING logs.
+# CHANGE HISTORY:
+#   2026-04-30 | Steve Waterbury | Initial creation as p_Security.Refresh.
+#   2026-05-06 | Steve Waterbury | Renamed p_Security.Refresh → Security.Refresh (EP-C of design plan 6af58829945c).
+#EndRegion
+
+cProcessName = GetProcessName();
+nStart = NOW;
+LogOutput('INFO', cProcessName | ' | TIMING START');
+SecurityRefresh;
+nElapsed = (NOW - nStart) * 86400;
+LogOutput('INFO', cProcessName | ' | TIMING END | Elapsed=' | TRIM(STR(nElapsed, 12, 2)) | 's');
+
+#endregion
+#region Metadata
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+
+#endregion
+#region Data
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+
+#endregion
+#region Epilog
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+
+#endregion

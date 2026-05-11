@@ -1,0 +1,92 @@
+#region Prolog
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+#Region : Process Header
+# DEVELOPER : Steve Waterbury
+# CREATED ON : 2026-03-24
+# LAST UPDATE: 2026-05-11
+# CHANGED BY  : Steve Waterbury
+# COMMENTS:
+# Slim period-close: advance Last_Closed_Period on the version and load actuals for the target week.
+# Build/Debuild transition copy and LoadClosedPeriods chain removed (dead workflow after actuals-push rules retired).
+#### CHANGE HISTORY:
+### 2026-03-24  Steve Waterbury  Initial creation
+### 2026-03-31  Steve Waterbury  Start_Date_Serial -> Start_Date
+### 2026-04-01  Steve Waterbury  Applied guardrails header template
+### 2026-05-11  Steve Waterbury  Strip Build/Debuild transition copy + LoadClosedPeriods chain (dead workflow)
+#EndRegion
+
+cProcessName = GetProcessName();
+DatasourceType = 'NULL';
+
+sLogLevel = CellGetS('ProcessControl', cProcessName, 'LoggingLevel');
+IF(sLogLevel @= '');
+    sLogLevel = 'OFF';
+ENDIF;
+bLogInfo = 0;
+IF(sLogLevel @= 'INFO' % sLogLevel @= 'DEBUG');
+    bLogInfo = 1;
+ENDIF;
+IF(bLogInfo = 1);
+    LogOutput('INFO', 'START: ' | cProcessName | ' | pVersion=' | pVersion | ' | pTargetPeriod=' | pTargetPeriod);
+ENDIF;
+
+IF(DIMIX('Merch Version', pVersion) = 0);
+    LogOutput('ERROR', cProcessName | ' | pVersion not found');
+    ProcessQuit;
+ENDIF;
+IF(ATTRS('Merch Version', pVersion, 'Version_Type') @<> 'Calculated');
+    LogOutput('ERROR', cProcessName | ' | pVersion is not Calculated');
+    ProcessQuit;
+ENDIF;
+IF(pTargetPeriod @= '');
+    LogOutput('ERROR', cProcessName | ' | pTargetPeriod blank');
+    ProcessQuit;
+ENDIF;
+IF(DIMIX('Merch Time Period', pTargetPeriod) = 0);
+    LogOutput('ERROR', cProcessName | ' | pTargetPeriod not found');
+    ProcessQuit;
+ENDIF;
+IF(DTYPE('Merch Time Period', pTargetPeriod) @<> 'N');
+    LogOutput('ERROR', cProcessName | ' | pTargetPeriod not leaf');
+    ProcessQuit;
+ENDIF;
+
+nLastClosedSerial = ATTRN('Merch Version', pVersion, 'Last_Closed_Period');
+IF(nLastClosedSerial <> 0);
+    sPrevWeekCheck = ATTRS('Merch Time Period', pTargetPeriod, 'Previous Week');
+    IF(sPrevWeekCheck @= '');
+        LogOutput('ERROR', cProcessName | ' | no Previous Week attr');
+        ProcessQuit;
+    ENDIF;
+    nPrevStartSerial = ATTRN('Merch Time Period', sPrevWeekCheck, 'Start_Date');
+    IF(nPrevStartSerial > nLastClosedSerial);
+        LogOutput('ERROR', cProcessName | ' | not next open week');
+        ProcessQuit;
+    ENDIF;
+ENDIF;
+
+#endregion
+#region Metadata
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+
+#endregion
+#region Data
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+
+#endregion
+#region Epilog
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+nEndDateSerial = ATTRN('Merch Time Period', pTargetPeriod, 'End_Date');
+AttrPutN(nEndDateSerial, 'Merch Version', pVersion, 'Last_Closed_Period');
+
+ExecuteProcess('Merch.Load.ActualsToForecast', 'pTimePeriod', pTargetPeriod);
+
+IF(bLogInfo = 1);
+    LogOutput('INFO', 'END: ' | cProcessName | ' | Version=' | pVersion | ' | Period=' | pTargetPeriod | ' | Last_Closed_Period advanced');
+ENDIF;
+
+#endregion

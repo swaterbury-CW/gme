@@ -1,0 +1,24 @@
+{
+	"@type":"Cube",
+	"Name":"Merch Version SKU Attributes",
+	"Dimensions":
+	[
+		{
+			"@id":"Dimensions('Merch Version')"
+		},
+		{
+			"@id":"Dimensions('Merch SKU')"
+		},
+		{
+			"@id":"Dimensions('Merch Version SKU Attribute Measure')"
+		}
+	],
+	"Rules@Code.link":"Merch Version SKU Attributes.rules",
+	"Views@Code.links":
+	[
+		"Merch Version SKU Attributes.views/}Drill_Attrs_Forecast_396293.json",
+		"Merch Version SKU Attributes.views/}Drill_Attrs_Forecast_417304.json",
+		"Merch Version SKU Attributes.views/TI_MapOther_placeholder.json",
+		"Merch Version SKU Attributes.views/TI_UnmapOther_placeholder.json"
+	]
+}

@@ -1,0 +1,28 @@
+{
+	"@type":"Process",
+	"Name":"Merch.Dim.BuildPreOwnedCategoryRolesHierarchy",
+	"HasSecurityAccess":false,
+	"Code@Code.link":"Merch.Dim.BuildPreOwnedCategoryRolesHierarchy.ti",
+	"DataSource":
+	{
+		"Type":"TM1DimensionSubset",
+		"dataSourceNameForServer":"Merch PreOwned Category",
+		"dataSourceNameForClient":"Merch PreOwned Category",
+		"subset":"TI_BuildPOCatRolesHier_Worker"
+	},
+	"Parameters":[],
+	"Variables":
+	[
+		{
+			"Name":"V1",
+			"Type":"String",
+			"Position":1,
+			"StartByte":0,
+			"EndByte":0
+		}
+	],
+	"UIData": "CubeAction=1511\fDataAction=1503\fCubeLogChanges=0\f",
+	"VariablesUIData": [
+		"VarType=32\fColType=827\f"
+	]
+}

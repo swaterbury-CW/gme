@@ -1,0 +1,22 @@
+{
+	"@type":"Subset",
+	"Name":"PLI_SbyFVL_C2~F2~V61~L4",
+	"Elements":
+	[
+		{
+			"@id":"Dimensions('}Merch SKU Picklist')/Hierarchies('}Merch SKU Picklist')/Elements('404320')"
+		},
+		{
+			"@id":"Dimensions('}Merch SKU Picklist')/Hierarchies('}Merch SKU Picklist')/Elements('422002')"
+		},
+		{
+			"@id":"Dimensions('}Merch SKU Picklist')/Hierarchies('}Merch SKU Picklist')/Elements('409147')"
+		},
+		{
+			"@id":"Dimensions('}Merch SKU Picklist')/Hierarchies('}Merch SKU Picklist')/Elements('422003')"
+		},
+		{
+			"@id":"Dimensions('}Merch SKU Picklist')/Hierarchies('}Merch SKU Picklist')/Elements('407657')"
+		}
+	]
+}

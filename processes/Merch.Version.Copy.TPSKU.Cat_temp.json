@@ -1,0 +1,87 @@
+{
+	"@type":"Process",
+	"Name":"Merch.Version.Copy.TPSKU.Cat_temp",
+	"HasSecurityAccess":false,
+	"Code@Code.link":"Merch.Version.Copy.TPSKU.Cat_temp.ti",
+	"DataSource":
+	{
+		"Type":"TM1CubeView",
+		"dataSourceNameForServer":"Merch Forecast",
+		"dataSourceNameForClient":"Merch Forecast",
+		"view":"TI_CopyTPSKUcat_placeholder"
+	},
+	"Parameters":
+	[
+		{
+			"Name":"pCubeName",
+			"Prompt":"Cube name",
+			"Value":"",
+			"Type":"String"
+		},
+		{
+			"Name":"pSourceVersion",
+			"Prompt":"Source version",
+			"Value":"",
+			"Type":"String"
+		},
+		{
+			"Name":"pTargetVersion",
+			"Prompt":"Target version",
+			"Value":"",
+			"Type":"String"
+		},
+		{
+			"Name":"pCategory",
+			"Prompt":"Merch Category leaf",
+			"Value":"",
+			"Type":"String"
+		}
+	],
+	"Variables":
+	[
+		{
+			"Name":"vMeasure",
+			"Type":"String",
+			"Position":1,
+			"StartByte":0,
+			"EndByte":0
+		},
+		{
+			"Name":"vTP",
+			"Type":"String",
+			"Position":2,
+			"StartByte":0,
+			"EndByte":0
+		},
+		{
+			"Name":"vSKU",
+			"Type":"String",
+			"Position":3,
+			"StartByte":0,
+			"EndByte":0
+		},
+		{
+			"Name":"vVersion",
+			"Type":"String",
+			"Position":4,
+			"StartByte":0,
+			"EndByte":0
+		},
+		{
+			"Name":"Value",
+			"Type":"String",
+			"Position":5,
+			"StartByte":0,
+			"EndByte":0
+		}
+	],
+	"UID": "17780894840001",
+	"UIData": "CubeAction=1511\fDataAction=1503\fCubeLogChanges=0\f",
+	"VariablesUIData": [
+		"VarType=32\fColType=827\f",
+		"VarType=32\fColType=827\f",
+		"VarType=32\fColType=827\f",
+		"VarType=32\fColType=827\f",
+		"VarType=32\fColType=827\f"
+	]
+}

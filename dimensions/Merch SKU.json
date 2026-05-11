@@ -1,0 +1,28 @@
+{
+	"@type":"Dimension",
+	"Name":"Merch SKU",
+	"Hierarchies@Code.links":
+	[
+		"Merch SKU.hierarchies/Merch SKU.json",
+		"Merch SKU.hierarchies/Category_Name.json",
+		"Merch SKU.hierarchies/Custom_dshuai_1.json",
+		"Merch SKU.hierarchies/Custom_swaterbury_1.json",
+		"Merch SKU.hierarchies/Family_Name.json",
+		"Merch SKU.hierarchies/Franchise_Name.json",
+		"Merch SKU.hierarchies/Level_1.json",
+		"Merch SKU.hierarchies/Level_2.json",
+		"Merch SKU.hierarchies/Level_3.json",
+		"Merch SKU.hierarchies/Level_4.json",
+		"Merch SKU.hierarchies/Level_5.json",
+		"Merch SKU.hierarchies/Lifecycle_Status_Description.json",
+		"Merch SKU.hierarchies/Publisher_Name.json",
+		"Merch SKU.hierarchies/Roles.json",
+		"Merch SKU.hierarchies/SGM_Category.json",
+		"Merch SKU.hierarchies/User Rollups.json",
+		"Merch SKU.hierarchies/Vendor_Name.json"
+	],
+	"DefaultHierarchy":
+	{
+		"@id":"Dimensions('Merch SKU')/Hierarchies('Merch SKU')"
+	}
+}

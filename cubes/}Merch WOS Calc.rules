@@ -1,0 +1,78 @@
+SKIPCHECK;
+#Region : Rule Header
+#############################
+##~~ Start Rule File ~~##
+#############################
+# DEVELOPER : Steve Waterbury
+# CREATED ON : 2026-03-25
+# LAST UPDATE: 2026-04-15
+# CUBE       : }Merch WOS Calc
+# COMMENTS:
+# Forward-walk WOS algorithm per Channel and Lifecycle.
+#
+#### CHANGE HISTORY:
+### 2026-03-25  Steve Waterbury  Creation
+### 2026-04-01  Steve Waterbury  DB refs: Inventory Roll -> Plan Reporting
+### 2026-04-14  Steve Waterbury  Sales Units -> Units
+### 2026-04-15  Steve Waterbury  Added Channel + Lifecycle dims to all DB() calls
+#
+#EndRegion
+
+#Region : Block 1 - Skip past periods
+[] = N:
+  IF(ATTRN('Merch WOS Period', !Merch WOS Period, 'Start_Date') <
+     ATTRN('Merch Time Period', !Merch Time Period, 'Start_Date'), STET, CONTINUE);
+#EndRegion
+
+#Region : Block 2 - Same-week origin
+[] = N:
+  IF(ATTRN('Merch WOS Period', !Merch WOS Period, 'Start_Date') <>
+     ATTRN('Merch Time Period', !Merch Time Period, 'Start_Date'), CONTINUE,
+  IF(DB('Merch Plan Reporting', !Merch Version, !Merch Time Period, !Merch SKU, !Merch Channel, !Merch Lifecycle, 'Ending Inventory') <= 0, STET,
+  IF(DB('Merch Plan Reporting', !Merch Version, !Merch WOS Period, !Merch SKU, !Merch Channel, !Merch Lifecycle, 'Units') <= 0, 1,
+  IF(DB('Merch Plan Reporting', !Merch Version, !Merch Time Period, !Merch SKU, !Merch Channel, !Merch Lifecycle, 'Ending Inventory') >=
+     DB('Merch Plan Reporting', !Merch Version, !Merch WOS Period, !Merch SKU, !Merch Channel, !Merch Lifecycle, 'Units'), 1,
+  DB('Merch Plan Reporting', !Merch Version, !Merch Time Period, !Merch SKU, !Merch Channel, !Merch Lifecycle, 'Ending Inventory') \
+  DB('Merch Plan Reporting', !Merch Version, !Merch WOS Period, !Merch SKU, !Merch Channel, !Merch Lifecycle, 'Units')))));
+#EndRegion
+
+#Region : Block 3 - Forward walk
+[] = N:
+  IF(ATTRN('Merch WOS Period', !Merch WOS Period, 'Start_Date') <=
+     ATTRN('Merch Time Period', !Merch Time Period, 'Start_Date'), CONTINUE,
+  IF(ATTRS('Merch Time Period', !Merch WOS Period, 'Previous Week') @= '', CONTINUE,
+  IF(ATTRS('Merch Time Period', !Merch Time Period, 'Previous Week') @= '',
+    IF(DB('Merch Plan Reporting', !Merch Version, !Merch Time Period, !Merch SKU, !Merch Channel, !Merch Lifecycle, 'Ending Inventory')
+       - DB('Merch Plan Reporting', !Merch Version, 'Thru ' | ATTRS('Merch Time Period', !Merch WOS Period, 'Previous Week'), !Merch SKU, !Merch Channel, !Merch Lifecycle, 'Units') <= 0, STET,
+    IF(DB('Merch Plan Reporting', !Merch Version, !Merch WOS Period, !Merch SKU, !Merch Channel, !Merch Lifecycle, 'Units') <= 0, 1,
+    IF(DB('Merch Plan Reporting', !Merch Version, !Merch Time Period, !Merch SKU, !Merch Channel, !Merch Lifecycle, 'Ending Inventory')
+       - DB('Merch Plan Reporting', !Merch Version, 'Thru ' | ATTRS('Merch Time Period', !Merch WOS Period, 'Previous Week'), !Merch SKU, !Merch Channel, !Merch Lifecycle, 'Units')
+       >= DB('Merch Plan Reporting', !Merch Version, !Merch WOS Period, !Merch SKU, !Merch Channel, !Merch Lifecycle, 'Units'), 1,
+    (DB('Merch Plan Reporting', !Merch Version, !Merch Time Period, !Merch SKU, !Merch Channel, !Merch Lifecycle, 'Ending Inventory')
+       - DB('Merch Plan Reporting', !Merch Version, 'Thru ' | ATTRS('Merch Time Period', !Merch WOS Period, 'Previous Week'), !Merch SKU, !Merch Channel, !Merch Lifecycle, 'Units'))
+    \ DB('Merch Plan Reporting', !Merch Version, !Merch WOS Period, !Merch SKU, !Merch Channel, !Merch Lifecycle, 'Units')))),
+  IF(DB('Merch Plan Reporting', !Merch Version, !Merch Time Period, !Merch SKU, !Merch Channel, !Merch Lifecycle, 'Ending Inventory')
+     - (DB('Merch Plan Reporting', !Merch Version, 'Thru ' | ATTRS('Merch Time Period', !Merch WOS Period, 'Previous Week'), !Merch SKU, !Merch Channel, !Merch Lifecycle, 'Units')
+        - DB('Merch Plan Reporting', !Merch Version, 'Thru ' | ATTRS('Merch Time Period', !Merch Time Period, 'Previous Week'), !Merch SKU, !Merch Channel, !Merch Lifecycle, 'Units')) <= 0, STET,
+  IF(DB('Merch Plan Reporting', !Merch Version, !Merch WOS Period, !Merch SKU, !Merch Channel, !Merch Lifecycle, 'Units') <= 0, 1,
+  IF(DB('Merch Plan Reporting', !Merch Version, !Merch Time Period, !Merch SKU, !Merch Channel, !Merch Lifecycle, 'Ending Inventory')
+     - (DB('Merch Plan Reporting', !Merch Version, 'Thru ' | ATTRS('Merch Time Period', !Merch WOS Period, 'Previous Week'), !Merch SKU, !Merch Channel, !Merch Lifecycle, 'Units')
+        - DB('Merch Plan Reporting', !Merch Version, 'Thru ' | ATTRS('Merch Time Period', !Merch Time Period, 'Previous Week'), !Merch SKU, !Merch Channel, !Merch Lifecycle, 'Units'))
+     >= DB('Merch Plan Reporting', !Merch Version, !Merch WOS Period, !Merch SKU, !Merch Channel, !Merch Lifecycle, 'Units'), 1,
+  (DB('Merch Plan Reporting', !Merch Version, !Merch Time Period, !Merch SKU, !Merch Channel, !Merch Lifecycle, 'Ending Inventory')
+     - (DB('Merch Plan Reporting', !Merch Version, 'Thru ' | ATTRS('Merch Time Period', !Merch WOS Period, 'Previous Week'), !Merch SKU, !Merch Channel, !Merch Lifecycle, 'Units')
+        - DB('Merch Plan Reporting', !Merch Version, 'Thru ' | ATTRS('Merch Time Period', !Merch Time Period, 'Previous Week'), !Merch SKU, !Merch Channel, !Merch Lifecycle, 'Units')))
+  \ DB('Merch Plan Reporting', !Merch Version, !Merch WOS Period, !Merch SKU, !Merch Channel, !Merch Lifecycle, 'Units')
+  ))))));
+#EndRegion
+
+FEEDERS;
+#Region : Feeders
+# Fed from Merch Plan Reporting feeders
+#EndRegion
+
+#Region : Rule Footer
+#############################
+##~~ End Rule File ~~##
+#############################
+#EndRegion

@@ -1,0 +1,22 @@
+{
+	"@type":"Subset",
+	"Name":"PLI_VbyL_C8~L9",
+	"Elements":
+	[
+		{
+			"@id":"Dimensions('Placeholder Vendor Values')/Hierarchies('Placeholder Vendor Values')/Elements('PITTSBURGH SPORTS WHOLESALE INC DBA STEEL CITY COLLECTIBLES')"
+		},
+		{
+			"@id":"Dimensions('Placeholder Vendor Values')/Hierarchies('Placeholder Vendor Values')/Elements('Frontline')"
+		},
+		{
+			"@id":"Dimensions('Placeholder Vendor Values')/Hierarchies('Placeholder Vendor Values')/Elements('WOZNIAK DISTRIBUTION LLC-ZLOOT')"
+		},
+		{
+			"@id":"Dimensions('Placeholder Vendor Values')/Hierarchies('Placeholder Vendor Values')/Elements('FRONTLINE COLLECTIBLES INC DBA BLOWOUT CARDS-ZLOOT')"
+		},
+		{
+			"@id":"Dimensions('Placeholder Vendor Values')/Hierarchies('Placeholder Vendor Values')/Elements('Panini America, Inc.')"
+		}
+	]
+}

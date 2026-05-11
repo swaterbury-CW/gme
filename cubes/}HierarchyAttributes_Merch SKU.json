@@ -1,0 +1,14 @@
+{
+	"@type":"Cube",
+	"Name":"}HierarchyAttributes_Merch SKU",
+	"Dimensions":
+	[
+		{
+			"@id":"Dimensions('}Hierarchies_Merch SKU')"
+		},
+		{
+			"@id":"Dimensions('}HierarchyAttributes_Merch SKU')"
+		}
+	],
+	"Views@Code.links":[]
+}

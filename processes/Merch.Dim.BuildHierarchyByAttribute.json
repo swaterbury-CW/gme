@@ -1,0 +1,29 @@
+{
+	"@type":"Process",
+	"Name":"Merch.Dim.BuildHierarchyByAttribute",
+	"HasSecurityAccess":false,
+	"Code@Code.link":"Merch.Dim.BuildHierarchyByAttribute.ti",
+	"DataSource":
+	{
+		"Type":"None"
+	},
+	"Parameters":
+	[
+		{
+			"Name":"pDimName",
+			"Prompt":"pDimName",
+			"Value":"Merch Sku",
+			"Type":"String"
+		},
+		{
+			"Name":"pAttrName",
+			"Prompt":"pAttrName",
+			"Value":"",
+			"Type":"String"
+		}
+	],
+	"Variables":[],
+	"UID": "17742126550002",
+	"UIData": "CubeAction=1511\fDataAction=1503\fCubeLogChanges=0\f_ParameterConstraints=e30=\f",
+	"VariablesUIData": []
+}

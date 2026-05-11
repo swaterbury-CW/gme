@@ -1,0 +1,12 @@
+{
+	"@type":"Dimension",
+	"Name":"}HierarchyAttributes_Merch SKU",
+	"Hierarchies@Code.links":
+	[
+		"}HierarchyAttributes_Merch SKU.hierarchies/}HierarchyAttributes_Merch SKU.json"
+	],
+	"DefaultHierarchy":
+	{
+		"@id":"Dimensions('}HierarchyAttributes_Merch SKU')/Hierarchies('}HierarchyAttributes_Merch SKU')"
+	}
+}

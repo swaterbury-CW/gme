@@ -1,0 +1,16 @@
+{
+	"@type":"Subset",
+	"Name":"PL_000432",
+	"Elements":
+	[
+		{
+			"@id":"Dimensions('Placeholder Vendor Values')/Hierarchies('Placeholder Vendor Values')/Elements('LAROSE INDUSTRIES LLC')"
+		},
+		{
+			"@id":"Dimensions('Placeholder Vendor Values')/Hierarchies('Placeholder Vendor Values')/Elements('MELISSA & DOUG LLC')"
+		},
+		{
+			"@id":"Dimensions('Placeholder Vendor Values')/Hierarchies('Placeholder Vendor Values')/Elements('CRAYOLA LLC')"
+		}
+	]
+}

@@ -1,0 +1,12 @@
+{
+	"@type":"Dimension",
+	"Name":"Clearance Offer Type",
+	"Hierarchies@Code.links":
+	[
+		"Clearance Offer Type.hierarchies/Clearance Offer Type.json"
+	],
+	"DefaultHierarchy":
+	{
+		"@id":"Dimensions('Clearance Offer Type')/Hierarchies('Clearance Offer Type')"
+	}
+}

@@ -1,0 +1,12 @@
+{
+	"@type":"Hierarchy",
+	"Name":"Merch Channel Split Measure",
+	"Elements":
+	[
+		{
+			"Name":"Split Pct",
+			"Type":"Numeric"
+		}
+	],
+	"Subsets@Code.links":[]
+}

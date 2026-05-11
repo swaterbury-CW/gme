@@ -1,0 +1,1 @@
+SELECT NON EMPTY {[Merch Forecast Measure].[Base Revenue]} ON COLUMNS, NON EMPTY CrossJoin({[Merch SKU].[Merch SKU].[411671], [Merch SKU].[Merch SKU].[417304]}, {Tm1FilterByLevel(Descendants([Merch Time Period].[FY2025]), 0)}) ON ROWS FROM [Merch Forecast] WHERE ([Merch Version].[Forecast])

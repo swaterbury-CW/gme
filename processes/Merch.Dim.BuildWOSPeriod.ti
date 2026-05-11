@@ -1,0 +1,99 @@
+#region Prolog
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+#Region : Process Header
+#############################
+##~~ Start Process ~~##
+#############################
+# DEVELOPER : Steve Waterbury
+# CREATED ON : 2026-04-16
+# LAST UPDATE: 2026-04-16
+# CHANGED BY : Steve Waterbury
+# COMMENTS: Copies full hierarchy from Merch Time dim into Merch WOS dim.
+#           All elements, all edges, plus All WOS consolidation for leaves.
+#           Purely additive, safe to re-run.
+#### CHANGE HISTORY:
+### 2026-04-16  Steve Waterbury  Initial creation
+#
+#EndRegion
+
+#Region : Initialization
+sDimSrc = 'Merch Time ' | 'Period';
+sDimTgt = 'Merch WOS ' | 'Period';
+sConsol = 'All WOS ' | 'Period';
+nAdded = 0;
+nEdges = 0;
+
+IF(DimensionExists(sDimSrc) = 0);
+  LogOutput('ERROR', GetProcessName() | ' | Source dim not found: ' | sDimSrc);
+  ProcessBreak;
+ENDIF;
+IF(DimensionExists(sDimTgt) = 0);
+  LogOutput('ERROR', GetProcessName() | ' | Target dim not found: ' | sDimTgt);
+  ProcessBreak;
+ENDIF;
+#EndRegion
+
+#Region : Ensure All WOS consolidation exists
+IF(DIMIX(sDimTgt, sConsol) = 0);
+  DimensionElementInsertDirect(sDimTgt, '', sConsol, 'C');
+ENDIF;
+#EndRegion
+
+DatasourceType = 'SUBSET';
+DatasourceDimensionSubsetView = 'All';
+DataSourceNameForServer = sDimSrc;
+#endregion
+#region Metadata
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+sElem = vElem;
+sType = DTYPE(sDimSrc, sElem);
+
+# Add element to target if missing
+IF(DIMIX(sDimTgt, sElem) = 0);
+  IF(sType @= 'N');
+    DimensionElementInsertDirect(sDimTgt, '', sElem, 'N');
+  ELSEIF(sType @= 'C');
+    DimensionElementInsertDirect(sDimTgt, '', sElem, 'C');
+  ENDIF;
+  nAdded = nAdded + 1;
+ENDIF;
+
+# Add leaf elements under All WOS consolidation
+IF(sType @= 'N');
+  DimensionElementComponentAddDirect(sDimTgt, sConsol, sElem, 1);
+ENDIF;
+
+# For consolidated elements, copy children and weights from source
+IF(sType @= 'C');
+  nComp = ELCOMPN(sDimSrc, sElem);
+  k = 1;
+  WHILE(k <= nComp);
+    sChild = ELCOMP(sDimSrc, sElem, k);
+    nWeight = ELWEIGHT(sDimSrc, sElem, sChild);
+    # Ensure child exists in target
+    IF(DIMIX(sDimTgt, sChild) = 0);
+      sChildType = DTYPE(sDimSrc, sChild);
+      IF(sChildType @= 'N');
+        DimensionElementInsertDirect(sDimTgt, '', sChild, 'N');
+      ELSEIF(sChildType @= 'C');
+        DimensionElementInsertDirect(sDimTgt, '', sChild, 'C');
+      ENDIF;
+    ENDIF;
+    DimensionElementComponentAddDirect(sDimTgt, sElem, sChild, nWeight);
+    nEdges = nEdges + 1;
+    k = k + 1;
+  END;
+ENDIF;
+#endregion
+#region Data
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+
+#endregion
+#region Epilog
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+LogOutput('INFO', GetProcessName() | ' | Added=' | TRIM(STR(nAdded, 10, 0)) | ' | Edges=' | TRIM(STR(nEdges, 10, 0)));
+#endregion

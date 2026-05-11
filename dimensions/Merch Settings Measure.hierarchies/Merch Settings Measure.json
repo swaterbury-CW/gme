@@ -1,0 +1,16 @@
+{
+	"@type":"Hierarchy",
+	"Name":"Merch Settings Measure",
+	"Elements":
+	[
+		{
+			"Name":"Value_Numeric",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Value_String",
+			"Type":"String"
+		}
+	],
+	"Subsets@Code.links":[]
+}

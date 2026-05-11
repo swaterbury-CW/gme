@@ -1,0 +1,16 @@
+{
+	"@type":"Hierarchy",
+	"Name":"Clearance SKU Measure",
+	"Elements":
+	[
+		{
+			"Name":"Discount_Pct",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Active_Flag",
+			"Type":"Numeric"
+		}
+	],
+	"Subsets@Code.links":[]
+}

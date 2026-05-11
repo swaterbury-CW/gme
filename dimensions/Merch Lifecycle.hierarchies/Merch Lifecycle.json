@@ -1,0 +1,51 @@
+{
+	"@type":"Hierarchy",
+	"Name":"Merch Lifecycle",
+	"Elements":
+	[
+		{
+			"Name":"Active",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Clearance",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Markdown",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Discontinued",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"All Lifecycle",
+			"Type":"Consolidated"
+		}
+	],
+	"Edges":
+	[
+		{
+			"ParentName":"All Lifecycle",
+			"ComponentName":"Active",
+			"Weight":1
+		},
+		{
+			"ParentName":"All Lifecycle",
+			"ComponentName":"Clearance",
+			"Weight":1
+		},
+		{
+			"ParentName":"All Lifecycle",
+			"ComponentName":"Markdown",
+			"Weight":1
+		},
+		{
+			"ParentName":"All Lifecycle",
+			"ComponentName":"Discontinued",
+			"Weight":1
+		}
+	],
+	"Subsets@Code.links":[]
+}

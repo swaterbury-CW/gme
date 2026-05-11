@@ -1,0 +1,13 @@
+{
+	"@type":"Dimension",
+	"Name":"Merch PreOwned Category",
+	"Hierarchies@Code.links":
+	[
+		"Merch PreOwned Category.hierarchies/Merch PreOwned Category.json",
+		"Merch PreOwned Category.hierarchies/Roles.json"
+	],
+	"DefaultHierarchy":
+	{
+		"@id":"Dimensions('Merch PreOwned Category')/Hierarchies('Merch PreOwned Category')"
+	}
+}

@@ -1,0 +1,12 @@
+{
+	"@type":"Dimension",
+	"Name":"Merch Channel",
+	"Hierarchies@Code.links":
+	[
+		"Merch Channel.hierarchies/Merch Channel.json"
+	],
+	"DefaultHierarchy":
+	{
+		"@id":"Dimensions('Merch Channel')/Hierarchies('Merch Channel')"
+	}
+}

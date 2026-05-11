@@ -1,0 +1,29 @@
+{
+	"@type":"Process",
+	"Name":"Util.BuildSkuSubsetByCategory_temp",
+	"HasSecurityAccess":false,
+	"Code@Code.link":"Util.BuildSkuSubsetByCategory_temp.ti",
+	"DataSource":
+	{
+		"Type":"None"
+	},
+	"Parameters":
+	[
+		{
+			"Name":"pCategory",
+			"Prompt":"Merch Category leaf",
+			"Value":"",
+			"Type":"String"
+		},
+		{
+			"Name":"pSubsetName",
+			"Prompt":"Subset name",
+			"Value":"",
+			"Type":"String"
+		}
+	],
+	"Variables":[],
+	"UID": "1778089057000",
+	"UIData": "CubeAction=1511\fDataAction=1503\fCubeLogChanges=0\f",
+	"VariablesUIData": []
+}

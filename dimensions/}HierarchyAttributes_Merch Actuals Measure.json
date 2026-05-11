@@ -1,0 +1,12 @@
+{
+	"@type":"Dimension",
+	"Name":"}HierarchyAttributes_Merch Actuals Measure",
+	"Hierarchies@Code.links":
+	[
+		"}HierarchyAttributes_Merch Actuals Measure.hierarchies/}HierarchyAttributes_Merch Actuals Measure.json"
+	],
+	"DefaultHierarchy":
+	{
+		"@id":"Dimensions('}HierarchyAttributes_Merch Actuals Measure')/Hierarchies('}HierarchyAttributes_Merch Actuals Measure')"
+	}
+}

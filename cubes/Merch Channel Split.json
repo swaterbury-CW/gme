@@ -1,0 +1,24 @@
+{
+	"@type":"Cube",
+	"Name":"Merch Channel Split",
+	"Dimensions":
+	[
+		{
+			"@id":"Dimensions('Merch Version')"
+		},
+		{
+			"@id":"Dimensions('Merch Time Period')"
+		},
+		{
+			"@id":"Dimensions('Merch Category')"
+		},
+		{
+			"@id":"Dimensions('Merch Channel')"
+		},
+		{
+			"@id":"Dimensions('Merch Channel Split Measure')"
+		}
+	],
+	"Rules@Code.link":"Merch Channel Split.rules",
+	"Views@Code.links":[]
+}

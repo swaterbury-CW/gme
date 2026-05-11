@@ -1,0 +1,39 @@
+SKIPCHECK;
+#Region : Rule Header
+#############################
+##~~ Start Rule File ~~##
+#############################
+# DEVELOPER : Steve Waterbury
+# CREATED ON : 2026-03-16
+# LAST UPDATE: 2026-04-01
+# CUBE       : }Merch Closed Period Feed
+# COMMENTS:
+# Control cube feeder: value=1 means version+period+SKU is closed.
+# Feeds Merch Forecast consolidated measures for closed-period overlay.
+#
+#### CHANGE HISTORY:
+### MODIFICATION DATE  CHANGED BY         COMMENT
+### 2026-03-16         Steve Waterbury    Initial creation
+### 2026-04-01         Steve Waterbury    Applied guardrails header/footer template
+#
+#EndRegion
+
+FEEDERS;
+
+#Region : Feeders
+# Feed using !Merch SKU from control cube. Use consolidated measures.
+# Ending Inventory(C) covers: Opening Inventory, Buy Units, Units (-> Calc Units, Adjustment Units)
+# Applied/Effective AUR(C) covers: Full Price AUR, Promo, Rate Adjustment, Price Adjustment, Markdown %, Rate Adj Amount
+# AUC(C) covers: Base AUC, Backend Adjustment, Other AUC Adjustment
+# Margin(C) covers: Revenue(->Base Rev, MD Rev, Rev Adj), Cost(->Base Cost, Backend Cost, Other Cost Adj)
+[] => DB('Merch Forecast', !Merch Version, !Merch Time Period, !Merch SKU, 'Ending Inventory');
+[] => DB('Merch Forecast', !Merch Version, !Merch Time Period, !Merch SKU, 'Applied/Effective AUR');
+[] => DB('Merch Forecast', !Merch Version, !Merch Time Period, !Merch SKU, 'AUC');
+[] => DB('Merch Forecast', !Merch Version, !Merch Time Period, !Merch SKU, 'Margin');
+#EndRegion
+
+#Region : Rule Footer
+#############################
+##~~ End Rule File ~~##
+#############################
+#EndRegion

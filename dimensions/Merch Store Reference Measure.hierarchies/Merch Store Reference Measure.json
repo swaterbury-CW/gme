@@ -1,0 +1,12 @@
+{
+	"@type":"Hierarchy",
+	"Name":"Merch Store Reference Measure",
+	"Elements":
+	[
+		{
+			"Name":"Open Flag",
+			"Type":"Numeric"
+		}
+	],
+	"Subsets@Code.links":[]
+}

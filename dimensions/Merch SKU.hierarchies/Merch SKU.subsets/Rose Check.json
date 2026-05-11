@@ -1,0 +1,6 @@
+{
+	"@type":"Subset",
+	"Name":"Rose Check",
+	"Alias":"Caption",
+	"Expression":"TM1IGNORE_BADTUPLES {[Merch SKU].[Merch SKU].[118668],[Merch SKU].[Merch SKU].[206723],[Merch SKU].[Merch SKU].[404270],{TM1FILTERBYPATTERN(TM1FILTERBYLEVEL(TM1SUBSETALL([Merch SKU].[Merch SKU]) , 0),\"*417304*\",\"Caption\")}}"
+}

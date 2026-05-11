@@ -1,0 +1,43 @@
+{
+	"@type":"Process",
+	"Name":"Merch.Seed.ClearancePromos.BQ.Page_temp",
+	"HasSecurityAccess":false,
+	"Code@Code.link":"Merch.Seed.ClearancePromos.BQ.Page_temp.ti",
+	"DataSource":
+	{
+		"Type":"JSON",
+		"dataSourceNameForServer":"./clearance_promos_seed_bq.json_page_1.json",
+		"jsonRootPointer":"/rows",
+		"jsonVariableMapping":""
+	},
+	"Parameters":
+	[
+		{
+			"Name":"pPageFile",
+			"Prompt":"JSON page file",
+			"Value":"./clearance_promos_seed_bq.json_page_1.json",
+			"Type":"String"
+		},
+		{
+			"Name":"pVersion",
+			"Prompt":"Merch Version to seed (e.g. Forecast)",
+			"Value":"Forecast",
+			"Type":"String"
+		}
+	],
+	"Variables":
+	[
+		{
+			"Name":"vRow",
+			"Type":"String",
+			"Position":1,
+			"StartByte":0,
+			"EndByte":0
+		}
+	],
+	"UID": "1778112137000",
+	"UIData": "CubeAction=1511\fDataAction=1503\fCubeLogChanges=0\f",
+	"VariablesUIData": [
+		"VarType=32\fColType=827\f"
+	]
+}

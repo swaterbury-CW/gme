@@ -1,0 +1,71 @@
+#region Prolog
+#****Begin: Generated Statements***
+DatasourceType = 'VIEW';
+DatasourceNameForServer = 'Merch Actuals';
+DatasourceCubeview = 'TI_SeedSplit';
+#****End: Generated Statements****
+cProcessName = GetProcessName();
+sLogLevel = CellGetS('ProcessControl', cProcessName, 'LoggingLevel');
+IF(sLogLevel @= ''); sLogLevel = 'OFF'; ENDIF;
+bLogInfo = 0;
+IF(sLogLevel @= 'INFO' % sLogLevel @= 'DEBUG'); bLogInfo = 1; ENDIF;
+IF(bLogInfo = 1);
+  LogOutput('INFO', 'START: ' | cProcessName | ' pVersion=' | pVersion);
+ENDIF;
+IF(DIMIX('Merch Version', pVersion) = 0);
+  LogOutput('ERROR', cProcessName | ' Invalid version');
+  ProcessQuit;
+ENDIF;
+sCubeActuals = 'Merch Actuals';
+sCubeSplit = 'Merch Channel Split';
+nWritten = 0;
+sViewName = 'TI_SeedSplit';
+sMDX = 'SELECT {[Merch Actuals Measure].[location_sales_quantity]} ON COLUMNS, NON EMPTY CROSSJOIN({TM1FILTERBYLEVEL({TM1SUBSETALL([Merch SKU].[Merch SKU])}, 1)}, {TM1FILTERBYLEVEL({TM1SUBSETALL([Merch Time Period].[Merch Time Period])}, 0)}) ON ROWS FROM [Merch Actuals] WHERE ([Merch Channel].[All Channels])';
+IF(ViewExists(sCubeActuals, sViewName) = 1);
+  ViewDestroy(sCubeActuals, sViewName);
+ENDIF;
+ViewCreateByMDX(sCubeActuals, sViewName, sMDX);
+#endregion
+#region Metadata
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+
+#endregion
+#region Data
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+nTotal = NUMBR(Value);
+IF(nTotal = 0);
+  ItemSkip;
+ENDIF;
+IF(DIMIX('Merch Category', vCategory) = 0);
+  ItemSkip;
+ENDIF;
+# Iterate all leaf channels
+nChDim = DIMSIZ('Merch Channel');
+i = 1;
+WHILE(i <= nChDim);
+  sCh = DIMNM('Merch Channel', i);
+  IF(ELLEV('Merch Channel', sCh) = 0);
+    nChQty = CellGetN(sCubeActuals, vCategory, vTP, sCh, 'location_sales_quantity');
+    IF(nChQty <> 0);
+      nSplit = nChQty / nTotal;
+      IF(CellIsUpdateable(sCubeSplit, pVersion, vTP, vCategory, sCh, 'Split Pct') = 1);
+        CellPutN(nSplit, sCubeSplit, pVersion, vTP, vCategory, sCh, 'Split Pct');
+        nWritten = nWritten + 1;
+      ENDIF;
+    ENDIF;
+  ENDIF;
+  i = i + 1;
+END;
+#endregion
+#region Epilog
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+IF(ViewExists(sCubeActuals, sViewName) = 1);
+  ViewDestroy(sCubeActuals, sViewName);
+ENDIF;
+IF(bLogInfo = 1);
+  LogOutput('INFO', 'END: ' | cProcessName | ' Written=' | TRIM(STR(nWritten, 10, 0)));
+ENDIF;
+#endregion

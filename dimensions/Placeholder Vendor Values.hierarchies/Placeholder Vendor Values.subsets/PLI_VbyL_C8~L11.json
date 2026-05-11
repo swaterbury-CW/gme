@@ -1,0 +1,13 @@
+{
+	"@type":"Subset",
+	"Name":"PLI_VbyL_C8~L11",
+	"Elements":
+	[
+		{
+			"@id":"Dimensions('Placeholder Vendor Values')/Hierarchies('Placeholder Vendor Values')/Elements('THE TOPPS COMPANY INC-ZLOOT')"
+		},
+		{
+			"@id":"Dimensions('Placeholder Vendor Values')/Hierarchies('Placeholder Vendor Values')/Elements('Panini America, Inc.')"
+		}
+	]
+}

@@ -1,0 +1,6 @@
+{
+	"@type":"Subset",
+	"Name":"All SKUs by Category",
+	"Alias":"Caption",
+	"Expression":"TM1IGNORE_BADTUPLES {DRILLDOWNMEMBER([Merch SKU].[SGM_Category].LEVELS(0).MEMBERS , {[Merch SKU].[SGM_Category].[All SGM_Category]} , RECURSIVE)}"
+}

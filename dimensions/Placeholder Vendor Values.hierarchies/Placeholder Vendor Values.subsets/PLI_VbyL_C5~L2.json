@@ -1,0 +1,13 @@
+{
+	"@type":"Subset",
+	"Name":"PLI_VbyL_C5~L2",
+	"Elements":
+	[
+		{
+			"@id":"Dimensions('Placeholder Vendor Values')/Hierarchies('Placeholder Vendor Values')/Elements('GameStop, Inc.')"
+		},
+		{
+			"@id":"Dimensions('Placeholder Vendor Values')/Hierarchies('Placeholder Vendor Values')/Elements('WIZARDS OF THE COAST (COMICS)')"
+		}
+	]
+}

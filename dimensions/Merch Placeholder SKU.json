@@ -1,0 +1,12 @@
+{
+	"@type":"Dimension",
+	"Name":"Merch Placeholder SKU",
+	"Hierarchies@Code.links":
+	[
+		"Merch Placeholder SKU.hierarchies/Merch Placeholder SKU.json"
+	],
+	"DefaultHierarchy":
+	{
+		"@id":"Dimensions('Merch Placeholder SKU')/Hierarchies('Merch Placeholder SKU')"
+	}
+}

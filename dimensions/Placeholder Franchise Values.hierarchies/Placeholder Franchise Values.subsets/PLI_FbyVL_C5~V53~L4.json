@@ -1,0 +1,10 @@
+{
+	"@type":"Subset",
+	"Name":"PLI_FbyVL_C5~V53~L4",
+	"Elements":
+	[
+		{
+			"@id":"Dimensions('Placeholder Franchise Values')/Hierarchies('Placeholder Franchise Values')/Elements('Magic: The Gathering')"
+		}
+	]
+}

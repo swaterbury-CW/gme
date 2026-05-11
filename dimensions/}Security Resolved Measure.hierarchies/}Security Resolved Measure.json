@@ -1,0 +1,16 @@
+{
+	"@type":"Hierarchy",
+	"Name":"}Security Resolved Measure",
+	"Elements":
+	[
+		{
+			"Name":"Write",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Read",
+			"Type":"Numeric"
+		}
+	],
+	"Subsets@Code.links":[]
+}

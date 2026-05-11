@@ -1,0 +1,18 @@
+{
+	"@type":"Cube",
+	"Name":"Merch User Hierarchy Assignment",
+	"Dimensions":
+	[
+		{
+			"@id":"Dimensions('Merch SKU')"
+		},
+		{
+			"@id":"Dimensions('}Clients')"
+		},
+		{
+			"@id":"Dimensions('Merch User Hierarchy Measure')"
+		}
+	],
+	"Rules@Code.link":"Merch User Hierarchy Assignment.rules",
+	"Views@Code.links":[]
+}

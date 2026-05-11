@@ -1,0 +1,10 @@
+{
+	"@type":"Subset",
+	"Name":"}Drill_PromoAURCalc_Forecast_FY26-W21_396089",
+	"Elements":
+	[
+		{
+			"@id":"Dimensions('Merch Version')/Hierarchies('Merch Version')/Elements('Forecast')"
+		}
+	]
+}

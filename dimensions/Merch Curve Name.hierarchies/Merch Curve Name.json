@@ -1,0 +1,190 @@
+{
+	"@type":"Hierarchy",
+	"Name":"Merch Curve Name",
+	"Elements":
+	[
+		{
+			"Name":"Video Games Curve",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Collectibles Curve",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"All Curves",
+			"Type":"Consolidated"
+		},
+		{
+			"Name":"Plush",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Mario- Curve 2025",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Mario- Curve 2024",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Housewares - 2025",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Store Category Build",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Test Markdown Curve",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Test Sell-Through Curve",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Test Category Build Curve",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Test Velocity Curve",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Test Seasonality Curve",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Test Regime Curve",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Test Markdown Pct Curve",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Test Level Curve",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Test Multi-Type Curve",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Category Build - 2025",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"swaterbury@cubewise.com_395815_FY25_20260407",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Rose Test",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Damon Test",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Sell Through",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Sell-Thru Example",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Sell Through Example",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"sell thru test",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"ST_Test_2026_05_10",
+			"Type":"Numeric"
+		}
+	],
+	"Edges":
+	[
+		{
+			"ParentName":"All Curves",
+			"ComponentName":"Video Games Curve",
+			"Weight":1
+		},
+		{
+			"ParentName":"All Curves",
+			"ComponentName":"Collectibles Curve",
+			"Weight":1
+		},
+		{
+			"ParentName":"All Curves",
+			"ComponentName":"Test Velocity Curve",
+			"Weight":1
+		},
+		{
+			"ParentName":"All Curves",
+			"ComponentName":"Test Seasonality Curve",
+			"Weight":1
+		},
+		{
+			"ParentName":"All Curves",
+			"ComponentName":"Test Regime Curve",
+			"Weight":1
+		},
+		{
+			"ParentName":"All Curves",
+			"ComponentName":"Test Markdown Pct Curve",
+			"Weight":1
+		},
+		{
+			"ParentName":"All Curves",
+			"ComponentName":"Test Level Curve",
+			"Weight":1
+		},
+		{
+			"ParentName":"All Curves",
+			"ComponentName":"Test Multi-Type Curve",
+			"Weight":1
+		},
+		{
+			"ParentName":"All Curves",
+			"ComponentName":"Category Build - 2025",
+			"Weight":1
+		},
+		{
+			"ParentName":"All Curves",
+			"ComponentName":"swaterbury@cubewise.com_395815_FY25_20260407",
+			"Weight":1
+		},
+		{
+			"ParentName":"All Curves",
+			"ComponentName":"Rose Test",
+			"Weight":1
+		},
+		{
+			"ParentName":"All Curves",
+			"ComponentName":"Damon Test",
+			"Weight":1
+		},
+		{
+			"ParentName":"All Curves",
+			"ComponentName":"Sell Through",
+			"Weight":1
+		}
+	],
+	"Subsets@Code.links":
+	[
+		"Merch Curve Name.subsets/All Curves.json",
+		"Merch Curve Name.subsets/Category Build Curves.json",
+		"Merch Curve Name.subsets/Default.json",
+		"Merch Curve Name.subsets/Level Curves.json",
+		"Merch Curve Name.subsets/Markdown Curves.json",
+		"Merch Curve Name.subsets/Regime Curves.json",
+		"Merch Curve Name.subsets/Seasonality Curves.json",
+		"Merch Curve Name.subsets/Velocity Curves.json"
+	]
+}

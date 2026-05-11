@@ -1,0 +1,13 @@
+{
+	"@type":"Subset",
+	"Name":"Level Curves",
+	"Elements":
+	[
+		{
+			"@id":"Dimensions('Merch Curve Name')/Hierarchies('Merch Curve Name')/Elements('Test Level Curve')"
+		},
+		{
+			"@id":"Dimensions('Merch Curve Name')/Hierarchies('Merch Curve Name')/Elements('Test Multi-Type Curve')"
+		}
+	]
+}

@@ -1,0 +1,17 @@
+{
+	"@type":"Cube",
+	"Name":"Merch Store Reference",
+	"Dimensions":
+	[
+		{
+			"@id":"Dimensions('Merch Store')"
+		},
+		{
+			"@id":"Dimensions('Merch Time Period')"
+		},
+		{
+			"@id":"Dimensions('Merch Store Reference Measure')"
+		}
+	],
+	"Views@Code.links":[]
+}

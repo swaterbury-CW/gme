@@ -1,0 +1,16 @@
+{
+	"@type":"Hierarchy",
+	"Name":"Security Franchise",
+	"Elements":
+	[
+		{
+			"Name":"All Franchises",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"All Other Franchises",
+			"Type":"Numeric"
+		}
+	],
+	"Subsets@Code.links":[]
+}

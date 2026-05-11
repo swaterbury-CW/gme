@@ -1,0 +1,10 @@
+{
+	"@type":"Subset",
+	"Name":"PLI_FbyVL_Collectibles~L37~V616",
+	"Elements":
+	[
+		{
+			"@id":"Dimensions('Placeholder Franchise Values')/Hierarchies('Placeholder Franchise Values')/Elements('Any')"
+		}
+	]
+}

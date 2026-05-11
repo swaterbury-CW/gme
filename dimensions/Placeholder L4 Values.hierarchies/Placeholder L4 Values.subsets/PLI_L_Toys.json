@@ -1,0 +1,49 @@
+{
+	"@type":"Subset",
+	"Name":"PLI_L_Toys",
+	"Elements":
+	[
+		{
+			"@id":"Dimensions('Placeholder L4 Values')/Hierarchies('Placeholder L4 Values')/Elements('Surprise Toys')"
+		},
+		{
+			"@id":"Dimensions('Placeholder L4 Values')/Hierarchies('Placeholder L4 Values')/Elements('Impulse')"
+		},
+		{
+			"@id":"Dimensions('Placeholder L4 Values')/Hierarchies('Placeholder L4 Values')/Elements('Dolls & Dollhouses')"
+		},
+		{
+			"@id":"Dimensions('Placeholder L4 Values')/Hierarchies('Placeholder L4 Values')/Elements('Building')"
+		},
+		{
+			"@id":"Dimensions('Placeholder L4 Values')/Hierarchies('Placeholder L4 Values')/Elements('Figures & Playsets')"
+		},
+		{
+			"@id":"Dimensions('Placeholder L4 Values')/Hierarchies('Placeholder L4 Values')/Elements('Plush')"
+		},
+		{
+			"@id":"Dimensions('Placeholder L4 Values')/Hierarchies('Placeholder L4 Values')/Elements('Vehicles')"
+		},
+		{
+			"@id":"Dimensions('Placeholder L4 Values')/Hierarchies('Placeholder L4 Values')/Elements('STEAM')"
+		},
+		{
+			"@id":"Dimensions('Placeholder L4 Values')/Hierarchies('Placeholder L4 Values')/Elements('Outdoor')"
+		},
+		{
+			"@id":"Dimensions('Placeholder L4 Values')/Hierarchies('Placeholder L4 Values')/Elements('Kids Roleplay')"
+		},
+		{
+			"@id":"Dimensions('Placeholder L4 Values')/Hierarchies('Placeholder L4 Values')/Elements('Sports')"
+		},
+		{
+			"@id":"Dimensions('Placeholder L4 Values')/Hierarchies('Placeholder L4 Values')/Elements('Ride-On')"
+		},
+		{
+			"@id":"Dimensions('Placeholder L4 Values')/Hierarchies('Placeholder L4 Values')/Elements('Baby & Toddler')"
+		},
+		{
+			"@id":"Dimensions('Placeholder L4 Values')/Hierarchies('Placeholder L4 Values')/Elements('Indoor')"
+		}
+	]
+}

@@ -1,0 +1,10 @@
+{
+	"@type":"Subset",
+	"Name":"PLI_L_Switch Hardware",
+	"Elements":
+	[
+		{
+			"@id":"Dimensions('Placeholder L4 Values')/Hierarchies('Placeholder L4 Values')/Elements('Gaming System')"
+		}
+	]
+}

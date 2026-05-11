@@ -1,0 +1,483 @@
+#region Prolog
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+#Region : Process Header
+#############################
+##~~ Start Process ~~##
+#############################
+# DEVELOPER : Steve Waterbury
+# CREATED ON : 2026-04-02
+# LAST UPDATE: 2026-04-20
+# CHANGED BY : Steve Waterbury
+# COMMENTS:
+# Load Merch Actuals from BigQuery via API.BigQuery.Export.
+# Fetches weekly location metrics, maps to Merch Time Period,
+# writes to Merch Actuals cube (SKU x Time x Channel x Measure).
+# pUseRunProcess=1 dispatches pages in parallel via RunProcess.
+# SQL column parser is parenthesis-aware (splits only at depth 0).
+#
+#### CHANGE HISTORY:
+### MODIFICATION DATE  CHANGED BY         COMMENT
+### 2026-04-02         Steve Waterbury    Initial creation
+### 2026-04-07         Steve Waterbury    Removed fiscal_week_end; pagination; RunProcess toggle
+### 2026-04-07         Steve Waterbury    Fixed column parser: paren-aware comma splitting
+### 2026-04-19         Steve Waterbury    Added 33 BQ columns; lowercased safe_divide;
+###                                        period lookup via SubsetElementInsert;
+###                                        fixed epilog: pass pTimePeriod to ActualsToCalc calls
+### 2026-04-19         Steve Waterbury    Wired PreOwned.Load.InventoryActualsFromMerch into chain
+### 2026-04-20         Steve Waterbury    Wired Merch.Load.ActualsToPlanReporting into chain
+#
+#EndRegion
+
+#Region : Constants
+cProcessName = GetProcessName();
+cCube = 'Merch Actuals';
+cSKUDim = 'Merch SKU';
+cChannelDim = 'Merch Channel';
+cMeasureDim = 'Merch Actuals Measure';
+cTimeDim = 'Merch Time Period';
+cBaseName = 'actuals_bq';
+nRecordCount = 0;
+nCellsWritten = 0;
+#EndRegion
+
+#Region : Logging Configuration
+sLogLevel = CellGetS('ProcessControl', cProcessName, 'LoggingLevel');
+IF(sLogLevel @= '');
+  sLogLevel = 'OFF';
+ENDIF;
+bLogInfo  = 0;
+IF(sLogLevel @= 'INFO' % sLogLevel @= 'DEBUG');
+  bLogInfo  = 1;
+ENDIF;
+bLogDebug = 0;
+IF(sLogLevel @= 'DEBUG');
+  bLogDebug = 1;
+ENDIF;
+# IF(bLogInfo = 1);
+#   LogOutput('INFO', 'START: ' | cProcessName | ' | LogLevel=' | sLogLevel | ' | RunProcess=' | TRIM(STR(pUseRunProcess, 1, 0)));
+# ENDIF;
+#EndRegion
+
+#Region : Validate Parameters
+IF(pWeekEndDate @= '');
+  LogOutput('ERROR', cProcessName | ' | pWeekEndDate is empty');
+  ProcessError;
+ENDIF;
+#EndRegion
+
+#Region : Map Week End Date to Merch Time Period
+nTargetDayNo = DAYNO(pWeekEndDate);
+sLookupSubset = cProcessName | '_time_lookup';
+IF(SubsetExists(cTimeDim, sLookupSubset) = 1);
+  SubsetDestroy(cTimeDim, sLookupSubset);
+ENDIF;
+SubsetCreate(cTimeDim, sLookupSubset);
+
+nTIdx = 1;
+nTimeDimSize = DIMSIZ(cTimeDim);
+WHILE(nTIdx <= nTimeDimSize);
+  sElem = DIMNM(cTimeDim, nTIdx);
+  IF(DTYPE(cTimeDim, sElem) @= 'N');
+    nEndSerial = ATTRN(cTimeDim, sElem, 'End_Date_Serial');
+    IF(nEndSerial = nTargetDayNo);
+      SubsetElementInsert(cTimeDim, sLookupSubset, sElem, 0);
+    ENDIF;
+  ENDIF;
+  nTIdx = nTIdx + 1;
+END;
+
+IF(SubsetGetSize(cTimeDim, sLookupSubset) = 0);
+  LogOutput('ERROR', cProcessName | ' | No Merch Time Period found for End_Date_Serial=' | TRIM(STR(nTargetDayNo, 10, 0)));
+  SubsetDestroy(cTimeDim, sLookupSubset);
+  ProcessError;
+ENDIF;
+sTimePeriod = SubsetGetElementName(cTimeDim, sLookupSubset, 1);
+SubsetDestroy(cTimeDim, sLookupSubset);
+
+IF(bLogInfo = 1);
+  LogOutput('INFO', cProcessName | ' | Mapped ' | pWeekEndDate | ' -> ' | sTimePeriod);
+ENDIF;
+#EndRegion
+
+#Region : Build SQL Query
+sSQL = 'SELECT location_group, sku, safe_divide(SUM(location_sales_amount), 
+SUM(location_sales_quantity)) AS weighted_aur, safe_divide(SUM(location_sales_cogs) , 
+SUM(location_sales_quantity)) AS weighted_auc, 
+SUM(location_sales_amount) AS location_sales_amount, 
+SUM(location_sales_quantity) AS location_sales_quantity, 
+SUM(location_sales_cogs) AS location_sales_cogs, 
+SUM(location_sales_margin) AS location_sales_margin, 
+SUM(location_on_order_quantity) AS location_on_order_quantity, 
+SUM(location_on_order_amount) AS location_on_order_amount, 
+SUM(location_inventory_amount_ending) AS location_inventory_amount_ending, 
+SUM(location_inventory_amount_starting) AS location_inventory_amount_starting,
+SUM(location_inventory_quantity_ending) AS location_inventory_quantity_ending,
+SUM(location_inventory_quantity_starting) AS location_inventory_quantity_starting,
+SUM(location_sellable_quantity_starting) AS location_sellable_quantity_starting,
+SUM(ly_location_inventory_quantity_starting) AS ly_location_inventory_quantity_starting,
+SUM(ly_location_inventory_amount_starting) AS ly_location_inventory_amount_starting,
+SUM(ly_location_onhand_sellable_quantity_starting) AS ly_location_onhand_sellable_quantity_starting,
+SUM(ly_location_onhand_sellable_amount_starting) AS ly_location_onhand_sellable_amount_starting,
+SUM(ly_location_inventory_quantity_ending) AS ly_location_inventory_quantity_ending,
+SUM(ly_location_inventory_amount_ending) AS ly_location_inventory_amount_ending,
+SUM(ly_location_onhand_sellable_quantity_ending) AS ly_location_onhand_sellable_quantity_ending,
+SUM(ly_location_onhand_sellable_amount_ending) AS ly_location_onhand_sellable_amount_ending,
+SUM(ly_location_sales_quantity) AS ly_location_sales_quantity,
+SUM(ly_location_sales_amount) AS ly_location_sales_amount,
+SUM(ly_location_sales_margin) AS ly_location_sales_margin,
+SUM(ly_retail_sales_quantity) AS ly_retail_sales_quantity,
+SUM(ly_retail_sales_amount) AS ly_retail_sales_amount,
+SUM(ly_ecom_sales_quantity) AS ly_ecom_sales_quantity,
+SUM(ly_ecom_sales_amount) AS ly_ecom_sales_amount, 
+SUM(location_sellable_amount_starting) AS location_sellable_amount_starting, 
+SUM(location_sellable_quantity_ending) AS location_sellable_quantity_ending, 
+SUM(location_sellable_amount_ending) AS location_sellable_amount_ending, 
+SUM(location_defective_quantity_starting) AS location_defective_quantity_starting, 
+SUM(location_defective_amount_starting) AS location_defective_amount_starting, 
+SUM(location_defective_quantity_ending) AS location_defective_quantity_ending, 
+SUM(location_defective_amount_ending) AS location_defective_amount_ending, 
+SUM(location_onhand_sellable_quantity_starting) AS location_onhand_sellable_quantity_starting, 
+SUM(location_onhand_sellable_amount_starting) AS location_onhand_sellable_amount_starting, 
+SUM(location_onhand_sellable_quantity_ending) AS location_onhand_sellable_quantity_ending, 
+SUM(location_onhand_sellable_amount_ending) AS location_onhand_sellable_amount_ending, 
+SUM(location_onhand_defective_quantity_starting) AS location_onhand_defective_quantity_starting, 
+SUM(location_onhand_defective_amount_starting) AS location_onhand_defective_amount_starting, 
+SUM(location_onhand_defective_quantity_ending) AS location_onhand_defective_quantity_ending, 
+SUM(location_onhand_defective_amount_ending) AS location_onhand_defective_amount_ending, 
+SUM(location_instransit_quantity_starting) AS location_instransit_quantity_starting, 
+SUM(location_instransit_amount_starting) AS location_instransit_amount_starting, 
+SUM(location_instransit_quantity_ending) AS location_instransit_quantity_ending, 
+SUM(location_instransit_amount_ending) AS location_instransit_amount_ending, 
+SUM(location_instransit_defective_quantity_starting) AS location_instransit_defective_quantity_starting, 
+SUM(location_instransit_defective_amount_starting) AS location_instransit_defective_amount_starting, 
+SUM(location_instransit_defective_quantity_ending) AS location_instransit_defective_quantity_ending, 
+SUM(location_instransit_defective_amount_ending) AS location_instransit_defective_amount_ending, 
+SUM(location_receipt_quantity) AS location_receipt_quantity,
+SUM(location_receipt_amount) AS location_receipt_amount, 
+SUM(trade_amount) AS trade_amount, 
+SUM(trade_quantity) AS trade_quantity, 
+SUM(return_quantity) AS return_quantity, 
+SUM(return_amount) AS return_amount, 
+SUM(return_cogs) AS return_cogs, 
+SUM(return_margin) AS return_margin, 
+SUM(attachment_count) AS attachment_count, 
+SUM(attachment_amount) AS attachment_amount 
+FROM `merchplanning-suite-prod-062.planninganalytics.location_metrics_weekly` WHERE fiscal_week_end = DATE ' | '''' | pWeekEndDate | '''' | ' AND location_group is not  null GROUP BY location_group, sku ORDER BY location_group, sku';
+#EndRegion
+LogOutput( 'INFO', sSQL );
+
+#Region : Fetch Data from BigQuery
+nRC = ExecuteProcess('API.BigQuery.Export', 'pQuery', sSQL, 'pOutputFile', cBaseName, 'pMaxResults', '10000');
+IF(nRC <> 0);
+  LogOutput('ERROR', cProcessName | ' | API.BigQuery.Export failed, code=' | TRIM(STR(nRC, 10, 0)));
+  ProcessError;
+ENDIF;
+IF(bLogInfo = 1);
+  LogOutput('INFO', cProcessName | ' | BigQuery export complete.');
+ENDIF;
+#EndRegion
+
+#Region : Parse SQL SELECT to build column name list
+nSelectPos = SCAN('SELECT ', UPPER(sSQL));
+nFromPos = SCAN(' FROM ', UPPER(sSQL));
+sSelectClause = SUBST(sSQL, nSelectPos + 7, nFromPos - nSelectPos - 7);
+sColNames = '';
+nColCount = 0;
+nCharIdx = 1;
+nTokenStart = 1;
+nDepth = 0;
+nLen = LONG(sSelectClause);
+
+WHILE(nCharIdx <= nLen);
+    sChar = SUBST(sSelectClause, nCharIdx, 1);
+    IF(sChar @= '(');
+        nDepth = nDepth + 1;
+    ELSEIF(sChar @= ')');
+        nDepth = nDepth - 1;
+    ELSEIF(sChar @= ',' & nDepth = 0);
+        sToken = TRIM(SUBST(sSelectClause, nTokenStart, nCharIdx - nTokenStart));
+        nAsPos = 0;
+        nScanIdx = 1;
+        WHILE(nScanIdx <= LONG(sToken) - 3);
+            IF(UPPER(SUBST(sToken, nScanIdx, 4)) @= ' AS ');
+                nAsPos = nScanIdx;
+            ENDIF;
+            nScanIdx = nScanIdx + 1;
+        END;
+        IF(nAsPos > 0);
+            sColName = TRIM(SUBST(sToken, nAsPos + 4, LONG(sToken) - nAsPos - 3));
+        ELSE;
+            sColName = TRIM(sToken);
+        ENDIF;
+        IF(nColCount = 0);
+            sColNames = sColName;
+        ELSE;
+            sColNames = sColNames | '|' | sColName;
+        ENDIF;
+        nColCount = nColCount + 1;
+        nTokenStart = nCharIdx + 1;
+    ENDIF;
+    nCharIdx = nCharIdx + 1;
+END;
+
+IF(nTokenStart <= nLen);
+    sToken = TRIM(SUBST(sSelectClause, nTokenStart, nLen - nTokenStart + 1));
+    nAsPos = 0;
+    nScanIdx = 1;
+    WHILE(nScanIdx <= LONG(sToken) - 3);
+        IF(UPPER(SUBST(sToken, nScanIdx, 4)) @= ' AS ');
+            nAsPos = nScanIdx;
+        ENDIF;
+        nScanIdx = nScanIdx + 1;
+    END;
+    IF(nAsPos > 0);
+        sColName = TRIM(SUBST(sToken, nAsPos + 4, LONG(sToken) - nAsPos - 3));
+    ELSE;
+        sColName = TRIM(sToken);
+    ENDIF;
+    IF(nColCount = 0);
+        sColNames = sColName;
+    ELSE;
+        sColNames = sColNames | '|' | sColName;
+    ENDIF;
+    nColCount = nColCount + 1;
+ENDIF;
+
+IF(bLogInfo = 1);
+  LogOutput('INFO', cProcessName | ' | Parsed ' | TRIM(STR(nColCount, 10, 0)) | ' columns: ' | sColNames);
+ENDIF;
+#EndRegion
+
+#Region : Configure JSON Datasource for page 1
+DatasourceType = 'JSON';
+DatasourceNameForServer = cBaseName | '_page_1.json';
+DataSourceJsonRootPointer = '/rows';
+DataSourceJsonVariableMapping = JsonAdd('{}', 'vRow', StringToJson('/f'));
+#EndRegion
+#endregion
+#region Metadata
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+#Region : Create Channel and Measure Elements
+sChannel = JsonGet(vRow, '/0/v');
+IF(SUBST(sChannel, 1, 1) @= '"');
+  sChannel = SUBST(sChannel, 2, LONG(sChannel) - 2);
+ENDIF;
+IF(sChannel @= '' % sChannel @= 'null');
+  ItemSkip;
+ENDIF;
+
+IF(DIMIX(cChannelDim, sChannel) = 0);
+  DimensionElementInsertDirect(cChannelDim, '', sChannel, 'N');
+  DimensionElementComponentAddDirect(cChannelDim, 'All Channels', sChannel, 1);
+  IF(bLogDebug = 1);
+    LogOutput('DEBUG', cProcessName | ' | Created channel: ' | sChannel);
+  ENDIF;
+ENDIF;
+
+sRemainCols = sColNames;
+nColIdx = 0;
+WHILE(LONG(sRemainCols) > 0);
+    nPipe = SCAN('|', sRemainCols);
+    IF(nPipe > 0);
+        sColName = SUBST(sRemainCols, 1, nPipe - 1);
+        sRemainCols = SUBST(sRemainCols, nPipe + 1, LONG(sRemainCols) - nPipe);
+    ELSE;
+        sColName = sRemainCols;
+        sRemainCols = '';
+    ENDIF;
+    IF(nColIdx >= 2);
+        IF(DIMIX(cMeasureDim, sColName) = 0);
+            DimensionElementInsertDirect(cMeasureDim, '', sColName, 'N');
+            IF(bLogDebug = 1);
+              LogOutput('DEBUG', cProcessName | ' | Created measure: ' | sColName);
+            ENDIF;
+        ENDIF;
+    ENDIF;
+    nColIdx = nColIdx + 1;
+END;
+#EndRegion
+#endregion
+#region Data
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+#Region : Write Actuals to Cube
+sChannel = JsonGet(vRow, '/0/v');
+IF(SUBST(sChannel, 1, 1) @= '"');
+  sChannel = SUBST(sChannel, 2, LONG(sChannel) - 2);
+ENDIF;
+IF(sChannel @= '' % sChannel @= 'null');
+  LogOutput('ERROR', cProcessName | ' | Bad channel row rejected');
+  ItemReject('empty or null location_group');
+ENDIF;
+
+sSKU = JsonGet(vRow, '/1/v');
+IF(SUBST(sSKU, 1, 1) @= '"');
+  sSKU = SUBST(sSKU, 2, LONG(sSKU) - 2);
+ENDIF;
+IF(sSKU @= '' % sSKU @= 'null');
+  LogOutput('ERROR', cProcessName | ' | Bad SKU row rejected');
+  ItemReject('empty or null sku');
+ENDIF;
+
+IF(DIMIX(cSKUDim, sSKU) = 0);
+  ItemSkip;
+ENDIF;
+
+nRecordCount = nRecordCount + 1;
+
+sRemainCols = sColNames;
+nColIdx = 0;
+WHILE(LONG(sRemainCols) > 0);
+    nPipe = SCAN('|', sRemainCols);
+    IF(nPipe > 0);
+        sColName = SUBST(sRemainCols, 1, nPipe - 1);
+        sRemainCols = SUBST(sRemainCols, nPipe + 1, LONG(sRemainCols) - nPipe);
+    ELSE;
+        sColName = sRemainCols;
+        sRemainCols = '';
+    ENDIF;
+    IF(nColIdx >= 2);
+        sJsonPath = '/' | TRIM(STR(nColIdx, 5, 0)) | '/v';
+        sVal = JsonGet(vRow, sJsonPath);
+        IF(SUBST(sVal, 1, 1) @= '"');
+          sVal = SUBST(sVal, 2, LONG(sVal) - 2);
+        ENDIF;
+        IF(sVal @<> '' & sVal @<> 'null');
+            IF(DIMIX(cMeasureDim, sColName) = 0);
+                LogOutput('ERROR', cProcessName | ' | Unknown measure: ' | sColName);
+                ItemReject('unknown measure: ' | sColName);
+            ENDIF;
+            nVal = StringToNumber(sVal);
+            IF(CellIsUpdateable(cCube, sSKU, sTimePeriod, sChannel, sColName) = 1);
+              CellPutN(nVal, cCube, sSKU, sTimePeriod, sChannel, sColName);
+              nCellsWritten = nCellsWritten + 1;
+            ENDIF;
+        ENDIF;
+    ENDIF;
+    nColIdx = nColIdx + 1;
+END;
+
+IF(bLogDebug = 1);
+  LogOutput('DEBUG', cProcessName | ' | Wrote: ' | sSKU | '|' | sChannel);
+ENDIF;
+#EndRegion
+#endregion
+#region Epilog
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+#Region : Summary for page 1
+IF(bLogInfo = 1);
+  LogOutput('INFO', cProcessName | ' | Page 1 records=' | TRIM(STR(nRecordCount, 10, 0)));
+ENDIF;
+#EndRegion
+
+#Region : Process remaining pages
+nPageNum = 2;
+bMorePages = 1;
+
+IF(pUseRunProcess = 1);
+  IF(bLogInfo = 1);
+    LogOutput('INFO', cProcessName | ' | Using RunProcess (parallel) for remaining pages');
+  ENDIF;
+  WHILE(bMorePages = 1);
+    sPageFile = cBaseName | '_page_' | TRIM(STR(nPageNum, 5, 0)) | '.json';
+    IF(FileExists(sPageFile) = 1);
+      IF(bLogInfo = 1);
+        LogOutput('INFO', cProcessName | ' | Dispatching page ' | TRIM(STR(nPageNum, 5, 0)));
+      ENDIF;
+      RunProcess('Merch.Load.Actuals.BQ.Page', 'pPageFile', sPageFile, 'pTimePeriod', sTimePeriod, 'pColNames', sColNames);
+      nPageNum = nPageNum + 1;
+    ELSE;
+      bMorePages = 0;
+    ENDIF;
+  END;
+  WaitForInternalJobs();
+  IF(bLogInfo = 1);
+    LogOutput('INFO', cProcessName | ' | All RunProcess jobs complete. Total pages=' | TRIM(STR(nPageNum - 1, 5, 0)));
+  ENDIF;
+ELSE;
+  IF(bLogInfo = 1);
+    LogOutput('INFO', cProcessName | ' | Using ExecuteProcess (sequential) for remaining pages');
+  ENDIF;
+  WHILE(bMorePages = 1);
+    sPageFile = cBaseName | '_page_' | TRIM(STR(nPageNum, 5, 0)) | '.json';
+    IF(FileExists(sPageFile) = 1);
+      IF(bLogInfo = 1);
+        LogOutput('INFO', cProcessName | ' | Processing page ' | TRIM(STR(nPageNum, 5, 0)) | ': ' | sPageFile);
+      ENDIF;
+      nRC = ExecuteProcess('Merch.Load.Actuals.BQ.Page', 'pPageFile', sPageFile, 'pTimePeriod', sTimePeriod, 'pColNames', sColNames);
+      IF(nRC <> 0);
+        LogOutput('ERROR', cProcessName | ' | Page ' | TRIM(STR(nPageNum, 5, 0)) | ' failed, RC=' | TRIM(STR(nRC, 10, 0)));
+      ENDIF;
+      nPageNum = nPageNum + 1;
+    ELSE;
+      bMorePages = 0;
+    ENDIF;
+  END;
+ENDIF;
+#EndRegion
+
+#Region : Delete page files
+IF(pKeepFiles = 0);
+    nPageClean = 1;
+    WHILE(nPageClean < nPageNum);
+        sCleanFile = cBaseName | '_page_' | TRIM(STR(nPageClean, 5, 0)) | '.json';
+        IF(FileExists(sCleanFile) = 1);
+            ASCIIDelete(sCleanFile);
+        ENDIF;
+        nPageClean = nPageClean + 1;
+    END;
+ENDIF;
+#EndRegion
+
+#Region : Full Actuals Chain
+IF(bLogInfo = 1);
+  LogOutput('INFO', cProcessName | ' | Running full actuals chain for period ' | sTimePeriod | ' | Total pages=' | TRIM(STR(nPageNum - 1, 5, 0)));
+ENDIF;
+
+nRC = ExecuteProcess('Merch.Load.ActualsToForecast', 'pTimePeriod', sTimePeriod);
+IF(nRC <> 0);
+  LogOutput('ERROR', cProcessName | ' | ActualsToForecast failed, RC=' | TRIM(STR(nRC, 10, 0)));
+ENDIF;
+
+nRC = ExecuteProcess('Merch.Load.ActualsToPlanReporting', 'pTimePeriod', sTimePeriod);
+IF(nRC <> 0);
+  LogOutput('ERROR', cProcessName | ' | ActualsToPlanReporting failed, RC=' | TRIM(STR(nRC, 10, 0)));
+ENDIF;
+
+nRC = ExecuteProcess('PreOwned.Load.ActualsFromMerch', 'pTimePeriod', sTimePeriod, 'pVersion', 'Actual');
+IF(nRC <> 0);
+  LogOutput('ERROR', cProcessName | ' | PreOwned.Load.ActualsFromMerch failed, RC=' | TRIM(STR(nRC, 10, 0)));
+ENDIF;
+
+nRC = ExecuteProcess('PreOwned.Load.InventoryActualsFromMerch', 'pTimePeriod', sTimePeriod, 'pVersion', 'Actual');
+IF(nRC <> 0);
+  LogOutput('ERROR', cProcessName | ' | PreOwned.Load.InventoryActualsFromMerch failed, RC=' | TRIM(STR(nRC, 10, 0)));
+ENDIF;
+
+nVerIdx = 1;
+WHILE(nVerIdx <= DIMSIZ('Merch Version'));
+  sVer = DIMNM('Merch Version', nVerIdx);
+  IF(DTYPE('Merch Version', sVer) @= 'N' & ATTRS('Merch Version', sVer, 'Version_Type') @= 'Calculated');
+    IF(bLogInfo = 1);
+      LogOutput('INFO', cProcessName | ' | Propagating actuals to Calculated version: ' | sVer);
+    ENDIF;
+    nRC = ExecuteProcess('Merch.Load.ActualsToCalc', 'pCubeName', 'Merch Forecast', 'pTargetVersion', sVer, 'pTimePeriod', sTimePeriod);
+    IF(nRC <> 0); LogOutput('ERROR', cProcessName | ' | ActualsToCalc Merch Forecast failed for ' | sVer); ENDIF;
+    nRC = ExecuteProcess('Merch.Load.ActualsToCalc', 'pCubeName', 'Merch PreOwned Forecast', 'pTargetVersion', sVer, 'pTimePeriod', sTimePeriod);
+    IF(nRC <> 0); LogOutput('ERROR', cProcessName | ' | ActualsToCalc PreOwned Forecast failed for ' | sVer); ENDIF;
+    nRC = ExecuteProcess('Merch.Load.ActualsToCalc', 'pCubeName', 'Merch PreOwned Inventory', 'pTargetVersion', sVer, 'pTimePeriod', sTimePeriod);
+    IF(nRC <> 0); LogOutput('ERROR', cProcessName | ' | ActualsToCalc PreOwned Inventory failed for ' | sVer); ENDIF;
+    nRC = ExecuteProcess('Merch.Load.ActualsToCalc.5Dim', 'pCubeName', 'Merch PreOwned Warranty', 'pTargetVersion', sVer);
+    IF(nRC <> 0); LogOutput('ERROR', cProcessName | ' | ActualsToCalc PreOwned Warranty failed for ' | sVer); ENDIF;
+  ENDIF;
+  nVerIdx = nVerIdx + 1;
+END;
+#EndRegion
+
+IF(bLogInfo = 1);
+  LogOutput('INFO', 'END: ' | cProcessName | ' | Full actuals chain complete.');
+ENDIF;
+#endregion

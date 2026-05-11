@@ -1,0 +1,20 @@
+{
+	"@type":"Hierarchy",
+	"Name":"}HierarchyAttributes_Merch Channel",
+	"Elements":
+	[
+		{
+			"Name":"ai_description_en",
+			"Type":"String"
+		},
+		{
+			"Name":"ai_description_embeddings_en",
+			"Type":"String"
+		},
+		{
+			"Name":"ai_analysis_info",
+			"Type":"String"
+		}
+	],
+	"Subsets@Code.links":[]
+}

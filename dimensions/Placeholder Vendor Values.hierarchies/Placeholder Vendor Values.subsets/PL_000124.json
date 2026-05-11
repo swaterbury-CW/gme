@@ -1,0 +1,10 @@
+{
+	"@type":"Subset",
+	"Name":"PL_000124",
+	"Elements":
+	[
+		{
+			"@id":"Dimensions('Placeholder Vendor Values')/Hierarchies('Placeholder Vendor Values')/Elements('THE UNITED STATES PLAYING CARD CO-L')"
+		}
+	]
+}

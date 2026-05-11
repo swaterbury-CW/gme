@@ -1,0 +1,67 @@
+SKIPCHECK;
+#Region : Rule Header
+#############################
+##~~ Start Rule File ~~##
+#############################
+# DEVELOPER : Steve Waterbury
+# CREATED ON : 2026-04-08
+# LAST UPDATE: 2026-04-21
+# CUBE       : Merch PreOwned Settings
+# COMMENTS:
+# Override/Applied cascade for PreOwned settings.
+# N: rules cascade leaf > SGM_Category_Group > All PreOwned.
+# C: rules cascade own Override > All PreOwned Override.
+# 2026-04-21: Added Applied Skip Start/End Date cascade for skip-date-range feature.
+#
+#### CHANGE HISTORY:
+### 2026-04-08  Steve Waterbury  Initial creation
+### 2026-04-13  Steve Waterbury  Added C: rules for Applied measures
+### 2026-04-21  Steve Waterbury  Added Applied Skip Start/End Date cascade
+#
+#EndRegion
+
+#Region : N-level Applied Rules
+['Applied Lookback Weeks'] = N: IF(DB('Merch PreOwned Settings',!Merch Version,!Merch PreOwned Category,'Override Lookback Weeks')@<>'', NUMBR(DB('Merch PreOwned Settings',!Merch Version,!Merch PreOwned Category,'Override Lookback Weeks')), IF(ATTRS('Merch PreOwned Category',!Merch PreOwned Category,'SGM_Category_Group')@='',0, IF(DB('Merch PreOwned Settings',!Merch Version,ATTRS('Merch PreOwned Category',!Merch PreOwned Category,'SGM_Category_Group'),'Override Lookback Weeks')@<>'', NUMBR(DB('Merch PreOwned Settings',!Merch Version,ATTRS('Merch PreOwned Category',!Merch PreOwned Category,'SGM_Category_Group'),'Override Lookback Weeks')), IF(DB('Merch PreOwned Settings',!Merch Version,'All PreOwned Categories','Override Lookback Weeks')@<>'', NUMBR(DB('Merch PreOwned Settings',!Merch Version,'All PreOwned Categories','Override Lookback Weeks')),0))));
+
+['Applied Mix Lookback Weeks'] = N: IF(DB('Merch PreOwned Settings',!Merch Version,!Merch PreOwned Category,'Override Mix Lookback Weeks')@<>'', NUMBR(DB('Merch PreOwned Settings',!Merch Version,!Merch PreOwned Category,'Override Mix Lookback Weeks')), IF(ATTRS('Merch PreOwned Category',!Merch PreOwned Category,'SGM_Category_Group')@='',0, IF(DB('Merch PreOwned Settings',!Merch Version,ATTRS('Merch PreOwned Category',!Merch PreOwned Category,'SGM_Category_Group'),'Override Mix Lookback Weeks')@<>'', NUMBR(DB('Merch PreOwned Settings',!Merch Version,ATTRS('Merch PreOwned Category',!Merch PreOwned Category,'SGM_Category_Group'),'Override Mix Lookback Weeks')), IF(DB('Merch PreOwned Settings',!Merch Version,'All PreOwned Categories','Override Mix Lookback Weeks')@<>'', NUMBR(DB('Merch PreOwned Settings',!Merch Version,'All PreOwned Categories','Override Mix Lookback Weeks')),0))));
+
+['Applied Year Weight 1'] = N: IF(DB('Merch PreOwned Settings',!Merch Version,!Merch PreOwned Category,'Override Year Weight 1')@<>'', NUMBR(DB('Merch PreOwned Settings',!Merch Version,!Merch PreOwned Category,'Override Year Weight 1')), IF(ATTRS('Merch PreOwned Category',!Merch PreOwned Category,'SGM_Category_Group')@='',0, IF(DB('Merch PreOwned Settings',!Merch Version,ATTRS('Merch PreOwned Category',!Merch PreOwned Category,'SGM_Category_Group'),'Override Year Weight 1')@<>'', NUMBR(DB('Merch PreOwned Settings',!Merch Version,ATTRS('Merch PreOwned Category',!Merch PreOwned Category,'SGM_Category_Group'),'Override Year Weight 1')), IF(DB('Merch PreOwned Settings',!Merch Version,'All PreOwned Categories','Override Year Weight 1')@<>'', NUMBR(DB('Merch PreOwned Settings',!Merch Version,'All PreOwned Categories','Override Year Weight 1')),0))));
+
+['Applied Year Weight 2'] = N: IF(DB('Merch PreOwned Settings',!Merch Version,!Merch PreOwned Category,'Override Year Weight 2')@<>'', NUMBR(DB('Merch PreOwned Settings',!Merch Version,!Merch PreOwned Category,'Override Year Weight 2')), IF(ATTRS('Merch PreOwned Category',!Merch PreOwned Category,'SGM_Category_Group')@='',0, IF(DB('Merch PreOwned Settings',!Merch Version,ATTRS('Merch PreOwned Category',!Merch PreOwned Category,'SGM_Category_Group'),'Override Year Weight 2')@<>'', NUMBR(DB('Merch PreOwned Settings',!Merch Version,ATTRS('Merch PreOwned Category',!Merch PreOwned Category,'SGM_Category_Group'),'Override Year Weight 2')), IF(DB('Merch PreOwned Settings',!Merch Version,'All PreOwned Categories','Override Year Weight 2')@<>'', NUMBR(DB('Merch PreOwned Settings',!Merch Version,'All PreOwned Categories','Override Year Weight 2')),0))));
+
+['Applied Year Weight 3'] = N: IF(DB('Merch PreOwned Settings',!Merch Version,!Merch PreOwned Category,'Override Year Weight 3')@<>'', NUMBR(DB('Merch PreOwned Settings',!Merch Version,!Merch PreOwned Category,'Override Year Weight 3')), IF(ATTRS('Merch PreOwned Category',!Merch PreOwned Category,'SGM_Category_Group')@='',0, IF(DB('Merch PreOwned Settings',!Merch Version,ATTRS('Merch PreOwned Category',!Merch PreOwned Category,'SGM_Category_Group'),'Override Year Weight 3')@<>'', NUMBR(DB('Merch PreOwned Settings',!Merch Version,ATTRS('Merch PreOwned Category',!Merch PreOwned Category,'SGM_Category_Group'),'Override Year Weight 3')), IF(DB('Merch PreOwned Settings',!Merch Version,'All PreOwned Categories','Override Year Weight 3')@<>'', NUMBR(DB('Merch PreOwned Settings',!Merch Version,'All PreOwned Categories','Override Year Weight 3')),0))));
+
+['Applied Exclude Year 1'] = N: IF(DB('Merch PreOwned Settings',!Merch Version,!Merch PreOwned Category,'Override Exclude Year 1')@<>'', NUMBR(DB('Merch PreOwned Settings',!Merch Version,!Merch PreOwned Category,'Override Exclude Year 1')), IF(ATTRS('Merch PreOwned Category',!Merch PreOwned Category,'SGM_Category_Group')@='',0, IF(DB('Merch PreOwned Settings',!Merch Version,ATTRS('Merch PreOwned Category',!Merch PreOwned Category,'SGM_Category_Group'),'Override Exclude Year 1')@<>'', NUMBR(DB('Merch PreOwned Settings',!Merch Version,ATTRS('Merch PreOwned Category',!Merch PreOwned Category,'SGM_Category_Group'),'Override Exclude Year 1')), IF(DB('Merch PreOwned Settings',!Merch Version,'All PreOwned Categories','Override Exclude Year 1')@<>'', NUMBR(DB('Merch PreOwned Settings',!Merch Version,'All PreOwned Categories','Override Exclude Year 1')),0))));
+
+['Applied Exclude Year 2'] = N: IF(DB('Merch PreOwned Settings',!Merch Version,!Merch PreOwned Category,'Override Exclude Year 2')@<>'', NUMBR(DB('Merch PreOwned Settings',!Merch Version,!Merch PreOwned Category,'Override Exclude Year 2')), IF(ATTRS('Merch PreOwned Category',!Merch PreOwned Category,'SGM_Category_Group')@='',0, IF(DB('Merch PreOwned Settings',!Merch Version,ATTRS('Merch PreOwned Category',!Merch PreOwned Category,'SGM_Category_Group'),'Override Exclude Year 2')@<>'', NUMBR(DB('Merch PreOwned Settings',!Merch Version,ATTRS('Merch PreOwned Category',!Merch PreOwned Category,'SGM_Category_Group'),'Override Exclude Year 2')), IF(DB('Merch PreOwned Settings',!Merch Version,'All PreOwned Categories','Override Exclude Year 2')@<>'', NUMBR(DB('Merch PreOwned Settings',!Merch Version,'All PreOwned Categories','Override Exclude Year 2')),0))));
+#EndRegion
+
+#Region : C-level Applied Rules
+['Applied Lookback Weeks'] = C: IF(DB('Merch PreOwned Settings',!Merch Version,!Merch PreOwned Category,'Override Lookback Weeks')@<>'', NUMBR(DB('Merch PreOwned Settings',!Merch Version,!Merch PreOwned Category,'Override Lookback Weeks')), IF(DB('Merch PreOwned Settings',!Merch Version,'All PreOwned Categories','Override Lookback Weeks')@<>'', NUMBR(DB('Merch PreOwned Settings',!Merch Version,'All PreOwned Categories','Override Lookback Weeks')),0));
+
+['Applied Mix Lookback Weeks'] = C: IF(DB('Merch PreOwned Settings',!Merch Version,!Merch PreOwned Category,'Override Mix Lookback Weeks')@<>'', NUMBR(DB('Merch PreOwned Settings',!Merch Version,!Merch PreOwned Category,'Override Mix Lookback Weeks')), IF(DB('Merch PreOwned Settings',!Merch Version,'All PreOwned Categories','Override Mix Lookback Weeks')@<>'', NUMBR(DB('Merch PreOwned Settings',!Merch Version,'All PreOwned Categories','Override Mix Lookback Weeks')),0));
+
+['Applied Year Weight 1'] = C: IF(DB('Merch PreOwned Settings',!Merch Version,!Merch PreOwned Category,'Override Year Weight 1')@<>'', NUMBR(DB('Merch PreOwned Settings',!Merch Version,!Merch PreOwned Category,'Override Year Weight 1')), IF(DB('Merch PreOwned Settings',!Merch Version,'All PreOwned Categories','Override Year Weight 1')@<>'', NUMBR(DB('Merch PreOwned Settings',!Merch Version,'All PreOwned Categories','Override Year Weight 1')),0));
+
+['Applied Year Weight 2'] = C: IF(DB('Merch PreOwned Settings',!Merch Version,!Merch PreOwned Category,'Override Year Weight 2')@<>'', NUMBR(DB('Merch PreOwned Settings',!Merch Version,!Merch PreOwned Category,'Override Year Weight 2')), IF(DB('Merch PreOwned Settings',!Merch Version,'All PreOwned Categories','Override Year Weight 2')@<>'', NUMBR(DB('Merch PreOwned Settings',!Merch Version,'All PreOwned Categories','Override Year Weight 2')),0));
+
+['Applied Year Weight 3'] = C: IF(DB('Merch PreOwned Settings',!Merch Version,!Merch PreOwned Category,'Override Year Weight 3')@<>'', NUMBR(DB('Merch PreOwned Settings',!Merch Version,!Merch PreOwned Category,'Override Year Weight 3')), IF(DB('Merch PreOwned Settings',!Merch Version,'All PreOwned Categories','Override Year Weight 3')@<>'', NUMBR(DB('Merch PreOwned Settings',!Merch Version,'All PreOwned Categories','Override Year Weight 3')),0));
+
+['Applied Exclude Year 1'] = C: IF(DB('Merch PreOwned Settings',!Merch Version,!Merch PreOwned Category,'Override Exclude Year 1')@<>'', NUMBR(DB('Merch PreOwned Settings',!Merch Version,!Merch PreOwned Category,'Override Exclude Year 1')), IF(DB('Merch PreOwned Settings',!Merch Version,'All PreOwned Categories','Override Exclude Year 1')@<>'', NUMBR(DB('Merch PreOwned Settings',!Merch Version,'All PreOwned Categories','Override Exclude Year 1')),0));
+
+['Applied Exclude Year 2'] = C: IF(DB('Merch PreOwned Settings',!Merch Version,!Merch PreOwned Category,'Override Exclude Year 2')@<>'', NUMBR(DB('Merch PreOwned Settings',!Merch Version,!Merch PreOwned Category,'Override Exclude Year 2')), IF(DB('Merch PreOwned Settings',!Merch Version,'All PreOwned Categories','Override Exclude Year 2')@<>'', NUMBR(DB('Merch PreOwned Settings',!Merch Version,'All PreOwned Categories','Override Exclude Year 2')),0));
+#EndRegion
+
+#Region : Skip Date Cascade
+['Applied Skip Start Date'] = S: IF(DB('Merch PreOwned Settings',!Merch Version,!Merch PreOwned Category,'Override Skip Start Date')@<>'', DB('Merch PreOwned Settings',!Merch Version,!Merch PreOwned Category,'Override Skip Start Date'), IF(ATTRS('Merch PreOwned Category',!Merch PreOwned Category,'SGM_Category_Group')@='','', IF(DB('Merch PreOwned Settings',!Merch Version,ATTRS('Merch PreOwned Category',!Merch PreOwned Category,'SGM_Category_Group'),'Override Skip Start Date')@<>'', DB('Merch PreOwned Settings',!Merch Version,ATTRS('Merch PreOwned Category',!Merch PreOwned Category,'SGM_Category_Group'),'Override Skip Start Date'), IF(DB('Merch PreOwned Settings',!Merch Version,'All PreOwned Categories','Override Skip Start Date')@<>'', DB('Merch PreOwned Settings',!Merch Version,'All PreOwned Categories','Override Skip Start Date'),''))));
+
+['Applied Skip End Date'] = S: IF(DB('Merch PreOwned Settings',!Merch Version,!Merch PreOwned Category,'Override Skip End Date')@<>'', DB('Merch PreOwned Settings',!Merch Version,!Merch PreOwned Category,'Override Skip End Date'), IF(ATTRS('Merch PreOwned Category',!Merch PreOwned Category,'SGM_Category_Group')@='','', IF(DB('Merch PreOwned Settings',!Merch Version,ATTRS('Merch PreOwned Category',!Merch PreOwned Category,'SGM_Category_Group'),'Override Skip End Date')@<>'', DB('Merch PreOwned Settings',!Merch Version,ATTRS('Merch PreOwned Category',!Merch PreOwned Category,'SGM_Category_Group'),'Override Skip End Date'), IF(DB('Merch PreOwned Settings',!Merch Version,'All PreOwned Categories','Override Skip End Date')@<>'', DB('Merch PreOwned Settings',!Merch Version,'All PreOwned Categories','Override Skip End Date'),''))));
+#EndRegion
+
+FEEDERS;
+
+#Region : Rule Footer
+#############################
+##~~ End Rule File ~~##
+#############################
+#EndRegion

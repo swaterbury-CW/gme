@@ -1,0 +1,81 @@
+{
+	"@type":"Process",
+	"Name":"PreOwned.Load.ActualsFromMerch.Hier",
+	"HasSecurityAccess":false,
+	"Code@Code.link":"PreOwned.Load.ActualsFromMerch.Hier.ti",
+	"DataSource":
+	{
+		"Type":"TM1CubeView",
+		"dataSourceNameForServer":"Merch Actuals",
+		"dataSourceNameForClient":"Merch Actuals",
+		"view":"TI_PreOwnedAct_bootstrap"
+	},
+	"Parameters":
+	[
+		{
+			"Name":"pTimePeriod",
+			"Prompt":"Time period",
+			"Value":"",
+			"Type":"String"
+		},
+		{
+			"Name":"pVersion",
+			"Prompt":"Version",
+			"Value":"Actual",
+			"Type":"String"
+		},
+		{
+			"Name":"pHierarchy",
+			"Prompt":"Hierarchy",
+			"Value":"SGM_Category",
+			"Type":"String"
+		}
+	],
+	"Variables":
+	[
+		{
+			"Name":"vSKU",
+			"Type":"String",
+			"Position":1,
+			"StartByte":0,
+			"EndByte":0
+		},
+		{
+			"Name":"vTimePeriod",
+			"Type":"String",
+			"Position":2,
+			"StartByte":0,
+			"EndByte":0
+		},
+		{
+			"Name":"vMeasure",
+			"Type":"String",
+			"Position":3,
+			"StartByte":0,
+			"EndByte":0
+		},
+		{
+			"Name":"vChannel",
+			"Type":"String",
+			"Position":4,
+			"StartByte":0,
+			"EndByte":0
+		},
+		{
+			"Name":"Value",
+			"Type":"Numeric",
+			"Position":5,
+			"StartByte":0,
+			"EndByte":0
+		}
+	],
+	"UID": "17767779360001",
+	"UIData": "CubeAction=1511\fDataAction=1503\fCubeLogChanges=0\f",
+	"VariablesUIData": [
+		"VarType=32\fColType=827\f",
+		"VarType=32\fColType=827\f",
+		"VarType=32\fColType=827\f",
+		"VarType=32\fColType=827\f",
+		"VarType=33\fColType=827\f"
+	]
+}

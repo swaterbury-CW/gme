@@ -1,0 +1,10 @@
+{
+	"@type":"Subset",
+	"Name":"PLI_L_Pre-Owned Monitors",
+	"Elements":
+	[
+		{
+			"@id":"Dimensions('Placeholder L4 Values')/Hierarchies('Placeholder L4 Values')/Elements('Monitors')"
+		}
+	]
+}

@@ -1,0 +1,28 @@
+{
+	"@type":"Subset",
+	"Name":"PLI_L_C21",
+	"Elements":
+	[
+		{
+			"@id":"Dimensions('Placeholder L4 Values')/Hierarchies('Placeholder L4 Values')/Elements('Wearable Technology')"
+		},
+		{
+			"@id":"Dimensions('Placeholder L4 Values')/Hierarchies('Placeholder L4 Values')/Elements('Audio')"
+		},
+		{
+			"@id":"Dimensions('Placeholder L4 Values')/Hierarchies('Placeholder L4 Values')/Elements('TV & Home Theater')"
+		},
+		{
+			"@id":"Dimensions('Placeholder L4 Values')/Hierarchies('Placeholder L4 Values')/Elements('Camera')"
+		},
+		{
+			"@id":"Dimensions('Placeholder L4 Values')/Hierarchies('Placeholder L4 Values')/Elements('Tablet')"
+		},
+		{
+			"@id":"Dimensions('Placeholder L4 Values')/Hierarchies('Placeholder L4 Values')/Elements('SmartHome')"
+		},
+		{
+			"@id":"Dimensions('Placeholder L4 Values')/Hierarchies('Placeholder L4 Values')/Elements('Home, Fitness, & Outdoors')"
+		}
+	]
+}

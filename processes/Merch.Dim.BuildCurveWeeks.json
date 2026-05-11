@@ -1,0 +1,15 @@
+{
+	"@type":"Process",
+	"Name":"Merch.Dim.BuildCurveWeeks",
+	"HasSecurityAccess":false,
+	"Code@Code.link":"Merch.Dim.BuildCurveWeeks.ti",
+	"DataSource":
+	{
+		"Type":"None"
+	},
+	"Parameters":[],
+	"Variables":[],
+	"UID": "17742126540002",
+	"UIData": "CubeAction=1511\fDataAction=1503\fCubeLogChanges=0\f",
+	"VariablesUIData": []
+}

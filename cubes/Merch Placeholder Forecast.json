@@ -1,0 +1,27 @@
+{
+	"@type":"Cube",
+	"Name":"Merch Placeholder Forecast",
+	"Dimensions":
+	[
+		{
+			"@id":"Dimensions('Merch Version')"
+		},
+		{
+			"@id":"Dimensions('Merch Time Period')"
+		},
+		{
+			"@id":"Dimensions('Merch Category')"
+		},
+		{
+			"@id":"Dimensions('Merch Placeholder SKU')"
+		},
+		{
+			"@id":"Dimensions('}Groups')"
+		},
+		{
+			"@id":"Dimensions('Merch Forecast Measure')"
+		}
+	],
+	"Rules@Code.link":"Merch Placeholder Forecast.rules",
+	"Views@Code.links":[]
+}

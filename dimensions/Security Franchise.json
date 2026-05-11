@@ -1,0 +1,12 @@
+{
+	"@type":"Dimension",
+	"Name":"Security Franchise",
+	"Hierarchies@Code.links":
+	[
+		"Security Franchise.hierarchies/Security Franchise.json"
+	],
+	"DefaultHierarchy":
+	{
+		"@id":"Dimensions('Security Franchise')/Hierarchies('Security Franchise')"
+	}
+}

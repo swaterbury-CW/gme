@@ -1,0 +1,24 @@
+{
+	"@type":"Hierarchy",
+	"Name":"Merch PreOwned Warranty Measure",
+	"Elements":
+	[
+		{
+			"Name":"Eligible Units",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Attach Rate",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Warranty AUR",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Warranty Dollars",
+			"Type":"Consolidated"
+		}
+	],
+	"Subsets@Code.links":[]
+}

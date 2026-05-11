@@ -1,0 +1,12 @@
+{
+	"@type":"Dimension",
+	"Name":"Security Measure",
+	"Hierarchies@Code.links":
+	[
+		"Security Measure.hierarchies/Security Measure.json"
+	],
+	"DefaultHierarchy":
+	{
+		"@id":"Dimensions('Security Measure')/Hierarchies('Security Measure')"
+	}
+}

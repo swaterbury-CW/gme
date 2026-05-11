@@ -1,0 +1,12 @@
+{
+	"@type":"Dimension",
+	"Name":"Merch Lifecycle",
+	"Hierarchies@Code.links":
+	[
+		"Merch Lifecycle.hierarchies/Merch Lifecycle.json"
+	],
+	"DefaultHierarchy":
+	{
+		"@id":"Dimensions('Merch Lifecycle')/Hierarchies('Merch Lifecycle')"
+	}
+}

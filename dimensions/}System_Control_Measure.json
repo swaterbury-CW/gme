@@ -1,0 +1,12 @@
+{
+	"@type":"Dimension",
+	"Name":"}System_Control_Measure",
+	"Hierarchies@Code.links":
+	[
+		"}System_Control_Measure.hierarchies/}System_Control_Measure.json"
+	],
+	"DefaultHierarchy":
+	{
+		"@id":"Dimensions('}System_Control_Measure')/Hierarchies('}System_Control_Measure')"
+	}
+}

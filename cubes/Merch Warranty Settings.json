@@ -1,0 +1,21 @@
+{
+	"@type":"Cube",
+	"Name":"Merch Warranty Settings",
+	"Dimensions":
+	[
+		{
+			"@id":"Dimensions('Merch Version')"
+		},
+		{
+			"@id":"Dimensions('Merch Time Period')"
+		},
+		{
+			"@id":"Dimensions('Merch SKU')"
+		},
+		{
+			"@id":"Dimensions('Warranty Setting Measure')"
+		}
+	],
+	"Rules@Code.link":"Merch Warranty Settings.rules",
+	"Views@Code.links":[]
+}

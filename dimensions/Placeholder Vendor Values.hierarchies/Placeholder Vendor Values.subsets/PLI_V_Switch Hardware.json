@@ -1,0 +1,13 @@
+{
+	"@type":"Subset",
+	"Name":"PLI_V_Switch Hardware",
+	"Elements":
+	[
+		{
+			"@id":"Dimensions('Placeholder Vendor Values')/Hierarchies('Placeholder Vendor Values')/Elements('Nintendo of America - v')"
+		},
+		{
+			"@id":"Dimensions('Placeholder Vendor Values')/Hierarchies('Placeholder Vendor Values')/Elements('Nintendo of America')"
+		}
+	]
+}

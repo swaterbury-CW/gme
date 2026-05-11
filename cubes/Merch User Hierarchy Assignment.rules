@@ -1,0 +1,199 @@
+SKIPCHECK;
+#Region : Rule Header
+#############################
+##~~ Start Rule File ~~##
+#############################
+# DEVELOPER : Steve Waterbury
+# CREATED ON : 2026-04-02
+# LAST UPDATE: 2026-04-02
+# CUBE       : Merch User Hierarchy Assignment
+# COMMENTS:
+# User-specific custom SKU hierarchy assignments. Each Applied measure
+# resolves by walking up the Merch SKU hierarchy (5 levels via ELPAR).
+# First non-empty Override value wins. Pattern matches Merch Curve Assignment.
+#
+#### CHANGE HISTORY:
+### MODIFICATION DATE  CHANGED BY         COMMENT
+### 2026-04-02         Steve Waterbury    Creation
+### 2026-04-02         Steve Waterbury    Fixed ELPAR syntax to 3-arg form
+### 2026-05-04         Rose Morgan         Added role based hierarchy rules
+#
+#EndRegion
+
+['}Clients':'}Clients':'rmorgan@cubewise.com','Merch User Hierarchy Measure':'Merch User Hierarchy Measure':'Override Hierarchy 1'] = S: IF(DB('}ElementAttributes_Merch SKU', !Merch SKU, 'SGM_Category_Group' ) @='VG Software',
+  IF(DB('}ElementAttributes_Merch SKU', !Merch SKU, 'Vendor_Name') @='Nintendo - Digital' & DB('}ElementAttributes_Merch SKU', !Merch SKU, 'Publisher_Name') @='Nintendo - Digital', '1P SW Planner',
+    IF(DB('}ElementAttributes_Merch SKU', !Merch SKU, 'Vendor_Name') @='Nintendo of America - v', '1P SW Planner',
+      IF(DB('}ElementAttributes_Merch SKU', !Merch SKU, 'Vendor_Name') @='Solutions 2 Go VAL' & 
+        (DB('}ElementAttributes_Merch SKU', !Merch SKU, 'Publisher_Name') @='Sony Computer Ent. America - v' % DB('}ElementAttributes_Merch SKU', !Merch SKU, 'Publisher_Name') @='Microsoft XBOX - V'
+        % DB('}ElementAttributes_Merch SKU', !Merch SKU, 'Publisher_Name') @='Solutions 2 Go'), '1P SW Planner',
+        IF(DB('}ElementAttributes_Merch SKU', !Merch SKU, 'Vendor_Name') @='Microsoft XBOX - V' &DB('}ElementAttributes_Merch SKU', !Merch SKU, 'Publisher_Name') @='Microsoft XBOX - V', '1P SW Planner',
+        '3P SW Planner')))),
+        CONTINUE);
+
+['}Clients':'}Clients':'rmorgan@cubewise.com','Merch User Hierarchy Measure':'Merch User Hierarchy Measure':'Override Hierarchy 1'] = S: IF(DB('}ElementAttributes_Merch SKU', !Merch SKU, 'SGM_Category_Group' ) @='VG Hardware', 
+        'Hardware Planner',
+        CONTINUE);
+
+['}Clients':'}Clients':'rmorgan@cubewise.com','Merch User Hierarchy Measure':'Merch User Hierarchy Measure':'Override Hierarchy 1'] = S: IF(DB('}ElementAttributes_Merch SKU', !Merch SKU, 'SGM_Category_Group' ) @='VG Accessories',
+  IF(DB('}ElementAttributes_Merch SKU', !Merch SKU, 'SGM_Category') @= 'Controller', 'Controllers planner',
+    IF(DB('}ElementAttributes_Merch SKU', !Merch SKU, 'Vendor_Name') @='Nintendo of America - Acc' % DB('}ElementAttributes_Merch SKU', !Merch SKU, 'Vendor_Name') @='Nintendo of America - v'
+      % DB('}ElementAttributes_Merch SKU', !Merch SKU, 'Vendor_Name') @='Sony Computer Entertain - Acc' % DB('}ElementAttributes_Merch SKU', !Merch SKU, 'Vendor_Name') @='Microsoft XBox - Acc'
+      % DB('}ElementAttributes_Merch SKU', !Merch SKU, 'Vendor_Name') @='Microsoft XBOX - V' % DB('}ElementAttributes_Merch SKU', !Merch SKU, 'Vendor_Name') @='TD SYNNEX CORPORATION', '1P VGA Planner',
+     '3P VGA Planner')),
+  CONTINUE);
+
+['}Clients':'}Clients':'rmorgan@cubewise.com','Merch User Hierarchy Measure':'Merch User Hierarchy Measure':'Override Hierarchy 1'] = S: IF(DB('}ElementAttributes_Merch SKU', !Merch SKU, 'SGM_Category_Group' ) @='Toys & Collectibles', 
+    IF(DB('}ElementAttributes_Merch SKU', !Merch SKU, 'SGM_Category') @= 'Toys', 'Toys planner',
+      IF(DB('}ElementAttributes_Merch SKU', !Merch SKU, 'SGM_Category') @= 'Collectibles', 'Collectibles planner',
+        IF(DB('}ElementAttributes_Merch SKU', !Merch SKU, 'SGM_Category') @= 'Apparel', 'Apparel planner',
+          IF(DB('}ElementAttributes_Merch SKU', !Merch SKU, 'SGM_Category') @= 'Homewares', 'Homewares planner',
+            IF(DB('}ElementAttributes_Merch SKU', !Merch SKU, 'SGM_Category') @= 'Board Games', 'Board games planner',
+        CONTINUE))))),
+  CONTINUE);
+
+['}Clients':'}Clients':'rmorgan@cubewise.com','Merch User Hierarchy Measure':'Merch User Hierarchy Measure':'Override Hierarchy 1'] = S: IF(DB('}ElementAttributes_Merch SKU', !Merch SKU, 'SGM_Category_Group' ) @='Trading Cards', 
+        'TCG Planner',
+        CONTINUE);
+
+['}Clients':'}Clients':'rmorgan@cubewise.com','Merch User Hierarchy Measure':'Merch User Hierarchy Measure':'Override Hierarchy 1'] = S: IF(DB('}ElementAttributes_Merch SKU', !Merch SKU, 'SGM_Category_Group' ) @='Digital', 
+        'Digital Planner',
+        CONTINUE);
+
+['}Clients':'}Clients':'rmorgan@cubewise.com','Merch User Hierarchy Measure':'Merch User Hierarchy Measure':'Override Hierarchy 1'] = S: IF(DB('}ElementAttributes_Merch SKU', !Merch SKU, 'SGM_Category_Group' ) @='Other', 
+        'Other Planner',
+        CONTINUE);
+
+['}Clients':'}Clients':'rmorgan@cubewise.com','Merch User Hierarchy Measure':'Merch User Hierarchy Measure':'Override Hierarchy 1'] = S: IF(DB('}ElementAttributes_Merch SKU', !Merch SKU, 'SGM_Category_Group' ) @='Grading', 
+        'Grading Planner',
+        CONTINUE);
+
+['}Clients':'}Clients':'rmorgan@cubewise.com','Merch User Hierarchy Measure':'Merch User Hierarchy Measure':'Override Hierarchy 1'] = S: IF(DB('}ElementAttributes_Merch SKU', !Merch SKU, 'SGM_Category_Group' ) @='Pre-Owned Toys & Collectibles', 
+        'Pre-Owned T&C Planner',
+        CONTINUE);
+
+['}Clients':'}Clients':'rmorgan@cubewise.com','Merch User Hierarchy Measure':'Merch User Hierarchy Measure':'Override Hierarchy 1'] = S: IF(DB('}ElementAttributes_Merch SKU', !Merch SKU, 'SGM_Category_Group' ) @='Pre-Owned Trading Cards', 
+        'Pre-Owned TCG Planner',
+        CONTINUE);
+
+['}Clients':'}Clients':'rmorgan@cubewise.com','Merch User Hierarchy Measure':'Merch User Hierarchy Measure':'Override Hierarchy 1'] = S: IF(DB('}ElementAttributes_Merch SKU', !Merch SKU, 'SGM_Category_Group' ) @='Pre-Owned Other', 
+        'Pre-Owned Other Planner',
+        CONTINUE);
+
+['}Clients':'}Clients':'rmorgan@cubewise.com','Merch User Hierarchy Measure':'Merch User Hierarchy Measure':'Override Hierarchy 1'] = S: IF(DB('}ElementAttributes_Merch SKU', !Merch SKU, 'SGM_Category_Group' ) @='Pre-Owned Digital', 
+        'Pre-Owned Digital Planner',
+        CONTINUE);
+
+['}Clients':'}Clients':'rmorgan@cubewise.com','Merch User Hierarchy Measure':'Merch User Hierarchy Measure':'Override Hierarchy 1'] = S: IF(DB('}ElementAttributes_Merch SKU', !Merch SKU, 'SGM_Category_Group' ) @='Loyalty', 
+        'Loyalty Planner',
+        CONTINUE);
+
+['}Clients':'}Clients':'rmorgan@cubewise.com','Merch User Hierarchy Measure':'Merch User Hierarchy Measure':'Override Hierarchy 1'] = S: IF(DB('}ElementAttributes_Merch SKU', !Merch SKU, 'SGM_Category_Group' ) @='Warranty', 
+        'Warranty Planner',
+        CONTINUE);
+
+['}Clients':'}Clients':'rmorgan@cubewise.com','Merch User Hierarchy Measure':'Merch User Hierarchy Measure':'Override Hierarchy 1'] = S: IF(DB('}ElementAttributes_Merch SKU', !Merch SKU, 'SGM_Category_Group' ) @='Pre-Owned Hardware'
+        % DB('}ElementAttributes_Merch SKU', !Merch SKU, 'SGM_Category_Group' ) @='Pre-Owned Software' % DB('}ElementAttributes_Merch SKU', !Merch SKU, 'SGM_Category_Group' ) @='Pre-Owned Accs'
+        % DB('}ElementAttributes_Merch SKU', !Merch SKU, 'SGM_Category_Group' ) @='Pre-Owned Tech',
+        'Pre-Owned Planner',
+        CONTINUE);
+
+#Region : Applied Hierarchy 1 - Hierarchical Resolution
+['Applied Hierarchy 1'] = S:
+  IF(DB('Merch User Hierarchy Assignment', !Merch SKU, !}Clients, 'Override Hierarchy 1') @<> '',
+    DB('Merch User Hierarchy Assignment', !Merch SKU, !}Clients, 'Override Hierarchy 1'),
+  IF(ELPAR('Merch SKU', !Merch SKU, 1) @= '', '',
+  IF(DB('Merch User Hierarchy Assignment', ELPAR('Merch SKU', !Merch SKU, 1), !}Clients, 'Override Hierarchy 1') @<> '',
+    DB('Merch User Hierarchy Assignment', ELPAR('Merch SKU', !Merch SKU, 1), !}Clients, 'Override Hierarchy 1'),
+  IF(ELPAR('Merch SKU', ELPAR('Merch SKU', !Merch SKU, 1), 1) @= '', '',
+  IF(DB('Merch User Hierarchy Assignment', ELPAR('Merch SKU', ELPAR('Merch SKU', !Merch SKU, 1), 1), !}Clients, 'Override Hierarchy 1') @<> '',
+    DB('Merch User Hierarchy Assignment', ELPAR('Merch SKU', ELPAR('Merch SKU', !Merch SKU, 1), 1), !}Clients, 'Override Hierarchy 1'),
+  IF(ELPAR('Merch SKU', ELPAR('Merch SKU', ELPAR('Merch SKU', !Merch SKU, 1), 1), 1) @= '', '',
+  IF(DB('Merch User Hierarchy Assignment', ELPAR('Merch SKU', ELPAR('Merch SKU', ELPAR('Merch SKU', !Merch SKU, 1), 1), 1), !}Clients, 'Override Hierarchy 1') @<> '',
+    DB('Merch User Hierarchy Assignment', ELPAR('Merch SKU', ELPAR('Merch SKU', ELPAR('Merch SKU', !Merch SKU, 1), 1), 1), !}Clients, 'Override Hierarchy 1'),
+  IF(ELPAR('Merch SKU', ELPAR('Merch SKU', ELPAR('Merch SKU', ELPAR('Merch SKU', !Merch SKU, 1), 1), 1), 1) @= '', '',
+  IF(DB('Merch User Hierarchy Assignment', ELPAR('Merch SKU', ELPAR('Merch SKU', ELPAR('Merch SKU', ELPAR('Merch SKU', !Merch SKU, 1), 1), 1), 1), !}Clients, 'Override Hierarchy 1') @<> '',
+    DB('Merch User Hierarchy Assignment', ELPAR('Merch SKU', ELPAR('Merch SKU', ELPAR('Merch SKU', ELPAR('Merch SKU', !Merch SKU, 1), 1), 1), 1), !}Clients, 'Override Hierarchy 1'),
+  '' ))))))))) ;
+#EndRegion
+
+#Region : Applied Hierarchy 2 - Hierarchical Resolution
+['Applied Hierarchy 2'] = S:
+  IF(DB('Merch User Hierarchy Assignment', !Merch SKU, !}Clients, 'Override Hierarchy 2') @<> '',
+    DB('Merch User Hierarchy Assignment', !Merch SKU, !}Clients, 'Override Hierarchy 2'),
+  IF(ELPAR('Merch SKU', !Merch SKU, 1) @= '', '',
+  IF(DB('Merch User Hierarchy Assignment', ELPAR('Merch SKU', !Merch SKU, 1), !}Clients, 'Override Hierarchy 2') @<> '',
+    DB('Merch User Hierarchy Assignment', ELPAR('Merch SKU', !Merch SKU, 1), !}Clients, 'Override Hierarchy 2'),
+  IF(ELPAR('Merch SKU', ELPAR('Merch SKU', !Merch SKU, 1), 1) @= '', '',
+  IF(DB('Merch User Hierarchy Assignment', ELPAR('Merch SKU', ELPAR('Merch SKU', !Merch SKU, 1), 1), !}Clients, 'Override Hierarchy 2') @<> '',
+    DB('Merch User Hierarchy Assignment', ELPAR('Merch SKU', ELPAR('Merch SKU', !Merch SKU, 1), 1), !}Clients, 'Override Hierarchy 2'),
+  IF(ELPAR('Merch SKU', ELPAR('Merch SKU', ELPAR('Merch SKU', !Merch SKU, 1), 1), 1) @= '', '',
+  IF(DB('Merch User Hierarchy Assignment', ELPAR('Merch SKU', ELPAR('Merch SKU', ELPAR('Merch SKU', !Merch SKU, 1), 1), 1), !}Clients, 'Override Hierarchy 2') @<> '',
+    DB('Merch User Hierarchy Assignment', ELPAR('Merch SKU', ELPAR('Merch SKU', ELPAR('Merch SKU', !Merch SKU, 1), 1), 1), !}Clients, 'Override Hierarchy 2'),
+  IF(ELPAR('Merch SKU', ELPAR('Merch SKU', ELPAR('Merch SKU', ELPAR('Merch SKU', !Merch SKU, 1), 1), 1), 1) @= '', '',
+  IF(DB('Merch User Hierarchy Assignment', ELPAR('Merch SKU', ELPAR('Merch SKU', ELPAR('Merch SKU', ELPAR('Merch SKU', !Merch SKU, 1), 1), 1), 1), !}Clients, 'Override Hierarchy 2') @<> '',
+    DB('Merch User Hierarchy Assignment', ELPAR('Merch SKU', ELPAR('Merch SKU', ELPAR('Merch SKU', ELPAR('Merch SKU', !Merch SKU, 1), 1), 1), 1), !}Clients, 'Override Hierarchy 2'),
+  '' ))))))))) ;
+#EndRegion
+
+#Region : Applied Hierarchy 3 - Hierarchical Resolution
+['Applied Hierarchy 3'] = S:
+  IF(DB('Merch User Hierarchy Assignment', !Merch SKU, !}Clients, 'Override Hierarchy 3') @<> '',
+    DB('Merch User Hierarchy Assignment', !Merch SKU, !}Clients, 'Override Hierarchy 3'),
+  IF(ELPAR('Merch SKU', !Merch SKU, 1) @= '', '',
+  IF(DB('Merch User Hierarchy Assignment', ELPAR('Merch SKU', !Merch SKU, 1), !}Clients, 'Override Hierarchy 3') @<> '',
+    DB('Merch User Hierarchy Assignment', ELPAR('Merch SKU', !Merch SKU, 1), !}Clients, 'Override Hierarchy 3'),
+  IF(ELPAR('Merch SKU', ELPAR('Merch SKU', !Merch SKU, 1), 1) @= '', '',
+  IF(DB('Merch User Hierarchy Assignment', ELPAR('Merch SKU', ELPAR('Merch SKU', !Merch SKU, 1), 1), !}Clients, 'Override Hierarchy 3') @<> '',
+    DB('Merch User Hierarchy Assignment', ELPAR('Merch SKU', ELPAR('Merch SKU', !Merch SKU, 1), 1), !}Clients, 'Override Hierarchy 3'),
+  IF(ELPAR('Merch SKU', ELPAR('Merch SKU', ELPAR('Merch SKU', !Merch SKU, 1), 1), 1) @= '', '',
+  IF(DB('Merch User Hierarchy Assignment', ELPAR('Merch SKU', ELPAR('Merch SKU', ELPAR('Merch SKU', !Merch SKU, 1), 1), 1), !}Clients, 'Override Hierarchy 3') @<> '',
+    DB('Merch User Hierarchy Assignment', ELPAR('Merch SKU', ELPAR('Merch SKU', ELPAR('Merch SKU', !Merch SKU, 1), 1), 1), !}Clients, 'Override Hierarchy 3'),
+  IF(ELPAR('Merch SKU', ELPAR('Merch SKU', ELPAR('Merch SKU', ELPAR('Merch SKU', !Merch SKU, 1), 1), 1), 1) @= '', '',
+  IF(DB('Merch User Hierarchy Assignment', ELPAR('Merch SKU', ELPAR('Merch SKU', ELPAR('Merch SKU', ELPAR('Merch SKU', !Merch SKU, 1), 1), 1), 1), !}Clients, 'Override Hierarchy 3') @<> '',
+    DB('Merch User Hierarchy Assignment', ELPAR('Merch SKU', ELPAR('Merch SKU', ELPAR('Merch SKU', ELPAR('Merch SKU', !Merch SKU, 1), 1), 1), 1), !}Clients, 'Override Hierarchy 3'),
+  '' ))))))))) ;
+#EndRegion
+
+#Region : Applied Hierarchy 4 - Hierarchical Resolution
+['Applied Hierarchy 4'] = S:
+  IF(DB('Merch User Hierarchy Assignment', !Merch SKU, !}Clients, 'Override Hierarchy 4') @<> '',
+    DB('Merch User Hierarchy Assignment', !Merch SKU, !}Clients, 'Override Hierarchy 4'),
+  IF(ELPAR('Merch SKU', !Merch SKU, 1) @= '', '',
+  IF(DB('Merch User Hierarchy Assignment', ELPAR('Merch SKU', !Merch SKU, 1), !}Clients, 'Override Hierarchy 4') @<> '',
+    DB('Merch User Hierarchy Assignment', ELPAR('Merch SKU', !Merch SKU, 1), !}Clients, 'Override Hierarchy 4'),
+  IF(ELPAR('Merch SKU', ELPAR('Merch SKU', !Merch SKU, 1), 1) @= '', '',
+  IF(DB('Merch User Hierarchy Assignment', ELPAR('Merch SKU', ELPAR('Merch SKU', !Merch SKU, 1), 1), !}Clients, 'Override Hierarchy 4') @<> '',
+    DB('Merch User Hierarchy Assignment', ELPAR('Merch SKU', ELPAR('Merch SKU', !Merch SKU, 1), 1), !}Clients, 'Override Hierarchy 4'),
+  IF(ELPAR('Merch SKU', ELPAR('Merch SKU', ELPAR('Merch SKU', !Merch SKU, 1), 1), 1) @= '', '',
+  IF(DB('Merch User Hierarchy Assignment', ELPAR('Merch SKU', ELPAR('Merch SKU', ELPAR('Merch SKU', !Merch SKU, 1), 1), 1), !}Clients, 'Override Hierarchy 4') @<> '',
+    DB('Merch User Hierarchy Assignment', ELPAR('Merch SKU', ELPAR('Merch SKU', ELPAR('Merch SKU', !Merch SKU, 1), 1), 1), !}Clients, 'Override Hierarchy 4'),
+  IF(ELPAR('Merch SKU', ELPAR('Merch SKU', ELPAR('Merch SKU', ELPAR('Merch SKU', !Merch SKU, 1), 1), 1), 1) @= '', '',
+  IF(DB('Merch User Hierarchy Assignment', ELPAR('Merch SKU', ELPAR('Merch SKU', ELPAR('Merch SKU', ELPAR('Merch SKU', !Merch SKU, 1), 1), 1), 1), !}Clients, 'Override Hierarchy 4') @<> '',
+    DB('Merch User Hierarchy Assignment', ELPAR('Merch SKU', ELPAR('Merch SKU', ELPAR('Merch SKU', ELPAR('Merch SKU', !Merch SKU, 1), 1), 1), 1), !}Clients, 'Override Hierarchy 4'),
+  '' ))))))))) ;
+#EndRegion
+
+#Region : Applied Hierarchy 5 - Hierarchical Resolution
+['Applied Hierarchy 5'] = S:
+  IF(DB('Merch User Hierarchy Assignment', !Merch SKU, !}Clients, 'Override Hierarchy 5') @<> '',
+    DB('Merch User Hierarchy Assignment', !Merch SKU, !}Clients, 'Override Hierarchy 5'),
+  IF(ELPAR('Merch SKU', !Merch SKU, 1) @= '', '',
+  IF(DB('Merch User Hierarchy Assignment', ELPAR('Merch SKU', !Merch SKU, 1), !}Clients, 'Override Hierarchy 5') @<> '',
+    DB('Merch User Hierarchy Assignment', ELPAR('Merch SKU', !Merch SKU, 1), !}Clients, 'Override Hierarchy 5'),
+  IF(ELPAR('Merch SKU', ELPAR('Merch SKU', !Merch SKU, 1), 1) @= '', '',
+  IF(DB('Merch User Hierarchy Assignment', ELPAR('Merch SKU', ELPAR('Merch SKU', !Merch SKU, 1), 1), !}Clients, 'Override Hierarchy 5') @<> '',
+    DB('Merch User Hierarchy Assignment', ELPAR('Merch SKU', ELPAR('Merch SKU', !Merch SKU, 1), 1), !}Clients, 'Override Hierarchy 5'),
+  IF(ELPAR('Merch SKU', ELPAR('Merch SKU', ELPAR('Merch SKU', !Merch SKU, 1), 1), 1) @= '', '',
+  IF(DB('Merch User Hierarchy Assignment', ELPAR('Merch SKU', ELPAR('Merch SKU', ELPAR('Merch SKU', !Merch SKU, 1), 1), 1), !}Clients, 'Override Hierarchy 5') @<> '',
+    DB('Merch User Hierarchy Assignment', ELPAR('Merch SKU', ELPAR('Merch SKU', ELPAR('Merch SKU', !Merch SKU, 1), 1), 1), !}Clients, 'Override Hierarchy 5'),
+  IF(ELPAR('Merch SKU', ELPAR('Merch SKU', ELPAR('Merch SKU', ELPAR('Merch SKU', !Merch SKU, 1), 1), 1), 1) @= '', '',
+  IF(DB('Merch User Hierarchy Assignment', ELPAR('Merch SKU', ELPAR('Merch SKU', ELPAR('Merch SKU', ELPAR('Merch SKU', !Merch SKU, 1), 1), 1), 1), !}Clients, 'Override Hierarchy 5') @<> '',
+    DB('Merch User Hierarchy Assignment', ELPAR('Merch SKU', ELPAR('Merch SKU', ELPAR('Merch SKU', ELPAR('Merch SKU', !Merch SKU, 1), 1), 1), 1), !}Clients, 'Override Hierarchy 5'),
+  '' ))))))))) ;
+#EndRegion
+
+#Region : Rule Footer
+#############################
+##~~ End Rule File ~~##
+#############################
+#EndRegion

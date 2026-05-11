@@ -1,0 +1,106 @@
+{
+	"@type":"Subset",
+	"Name":"PLI_SbyFVL_C2~F2~V253~L9",
+	"Elements":
+	[
+		{
+			"@id":"Dimensions('}Merch SKU Picklist')/Hierarchies('}Merch SKU Picklist')/Elements('424180')"
+		},
+		{
+			"@id":"Dimensions('}Merch SKU Picklist')/Hierarchies('}Merch SKU Picklist')/Elements('424172')"
+		},
+		{
+			"@id":"Dimensions('}Merch SKU Picklist')/Hierarchies('}Merch SKU Picklist')/Elements('426702')"
+		},
+		{
+			"@id":"Dimensions('}Merch SKU Picklist')/Hierarchies('}Merch SKU Picklist')/Elements('414963')"
+		},
+		{
+			"@id":"Dimensions('}Merch SKU Picklist')/Hierarchies('}Merch SKU Picklist')/Elements('424166')"
+		},
+		{
+			"@id":"Dimensions('}Merch SKU Picklist')/Hierarchies('}Merch SKU Picklist')/Elements('424176')"
+		},
+		{
+			"@id":"Dimensions('}Merch SKU Picklist')/Hierarchies('}Merch SKU Picklist')/Elements('427179')"
+		},
+		{
+			"@id":"Dimensions('}Merch SKU Picklist')/Hierarchies('}Merch SKU Picklist')/Elements('427177')"
+		},
+		{
+			"@id":"Dimensions('}Merch SKU Picklist')/Hierarchies('}Merch SKU Picklist')/Elements('424174')"
+		},
+		{
+			"@id":"Dimensions('}Merch SKU Picklist')/Hierarchies('}Merch SKU Picklist')/Elements('424179')"
+		},
+		{
+			"@id":"Dimensions('}Merch SKU Picklist')/Hierarchies('}Merch SKU Picklist')/Elements('427178')"
+		},
+		{
+			"@id":"Dimensions('}Merch SKU Picklist')/Hierarchies('}Merch SKU Picklist')/Elements('426714')"
+		},
+		{
+			"@id":"Dimensions('}Merch SKU Picklist')/Hierarchies('}Merch SKU Picklist')/Elements('427176')"
+		},
+		{
+			"@id":"Dimensions('}Merch SKU Picklist')/Hierarchies('}Merch SKU Picklist')/Elements('414974')"
+		},
+		{
+			"@id":"Dimensions('}Merch SKU Picklist')/Hierarchies('}Merch SKU Picklist')/Elements('427181')"
+		},
+		{
+			"@id":"Dimensions('}Merch SKU Picklist')/Hierarchies('}Merch SKU Picklist')/Elements('419218')"
+		},
+		{
+			"@id":"Dimensions('}Merch SKU Picklist')/Hierarchies('}Merch SKU Picklist')/Elements('414957')"
+		},
+		{
+			"@id":"Dimensions('}Merch SKU Picklist')/Hierarchies('}Merch SKU Picklist')/Elements('424168')"
+		},
+		{
+			"@id":"Dimensions('}Merch SKU Picklist')/Hierarchies('}Merch SKU Picklist')/Elements('424173')"
+		},
+		{
+			"@id":"Dimensions('}Merch SKU Picklist')/Hierarchies('}Merch SKU Picklist')/Elements('424170')"
+		},
+		{
+			"@id":"Dimensions('}Merch SKU Picklist')/Hierarchies('}Merch SKU Picklist')/Elements('424182')"
+		},
+		{
+			"@id":"Dimensions('}Merch SKU Picklist')/Hierarchies('}Merch SKU Picklist')/Elements('424177')"
+		},
+		{
+			"@id":"Dimensions('}Merch SKU Picklist')/Hierarchies('}Merch SKU Picklist')/Elements('424183')"
+		},
+		{
+			"@id":"Dimensions('}Merch SKU Picklist')/Hierarchies('}Merch SKU Picklist')/Elements('427194')"
+		},
+		{
+			"@id":"Dimensions('}Merch SKU Picklist')/Hierarchies('}Merch SKU Picklist')/Elements('427180')"
+		},
+		{
+			"@id":"Dimensions('}Merch SKU Picklist')/Hierarchies('}Merch SKU Picklist')/Elements('424167')"
+		},
+		{
+			"@id":"Dimensions('}Merch SKU Picklist')/Hierarchies('}Merch SKU Picklist')/Elements('424178')"
+		},
+		{
+			"@id":"Dimensions('}Merch SKU Picklist')/Hierarchies('}Merch SKU Picklist')/Elements('414966')"
+		},
+		{
+			"@id":"Dimensions('}Merch SKU Picklist')/Hierarchies('}Merch SKU Picklist')/Elements('424175')"
+		},
+		{
+			"@id":"Dimensions('}Merch SKU Picklist')/Hierarchies('}Merch SKU Picklist')/Elements('424169')"
+		},
+		{
+			"@id":"Dimensions('}Merch SKU Picklist')/Hierarchies('}Merch SKU Picklist')/Elements('424171')"
+		},
+		{
+			"@id":"Dimensions('}Merch SKU Picklist')/Hierarchies('}Merch SKU Picklist')/Elements('424181')"
+		},
+		{
+			"@id":"Dimensions('}Merch SKU Picklist')/Hierarchies('}Merch SKU Picklist')/Elements('427997')"
+		}
+	]
+}

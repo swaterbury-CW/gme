@@ -1,0 +1,34 @@
+{
+	"@type":"Subset",
+	"Name":"PLI_L_Apparel",
+	"Elements":
+	[
+		{
+			"@id":"Dimensions('Placeholder L4 Values')/Hierarchies('Placeholder L4 Values')/Elements('Accessories')"
+		},
+		{
+			"@id":"Dimensions('Placeholder L4 Values')/Hierarchies('Placeholder L4 Values')/Elements('Bags')"
+		},
+		{
+			"@id":"Dimensions('Placeholder L4 Values')/Hierarchies('Placeholder L4 Values')/Elements('Mens')"
+		},
+		{
+			"@id":"Dimensions('Placeholder L4 Values')/Hierarchies('Placeholder L4 Values')/Elements('Womens')"
+		},
+		{
+			"@id":"Dimensions('Placeholder L4 Values')/Hierarchies('Placeholder L4 Values')/Elements('Headwear')"
+		},
+		{
+			"@id":"Dimensions('Placeholder L4 Values')/Hierarchies('Placeholder L4 Values')/Elements('Kids')"
+		},
+		{
+			"@id":"Dimensions('Placeholder L4 Values')/Hierarchies('Placeholder L4 Values')/Elements('Footwear')"
+		},
+		{
+			"@id":"Dimensions('Placeholder L4 Values')/Hierarchies('Placeholder L4 Values')/Elements('Beauty')"
+		},
+		{
+			"@id":"Dimensions('Placeholder L4 Values')/Hierarchies('Placeholder L4 Values')/Elements('Pop & T')"
+		}
+	]
+}

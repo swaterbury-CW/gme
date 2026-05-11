@@ -1,0 +1,10 @@
+{
+	"@type":"Subset",
+	"Name":"PLI_FbyVL_C25~V661~L27",
+	"Elements":
+	[
+		{
+			"@id":"Dimensions('Placeholder Franchise Values')/Hierarchies('Placeholder Franchise Values')/Elements('Power Rangers')"
+		}
+	]
+}

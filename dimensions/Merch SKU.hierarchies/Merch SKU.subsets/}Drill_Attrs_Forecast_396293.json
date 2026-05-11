@@ -1,0 +1,5 @@
+{
+	"@type":"Subset",
+	"Name":"}Drill_Attrs_Forecast_396293",
+	"Expression":"{DESCENDANTS([Merch SKU].[Merch Sku].[396293], 0)}"
+}

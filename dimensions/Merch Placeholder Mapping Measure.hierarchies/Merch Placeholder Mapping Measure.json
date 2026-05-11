@@ -1,0 +1,36 @@
+{
+	"@type":"Hierarchy",
+	"Name":"Merch Placeholder Mapping Measure",
+	"Elements":
+	[
+		{
+			"Name":"Target Level_4",
+			"Type":"String"
+		},
+		{
+			"Name":"Target Vendor",
+			"Type":"String"
+		},
+		{
+			"Name":"Target Franchise",
+			"Type":"String"
+		},
+		{
+			"Name":"Target SKU",
+			"Type":"String"
+		},
+		{
+			"Name":"Conversion Status",
+			"Type":"String"
+		},
+		{
+			"Name":"Conversion Date",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Notes",
+			"Type":"String"
+		}
+	],
+	"Subsets@Code.links":[]
+}

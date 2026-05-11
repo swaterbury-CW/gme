@@ -1,0 +1,12 @@
+{
+	"@type":"Dimension",
+	"Name":"Merch WOS Period",
+	"Hierarchies@Code.links":
+	[
+		"Merch WOS Period.hierarchies/Merch WOS Period.json"
+	],
+	"DefaultHierarchy":
+	{
+		"@id":"Dimensions('Merch WOS Period')/Hierarchies('Merch WOS Period')"
+	}
+}

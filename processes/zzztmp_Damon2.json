@@ -1,0 +1,42 @@
+{
+	"@type":"Process",
+	"Name":"zzztmp_Damon2",
+	"HasSecurityAccess":false,
+	"Code@Code.link":"zzztmp_Damon2.ti",
+	"DataSource":
+	{
+		"Type":"TM1DimensionSubset",
+		"dataSourceNameForServer":"Merch SKU:SGM_Category",
+		"dataSourceNameForClient":"Merch SKU:SGM_Category",
+		"subset":"All"
+	},
+	"Parameters":
+	[
+		{
+			"Name":"pHierarchy",
+			"Prompt":"",
+			"Value":"",
+			"Type":"String"
+		},
+		{
+			"Name":"pAttribute",
+			"Prompt":"",
+			"Value":"",
+			"Type":"String"
+		}
+	],
+	"Variables":
+	[
+		{
+			"Name":"vMerchSKUSGM_Category",
+			"Type":"String",
+			"Position":1,
+			"StartByte":0,
+			"EndByte":0
+		}
+	],
+	"UID": "1776283930000",
+	"VariablesUIData": [
+		"VarType=32\fColType=827\f"
+	]
+}

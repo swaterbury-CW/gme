@@ -1,0 +1,37 @@
+{
+	"@type":"Process",
+	"Name":"Merch.Load.ClearanceSKU.BQ.Page",
+	"HasSecurityAccess":false,
+	"Code@Code.link":"Merch.Load.ClearanceSKU.BQ.Page.ti",
+	"DataSource":
+	{
+		"Type":"JSON",
+		"dataSourceNameForServer":"./clearance_sku_bq.json_page_1.json",
+		"jsonRootPointer":"/rows",
+		"jsonVariableMapping":""
+	},
+	"Parameters":
+	[
+		{
+			"Name":"pPageFile",
+			"Prompt":"JSON page file",
+			"Value":"./clearance_sku_bq.json_page_1.json",
+			"Type":"String"
+		}
+	],
+	"Variables":
+	[
+		{
+			"Name":"vRow",
+			"Type":"String",
+			"Position":1,
+			"StartByte":0,
+			"EndByte":0
+		}
+	],
+	"UID": "17780993700001",
+	"UIData": "CubeAction=1511\fDataAction=1503\fCubeLogChanges=0\f",
+	"VariablesUIData": [
+		"VarType=32\fColType=827\f"
+	]
+}

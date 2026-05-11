@@ -1,0 +1,12 @@
+{
+	"@type":"Dimension",
+	"Name":"Security Publisher",
+	"Hierarchies@Code.links":
+	[
+		"Security Publisher.hierarchies/Security Publisher.json"
+	],
+	"DefaultHierarchy":
+	{
+		"@id":"Dimensions('Security Publisher')/Hierarchies('Security Publisher')"
+	}
+}

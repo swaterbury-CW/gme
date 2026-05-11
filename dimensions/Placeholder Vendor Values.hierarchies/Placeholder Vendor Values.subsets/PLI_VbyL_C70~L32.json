@@ -1,0 +1,10 @@
+{
+	"@type":"Subset",
+	"Name":"PLI_VbyL_C70~L32",
+	"Elements":
+	[
+		{
+			"@id":"Dimensions('Placeholder Vendor Values')/Hierarchies('Placeholder Vendor Values')/Elements('Microsoft XBOX - V')"
+		}
+	]
+}

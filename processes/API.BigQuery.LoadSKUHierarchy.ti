@@ -1,0 +1,431 @@
+#region Prolog
+
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+
+#==========================================================================
+# PROCESS:    API.BigQuery.LoadSKUHierarchy
+# PURPOSE:    Query BigQuery for product data, load Merch SKU dimension
+#             with elements, Category_Name hierarchy, and 21+ attributes.
+# DEVELOPER:  Steve Waterbury
+# DATE:       2026-03-26
+#
+# CHANGE HISTORY:
+# 2026-03-26 | Steve Waterbury | Initial creation — replaces CSV-based
+#              Merch.Dim.LoadSKUHierarchy with direct BigQuery integration
+### 2026-04-01         Steve Waterbury    Code formatting: multi-line IF blocks, NumberToString -> STR
+#
+# DESIGN:
+#   Self-contained: JWT auth → BigQuery query → JSON file → JSON datasource
+#   SQL selects exactly 22 columns in a fixed order (positions 0-21).
+#   JSON datasource maps vCol0..vCol21 via /f/N/v paths.
+#   BigQuery DATE columns return ISO format (YYYY-MM-DD) natively.
+#
+# COLUMN MAPPING (BigQuery SELECT order → variable):
+#   0:SKU  1:Item_Desc  2:SGM_Category_Group  3:SGM_Category
+#   4:Category_Name  5:Level_1  6:Level_2  7:Level_3  8:Level_4  9:Level_5
+#   10:Cost  11:Publisher_Name  12:Vendor_Name  13:Family_Name
+#   14:Franchise_Name  15:Lifecycle_Status_Description
+#   16:Street_Date  17:Last_Price_MarkDown_Date  18:Sales_Price
+#   19:Is_Drop_Ship  20:Sellable_Flag  21:Reservable_Flag
+#==========================================================================
+
+#Region : Logging Configuration
+cProcessName = GetProcessName();
+sLogLevel = CellGetS('ProcessControl', cProcessName, 'LoggingLevel');
+IF(sLogLevel @= '');
+  sLogLevel = 'OFF';
+ENDIF;
+bLogInfo  = 0;
+IF(sLogLevel @= 'INFO' % sLogLevel @= 'DEBUG');
+  bLogInfo  = 1;
+ENDIF;
+bLogDebug = 0;
+IF(sLogLevel @= 'DEBUG');
+  bLogDebug = 1;
+ENDIF;
+IF(bLogInfo = 1);
+  LogOutput('INFO', 'START: ' | cProcessName | ' | LogLevel=' | sLogLevel);
+ENDIF;
+#EndRegion
+
+#Region : Constants
+cDim = 'Merch SKU';
+cOutputFile = 'SKU_hierarchy_bq.json';
+nRecordCount = 0;
+cQuery = 'SELECT SKU, Item_Desc, SGM_Category_Group, SGM_Category, Category_Name, Level_1, Level_2, Level_3, Level_4, Level_5, CAST(Cost AS STRING) AS Cost, Publisher_Name, Vendor_Name, Family_Name, Franchise_Name, Lifecycle_Status_Description, CAST(Street_Date AS STRING) AS Street_Date, CAST(Last_Price_MarkDown_Date AS STRING) AS Last_Price_MarkDown_Date, CAST(Sales_Price AS STRING) AS Sales_Price, Is_Drop_Ship, Sellable_Flag, Reservable_Flag FROM `merchplanning-suite-prod-062.planninganalytics.product`';
+#EndRegion
+
+#Region : BigQuery Authentication
+sClientEmail = CellGetS('}GCP_Service_Account', 'client_email', 'Value');
+sPrivateKey  = CellGetS('}GCP_Service_Account', 'private_key', 'Value');
+sProjectId   = CellGetS('}GCP_Service_Account', 'project_id', 'Value');
+sTokenURI    = CellGetS('}GCP_Service_Account', 'token_uri', 'Value');
+IF(sClientEmail @= '' % sPrivateKey @= '' % sProjectId @= '');
+  LogOutput('ERROR', cProcessName | ' | GCP credentials missing.');
+  ProcessError;
+ENDIF;
+IF(sTokenURI @= '');
+  sTokenURI = 'https://oauth2.googleapis.com/token';
+ENDIF;
+sPayload = JsonAdd('{}', 'iss', StringToJson(sClientEmail));
+sPayload = JsonAdd(sPayload, 'sub', StringToJson(sClientEmail));
+sPayload = JsonAdd(sPayload, 'aud', StringToJson(sTokenURI));
+sPayload = JsonAdd(sPayload, 'scope', StringToJson('https://www.googleapis.com/auth/bigquery.readonly'));
+sPayload = JsonAdd(sPayload, 'iat', 0);
+sPayload = JsonAdd(sPayload, 'exp', 3600);
+sJWT = JwtCreate('RS256', sPayload, sPrivateKey, '');
+IF(sJWT @= '');
+  LogOutput('ERROR', cProcessName | ' | JwtCreate failed.');
+  ProcessError;
+ENDIF;
+sTokenBody = 'grant_type=urn:ietf:params:oauth:grant-type:jwt-bearer&assertion=' | sJWT;
+ExecuteHttpRequest('POST', sTokenURI, '-h Content-Type:application/x-www-form-urlencoded', '-d ' | sTokenBody);
+nStatusCode = HttpResponseGetStatusCode();
+IF(nStatusCode <> 200);
+  LogOutput('ERROR', cProcessName | ' | Token exchange failed HTTP ' | TRIM(STR(nStatusCode, 10, 0)));
+  ProcessError;
+ENDIF;
+sTokenResponse = HttpResponseGetBody();
+sToken = JsonGet(sTokenResponse, 'access_token');
+IF(SUBST(sToken, 1, 1) @= '"');
+  sToken = SUBST(sToken, 2, LONG(sToken) - 2);
+ENDIF;
+IF(sToken @= '');
+  LogOutput('ERROR', cProcessName | ' | No access_token.');
+  ProcessError;
+ENDIF;
+IF(bLogInfo = 1);
+  LogOutput('INFO', cProcessName | ' | OAuth2 token acquired.');
+ENDIF;
+#EndRegion
+
+#Region : Submit BigQuery Query (maxResults=0)
+sQueryURL = 'https://bigquery.googleapis.com/bigquery/v2/projects/' | sProjectId | '/queries';
+sQueryBody = '{"query":"' | cQuery | '","useLegacySql":false,"maxResults":0}';
+ExecuteHttpRequest('POST', sQueryURL, '-h Authorization: Bearer ' | sToken, '-h Content-Type: application/json', '-d ' | sQueryBody);
+nStatusCode = HttpResponseGetStatusCode();
+IF(nStatusCode <> 200);
+  LogOutput('ERROR', cProcessName | ' | Query failed HTTP ' | TRIM(STR(nStatusCode, 10, 0)) | ' | ' | HttpResponseGetBody());
+  ProcessError;
+ENDIF;
+sQueryResponse = HttpResponseGetBody();
+sJobComplete = JsonGet(sQueryResponse, 'jobComplete');
+IF(SUBST(sJobComplete, 1, 1) @= '"');
+  sJobComplete = SUBST(sJobComplete, 2, LONG(sJobComplete) - 2);
+ENDIF;
+sJobRef = JsonGet(sQueryResponse, 'jobReference');
+sJobId = JsonGet(sJobRef, 'jobId');
+IF(SUBST(sJobId, 1, 1) @= '"');
+  sJobId = SUBST(sJobId, 2, LONG(sJobId) - 2);
+ENDIF;
+IF(sJobId @= '');
+  LogOutput('ERROR', cProcessName | ' | Failed to extract jobId.');
+  ProcessError;
+ENDIF;
+IF(bLogInfo = 1);
+  LogOutput('INFO', cProcessName | ' | jobId: ' | sJobId | ' | jobComplete: ' | sJobComplete);
+ENDIF;
+#EndRegion
+
+#Region : Poll Until Complete
+sPollURL = 'https://bigquery.googleapis.com/bigquery/v2/projects/' | sProjectId | '/queries/' | sJobId | '?maxResults=0';
+nPollCount = 0;
+WHILE(sJobComplete @<> 'true' & nPollCount < 60);
+  nPollCount = nPollCount + 1;
+  Sleep(2000);
+  ExecuteHttpRequest('GET', sPollURL, '-h Authorization: Bearer ' | sToken);
+  nStatusCode = HttpResponseGetStatusCode();
+  IF(nStatusCode <> 200);
+    LogOutput('ERROR', cProcessName | ' | Poll failed HTTP ' | TRIM(STR(nStatusCode, 10, 0)));
+    ProcessError;
+  ENDIF;
+  sQueryResponse = HttpResponseGetBody();
+  sJobComplete = JsonGet(sQueryResponse, 'jobComplete');
+  IF(SUBST(sJobComplete, 1, 1) @= '"');
+    sJobComplete = SUBST(sJobComplete, 2, LONG(sJobComplete) - 2);
+  ENDIF;
+END;
+IF(sJobComplete @<> 'true');
+  LogOutput('ERROR', cProcessName | ' | Query did not complete.');
+  ProcessError;
+ENDIF;
+sTotalRows = JsonGet(sQueryResponse, 'totalRows');
+IF(SUBST(sTotalRows, 1, 1) @= '"');
+  sTotalRows = SUBST(sTotalRows, 2, LONG(sTotalRows) - 2);
+ENDIF;
+IF(bLogInfo = 1);
+  LogOutput('INFO', cProcessName | ' | Query complete. Total rows: ' | sTotalRows);
+ENDIF;
+#EndRegion
+
+#Region : Fetch Results to File
+sFetchURL = 'https://bigquery.googleapis.com/bigquery/v2/projects/' | sProjectId | '/queries/' | sJobId | '?maxResults=100000';
+ExecuteHttpRequest('GET', sFetchURL, '-h Authorization: Bearer ' | sToken, '-o ' | cOutputFile);
+nStatusCode = HttpResponseGetStatusCode();
+IF(nStatusCode <> 200);
+  LogOutput('ERROR', cProcessName | ' | File fetch failed HTTP ' | TRIM(STR(nStatusCode, 10, 0)));
+  ProcessError;
+ENDIF;
+IF(bLogInfo = 1);
+  LogOutput('INFO', cProcessName | ' | Results written to: ' | cOutputFile);
+ENDIF;
+#EndRegion
+
+#Region : Dimension Setup
+IF(DimensionExists(cDim) = 0);
+  DimensionCreate(cDim);
+ENDIF;
+AttrInsert(cDim, '', 'Item_Desc', 'S');
+AttrInsert(cDim, '', 'SGM_Category_Group', 'S');
+AttrInsert(cDim, '', 'SGM_Category', 'S');
+AttrInsert(cDim, '', 'Category_Name', 'S');
+AttrInsert(cDim, '', 'Level_1', 'S');
+AttrInsert(cDim, '', 'Level_2', 'S');
+AttrInsert(cDim, '', 'Level_3', 'S');
+AttrInsert(cDim, '', 'Level_4', 'S');
+AttrInsert(cDim, '', 'Level_5', 'S');
+AttrInsert(cDim, '', 'Publisher_Name', 'S');
+AttrInsert(cDim, '', 'Vendor_Name', 'S');
+AttrInsert(cDim, '', 'Family_Name', 'S');
+AttrInsert(cDim, '', 'Franchise_Name', 'S');
+AttrInsert(cDim, '', 'Lifecycle_Status_Description', 'S');
+AttrInsert(cDim, '', 'Street_Date', 'S');
+AttrInsert(cDim, '', 'Street_Date_ISO', 'S');
+AttrInsert(cDim, '', 'Street_Date_Serial', 'N');
+AttrInsert(cDim, '', 'Last_Price_MarkDown_Date', 'S');
+AttrInsert(cDim, '', 'Last_Price_MarkDown_Date_Serial', 'N');
+AttrInsert(cDim, '', 'Cost', 'N');
+AttrInsert(cDim, '', 'Sales_Price', 'N');
+AttrInsert(cDim, '', 'Is_Drop_Ship', 'S');
+AttrInsert(cDim, '', 'sellable_flag', 'S');
+AttrInsert(cDim, '', 'Reservable_Flag', 'S');
+nCount = DIMSIZ(cDim);
+nIdx = nCount;
+While(nIdx >= 1);
+  sEl = DIMNM(cDim, nIdx);
+  IF(DTYPE(cDim, sEl) @= 'C');
+    DimensionElementDeleteDirect(cDim, sEl);
+  ENDIF;
+  nIdx = nIdx - 1;
+End;
+DimensionElementInsertDirect(cDim, '', 'All SKUs', 'C');
+#EndRegion
+
+#Region : Configure JSON Datasource
+DataSourceType = 'JSON';
+DatasourceNameForServer = cOutputFile;
+DataSourceJsonRootPointer = '/rows';
+DataSourceJsonVariableMapping = JsonAdd('{}', 'vCol0', StringToJson('/f/0/v'));
+DataSourceJsonVariableMapping = JsonAdd(DataSourceJsonVariableMapping, 'vCol1', StringToJson('/f/1/v'));
+DataSourceJsonVariableMapping = JsonAdd(DataSourceJsonVariableMapping, 'vCol2', StringToJson('/f/2/v'));
+DataSourceJsonVariableMapping = JsonAdd(DataSourceJsonVariableMapping, 'vCol3', StringToJson('/f/3/v'));
+DataSourceJsonVariableMapping = JsonAdd(DataSourceJsonVariableMapping, 'vCol4', StringToJson('/f/4/v'));
+DataSourceJsonVariableMapping = JsonAdd(DataSourceJsonVariableMapping, 'vCol5', StringToJson('/f/5/v'));
+DataSourceJsonVariableMapping = JsonAdd(DataSourceJsonVariableMapping, 'vCol6', StringToJson('/f/6/v'));
+DataSourceJsonVariableMapping = JsonAdd(DataSourceJsonVariableMapping, 'vCol7', StringToJson('/f/7/v'));
+DataSourceJsonVariableMapping = JsonAdd(DataSourceJsonVariableMapping, 'vCol8', StringToJson('/f/8/v'));
+DataSourceJsonVariableMapping = JsonAdd(DataSourceJsonVariableMapping, 'vCol9', StringToJson('/f/9/v'));
+DataSourceJsonVariableMapping = JsonAdd(DataSourceJsonVariableMapping, 'vCol10', StringToJson('/f/10/v'));
+DataSourceJsonVariableMapping = JsonAdd(DataSourceJsonVariableMapping, 'vCol11', StringToJson('/f/11/v'));
+DataSourceJsonVariableMapping = JsonAdd(DataSourceJsonVariableMapping, 'vCol12', StringToJson('/f/12/v'));
+DataSourceJsonVariableMapping = JsonAdd(DataSourceJsonVariableMapping, 'vCol13', StringToJson('/f/13/v'));
+DataSourceJsonVariableMapping = JsonAdd(DataSourceJsonVariableMapping, 'vCol14', StringToJson('/f/14/v'));
+DataSourceJsonVariableMapping = JsonAdd(DataSourceJsonVariableMapping, 'vCol15', StringToJson('/f/15/v'));
+DataSourceJsonVariableMapping = JsonAdd(DataSourceJsonVariableMapping, 'vCol16', StringToJson('/f/16/v'));
+DataSourceJsonVariableMapping = JsonAdd(DataSourceJsonVariableMapping, 'vCol17', StringToJson('/f/17/v'));
+DataSourceJsonVariableMapping = JsonAdd(DataSourceJsonVariableMapping, 'vCol18', StringToJson('/f/18/v'));
+DataSourceJsonVariableMapping = JsonAdd(DataSourceJsonVariableMapping, 'vCol19', StringToJson('/f/19/v'));
+DataSourceJsonVariableMapping = JsonAdd(DataSourceJsonVariableMapping, 'vCol20', StringToJson('/f/20/v'));
+DataSourceJsonVariableMapping = JsonAdd(DataSourceJsonVariableMapping, 'vCol21', StringToJson('/f/21/v'));
+#EndRegion
+
+#endregion
+#region Metadata
+
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+#Region : Build Elements and Hierarchy
+cDim = 'Merch SKU';
+sSKU = JsonToString(vCol0);
+sCategoryName = JsonToString(vCol4);
+IF(sSKU @= '' % sSKU @= 'null'); ItemSkip; ENDIF;
+nRecordCount = nRecordCount + 1;
+IF(DIMIX(cDim, sSKU) = 0);
+  DimensionElementInsertDirect(cDim, '', sSKU, 'N');
+  IF(bLogDebug = 1); LogOutput('DEBUG', cProcessName | ' | Created: ' | sSKU); ENDIF;
+ENDIF;
+IF(sCategoryName @<> '' & sCategoryName @<> 'null');
+  IF(DIMIX(cDim, sCategoryName) = 0);
+    DimensionElementInsertDirect(cDim, '', sCategoryName, 'C');
+    DimensionElementComponentAddDirect(cDim, 'All SKUs', sCategoryName, 1);
+  ENDIF;
+  IF(ELISCOMP(cDim, sCategoryName, sSKU) = 0); DimensionElementComponentAddDirect(cDim, sCategoryName, sSKU, 1); ENDIF;
+ELSE;
+  IF(ELISCOMP(cDim, 'All SKUs', sSKU) = 0); DimensionElementComponentAddDirect(cDim, 'All SKUs', sSKU, 1); ENDIF;
+ENDIF;
+#EndRegion
+
+#endregion
+#region Data
+
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+#Region : Set Attributes
+cDim = 'Merch SKU';
+sSKU = JsonToString(vCol0);
+IF(sSKU @= '' % sSKU @= 'null');
+  ItemSkip;
+ENDIF;
+sItem_Desc = JsonToString(vCol1);
+sSGM_Category_Group = JsonToString(vCol2);
+sSGM_Category = JsonToString(vCol3);
+sCategory_Name = JsonToString(vCol4);
+sLevel_1 = JsonToString(vCol5);
+sLevel_2 = JsonToString(vCol6);
+sLevel_3 = JsonToString(vCol7);
+sLevel_4 = JsonToString(vCol8);
+sLevel_5 = JsonToString(vCol9);
+sCost = JsonToString(vCol10);
+sPublisher_Name = JsonToString(vCol11);
+sVendor_Name = JsonToString(vCol12);
+sFamily_Name = JsonToString(vCol13);
+sFranchise_Name = JsonToString(vCol14);
+sLifecycle = JsonToString(vCol15);
+sStreet_Date = JsonToString(vCol16);
+sLast_Price_MarkDown_Date = JsonToString(vCol17);
+sSales_Price = JsonToString(vCol18);
+sIs_Drop_Ship = JsonToString(vCol19);
+sSellable_Flag = JsonToString(vCol20);
+sReservable_Flag = JsonToString(vCol21);
+
+IF(sItem_Desc @<> 'null');
+  AttrPutS(sItem_Desc, cDim, sSKU, 'Item_Desc');
+ENDIF;
+IF(sSGM_Category_Group @<> 'null');
+  AttrPutS(sSGM_Category_Group, cDim, sSKU, 'SGM_Category_Group');
+ENDIF;
+IF(sSGM_Category @<> 'null');
+  AttrPutS(sSGM_Category, cDim, sSKU, 'SGM_Category');
+ENDIF;
+IF(sCategory_Name @<> 'null');
+  AttrPutS(sCategory_Name, cDim, sSKU, 'Category_Name');
+ENDIF;
+IF(sLevel_1 @<> 'null');
+  AttrPutS(sLevel_1, cDim, sSKU, 'Level_1');
+ENDIF;
+IF(sLevel_2 @<> 'null');
+  AttrPutS(sLevel_2, cDim, sSKU, 'Level_2');
+ENDIF;
+IF(sLevel_3 @<> 'null');
+  AttrPutS(sLevel_3, cDim, sSKU, 'Level_3');
+ENDIF;
+IF(sLevel_4 @<> 'null');
+  AttrPutS(sLevel_4, cDim, sSKU, 'Level_4');
+ENDIF;
+IF(sLevel_5 @<> 'null');
+  AttrPutS(sLevel_5, cDim, sSKU, 'Level_5');
+ENDIF;
+IF(sPublisher_Name @<> 'null');
+  AttrPutS(sPublisher_Name, cDim, sSKU, 'Publisher_Name');
+ENDIF;
+IF(sVendor_Name @<> 'null');
+  AttrPutS(sVendor_Name, cDim, sSKU, 'Vendor_Name');
+ENDIF;
+IF(sFamily_Name @<> 'null');
+  AttrPutS(sFamily_Name, cDim, sSKU, 'Family_Name');
+ENDIF;
+IF(sFranchise_Name @<> 'null');
+  AttrPutS(sFranchise_Name, cDim, sSKU, 'Franchise_Name');
+ENDIF;
+IF(sLifecycle @<> 'null');
+  AttrPutS(sLifecycle, cDim, sSKU, 'Lifecycle_Status_Description');
+ENDIF;
+IF(sIs_Drop_Ship @<> 'null');
+  AttrPutS(sIs_Drop_Ship, cDim, sSKU, 'Is_Drop_Ship');
+ENDIF;
+IF(sSellable_Flag @<> 'null');
+  AttrPutS(sSellable_Flag, cDim, sSKU, 'sellable_flag');
+ENDIF;
+IF(sReservable_Flag @<> 'null');
+  AttrPutS(sReservable_Flag, cDim, sSKU, 'Reservable_Flag');
+ENDIF;
+IF(sCost @<> 'null' & sCost @<> '');
+  AttrPutN(StringToNumber(sCost), cDim, sSKU, 'Cost');
+ENDIF;
+IF(sSales_Price @<> 'null' & sSales_Price @<> '');
+  AttrPutN(StringToNumber(sSales_Price), cDim, sSKU, 'Sales_Price');
+ENDIF;
+IF(sStreet_Date @<> 'null');
+  AttrPutS(sStreet_Date, cDim, sSKU, 'Street_Date');
+ENDIF;
+IF(sLast_Price_MarkDown_Date @<> 'null');
+  AttrPutS(sLast_Price_MarkDown_Date, cDim, sSKU, 'Last_Price_MarkDown_Date');
+ENDIF;
+
+# Street_Date_ISO + Serial (handles both M/D/YYYY and YYYY-MM-DD from BigQuery)
+sRawDate = TRIM(sStreet_Date);
+sISO = '';
+IF(sRawDate @<> '' & sRawDate @<> 'null');
+  nSlash1 = SCAN('/', sRawDate);
+  IF(nSlash1 > 0);
+    sMonth = SUBST(sRawDate, 1, nSlash1 - 1);
+    sRest = SUBST(sRawDate, nSlash1 + 1, LONG(sRawDate) - nSlash1);
+    nSlash2 = SCAN('/', sRest);
+    IF(nSlash2 > 0);
+      sDay = SUBST(sRest, 1, nSlash2 - 1);
+      sYear = SUBST(sRest, nSlash2 + 1, LONG(sRest) - nSlash2);
+      IF(LONG(sMonth) = 1);
+        sMonth = '0' | sMonth;
+      ENDIF;
+      IF(LONG(sDay) = 1);
+        sDay = '0' | sDay;
+      ENDIF;
+      sISO = sYear | '-' | sMonth | '-' | sDay;
+    ENDIF;
+  ELSE;
+    sISO = sRawDate;
+  ENDIF;
+  IF(sISO @<> '');
+    AttrPutS(sISO, cDim, sSKU, 'Street_Date_ISO');
+    AttrPutN(DAYNO(sISO), cDim, sSKU, 'Street_Date_Serial');
+  ENDIF;
+ENDIF;
+
+# Last_Price_MarkDown_Date Serial
+sRawMDDate = TRIM(sLast_Price_MarkDown_Date);
+IF(sRawMDDate @<> '' & sRawMDDate @<> 'null');
+  nSlash1MD = SCAN('/', sRawMDDate);
+  IF(nSlash1MD > 0);
+    sMonthMD = SUBST(sRawMDDate, 1, nSlash1MD - 1);
+    sRestMD = SUBST(sRawMDDate, nSlash1MD + 1, LONG(sRawMDDate) - nSlash1MD);
+    nSlash2MD = SCAN('/', sRestMD);
+    IF(nSlash2MD > 0);
+      sDayMD = SUBST(sRestMD, 1, nSlash2MD - 1);
+      sYearMD = SUBST(sRestMD, nSlash2MD + 1, LONG(sRestMD) - nSlash2MD);
+      IF(LONG(sMonthMD) = 1);
+        sMonthMD = '0' | sMonthMD;
+      ENDIF;
+      IF(LONG(sDayMD) = 1);
+        sDayMD = '0' | sDayMD;
+      ENDIF;
+      sISOmd = sYearMD | '-' | sMonthMD | '-' | sDayMD;
+      AttrPutN(DAYNO(sISOmd), cDim, sSKU, 'Last_Price_MarkDown_Date_Serial');
+    ENDIF;
+  ELSE;
+    AttrPutN(DAYNO(sRawMDDate), cDim, sSKU, 'Last_Price_MarkDown_Date_Serial');
+  ENDIF;
+ENDIF;
+IF(bLogDebug = 1);
+  LogOutput('DEBUG', cProcessName | ' | Attrs set: ' | sSKU);
+ENDIF;
+#EndRegion
+
+#endregion
+#region Epilog
+
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+IF(bLogInfo = 1); LogOutput('INFO', 'END: ' | cProcessName | ' | Records=' | TRIM(STR(nRecordCount, 10, 0))); ENDIF;
+
+#endregion

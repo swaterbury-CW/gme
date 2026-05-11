@@ -1,0 +1,10 @@
+{
+	"@type":"Subset",
+	"Name":"PLI_VbyL_C5~L8",
+	"Elements":
+	[
+		{
+			"@id":"Dimensions('Placeholder Vendor Values')/Hierarchies('Placeholder Vendor Values')/Elements('SALES FIRST DISTRIBUTING LLC-ZLOOT')"
+		}
+	]
+}

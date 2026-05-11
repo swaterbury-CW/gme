@@ -1,0 +1,25 @@
+{
+	"@type":"Subset",
+	"Name":"Velocity Curves",
+	"Elements":
+	[
+		{
+			"@id":"Dimensions('Merch Curve Name')/Hierarchies('Merch Curve Name')/Elements('Test Velocity Curve')"
+		},
+		{
+			"@id":"Dimensions('Merch Curve Name')/Hierarchies('Merch Curve Name')/Elements('Test Multi-Type Curve')"
+		},
+		{
+			"@id":"Dimensions('Merch Curve Name')/Hierarchies('Merch Curve Name')/Elements('Category Build - 2025')"
+		},
+		{
+			"@id":"Dimensions('Merch Curve Name')/Hierarchies('Merch Curve Name')/Elements('Rose Test')"
+		},
+		{
+			"@id":"Dimensions('Merch Curve Name')/Hierarchies('Merch Curve Name')/Elements('Damon Test')"
+		},
+		{
+			"@id":"Dimensions('Merch Curve Name')/Hierarchies('Merch Curve Name')/Elements('Sell Through')"
+		}
+	]
+}

@@ -1,0 +1,5 @@
+{
+	"@type":"Subset",
+	"Name":"}Drill_Attrs_Forecast_417304",
+	"Expression":"{[Merch Version SKU Attribute Measure].[Merch Version SKU Attribute Measure].MEMBERS}"
+}

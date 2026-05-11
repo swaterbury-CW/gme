@@ -1,0 +1,12 @@
+{
+	"@type":"Dimension",
+	"Name":"Merch Forecast Measure",
+	"Hierarchies@Code.links":
+	[
+		"Merch Forecast Measure.hierarchies/Merch Forecast Measure.json"
+	],
+	"DefaultHierarchy":
+	{
+		"@id":"Dimensions('Merch Forecast Measure')/Hierarchies('Merch Forecast Measure')"
+	}
+}

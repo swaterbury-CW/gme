@@ -1,0 +1,12 @@
+{
+	"@type":"Dimension",
+	"Name":"Merch PreOwned BuildMix Scope Measure",
+	"Hierarchies@Code.links":
+	[
+		"Merch PreOwned BuildMix Scope Measure.hierarchies/Merch PreOwned BuildMix Scope Measure.json"
+	],
+	"DefaultHierarchy":
+	{
+		"@id":"Dimensions('Merch PreOwned BuildMix Scope Measure')/Hierarchies('Merch PreOwned BuildMix Scope Measure')"
+	}
+}

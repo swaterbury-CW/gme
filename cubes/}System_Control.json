@@ -1,0 +1,14 @@
+{
+	"@type":"Cube",
+	"Name":"}System_Control",
+	"Dimensions":
+	[
+		{
+			"@id":"Dimensions('}System_Control_Key')"
+		},
+		{
+			"@id":"Dimensions('}System_Control_Measure')"
+		}
+	],
+	"Views@Code.links":[]
+}

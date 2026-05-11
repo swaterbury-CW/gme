@@ -1,0 +1,14 @@
+{
+	"@type":"Cube",
+	"Name":"}HierarchyAttributes_Merch Time Period",
+	"Dimensions":
+	[
+		{
+			"@id":"Dimensions('}Hierarchies_Merch Time Period')"
+		},
+		{
+			"@id":"Dimensions('}HierarchyAttributes_Merch Time Period')"
+		}
+	],
+	"Views@Code.links":[]
+}

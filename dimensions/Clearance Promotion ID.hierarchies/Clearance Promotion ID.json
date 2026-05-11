@@ -1,0 +1,24 @@
+{
+	"@type":"Hierarchy",
+	"Name":"Clearance Promotion ID",
+	"Elements":
+	[
+		{
+			"Name":"30926",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"30889",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"30927",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"30924",
+			"Type":"Numeric"
+		}
+	],
+	"Subsets@Code.links":[]
+}

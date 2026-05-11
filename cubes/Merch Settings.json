@@ -1,0 +1,14 @@
+{
+	"@type":"Cube",
+	"Name":"Merch Settings",
+	"Dimensions":
+	[
+		{
+			"@id":"Dimensions('Merch Settings Parameter')"
+		},
+		{
+			"@id":"Dimensions('Merch Settings Measure')"
+		}
+	],
+	"Views@Code.links":[]
+}

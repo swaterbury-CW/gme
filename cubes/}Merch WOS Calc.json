@@ -1,0 +1,27 @@
+{
+	"@type":"Cube",
+	"Name":"}Merch WOS Calc",
+	"Dimensions":
+	[
+		{
+			"@id":"Dimensions('Merch Version')"
+		},
+		{
+			"@id":"Dimensions('Merch Time Period')"
+		},
+		{
+			"@id":"Dimensions('Merch SKU')"
+		},
+		{
+			"@id":"Dimensions('Merch Channel')"
+		},
+		{
+			"@id":"Dimensions('Merch Lifecycle')"
+		},
+		{
+			"@id":"Dimensions('Merch WOS Period')"
+		}
+	],
+	"Rules@Code.link":"}Merch WOS Calc.rules",
+	"Views@Code.links":[]
+}

@@ -1,0 +1,63 @@
+#region Prolog
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+# DEVELOPER: Steve Waterbury
+# CREATED ON: 2026-05-06
+# LAST UPDATE: 2026-05-06
+# CHANGED BY: Steve Waterbury
+# CHANGE HISTORY:
+#   2026-05-06 | Steve Waterbury | Initial creation - top-level orchestrator that pre-seeds Merch Promo Settings from clearance_sku BQ.
+#   2026-05-06 | Steve Waterbury | v2 - add pVersion parameter, pass through to .Page worker.
+cProcessName = GetProcessName();
+sVersion = pVersion;
+IF(sVersion @= '');
+  sVersion = 'Forecast';
+ENDIF;
+IF(DIMIX('Merch Version', sVersion) = 0);
+  LogOutput('ERROR', cProcessName | ' | Invalid pVersion: ' | sVersion);
+  ProcessError;
+ENDIF;
+cBaseName = './clearance_promos_seed_bq.json';
+cQuery = 'SELECT * FROM `merchplanning-suite-prod-062.planninganalytics.clearance_sku`';
+nRC = ExecuteProcess('API.BigQuery.Export', 'pQuery', cQuery, 'pOutputFile', cBaseName, 'pMaxResults', '10000');
+IF(nRC <> 0);
+  LogOutput('ERROR', cProcessName | ' | API.BigQuery.Export failed rc=' | TRIM(STR(nRC,10,0)));
+  ProcessError;
+ENDIF;
+
+#endregion
+#region Metadata
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+
+#endregion
+#region Data
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+
+#endregion
+#region Epilog
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+nPage = 1;
+nMaxPages = 20;
+nDone = 0;
+WHILE(nDone = 0 & nPage <= nMaxPages);
+  sPageFile = cBaseName | '_page_' | TRIM(STR(nPage, 5, 0)) | '.json';
+  IF(FileExists(sPageFile) = 0);
+    nDone = 1;
+  ELSE;
+    nRC = ExecuteProcess('Merch.Seed.ClearancePromos.BQ.Page', 'pPageFile', sPageFile, 'pVersion', sVersion);
+    IF(nRC <> 0);
+      LogOutput('ERROR', cProcessName | ' | Page ' | TRIM(STR(nPage,10,0)) | ' failed rc=' | TRIM(STR(nRC,10,0)));
+      ProcessError;
+    ENDIF;
+    IF(pKeepFiles @<> '1');
+      ASCIIDelete(sPageFile);
+    ENDIF;
+    nPage = nPage + 1;
+  ENDIF;
+END;
+LogOutput('INFO', cProcessName | ' | Loaded ' | TRIM(STR(nPage - 1, 10, 0)) | ' pages.');
+
+#endregion

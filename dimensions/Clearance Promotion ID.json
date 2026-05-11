@@ -1,0 +1,12 @@
+{
+	"@type":"Dimension",
+	"Name":"Clearance Promotion ID",
+	"Hierarchies@Code.links":
+	[
+		"Clearance Promotion ID.hierarchies/Clearance Promotion ID.json"
+	],
+	"DefaultHierarchy":
+	{
+		"@id":"Dimensions('Clearance Promotion ID')/Hierarchies('Clearance Promotion ID')"
+	}
+}

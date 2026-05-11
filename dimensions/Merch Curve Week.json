@@ -1,0 +1,12 @@
+{
+	"@type":"Dimension",
+	"Name":"Merch Curve Week",
+	"Hierarchies@Code.links":
+	[
+		"Merch Curve Week.hierarchies/Merch Curve Week.json"
+	],
+	"DefaultHierarchy":
+	{
+		"@id":"Dimensions('Merch Curve Week')/Hierarchies('Merch Curve Week')"
+	}
+}

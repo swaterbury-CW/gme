@@ -1,0 +1,179 @@
+#region Prolog
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+#Region : Process Header
+#############################
+##~~ Start Process ~~##
+#############################
+# DEVELOPER : Steve Waterbury
+# CREATED ON : 2026-04-02
+# LAST UPDATE: 2026-04-02
+# COMMENTS:
+# Page helper for Merch.Load.Actuals.BQ multi-page loading.
+# Processes a single JSON page file for actuals data.
+#
+#### CHANGE HISTORY:
+### MODIFICATION DATE  CHANGED BY         COMMENT
+### 2026-04-02         Steve Waterbury    Initial creation
+#
+#EndRegion
+
+cProcessName = GetProcessName();
+cCube = 'Merch Actuals';
+nRecordCount = 0;
+nCellsWritten = 0;
+sLogLevel = CellGetS('ProcessControl', 'Merch.Load.Actuals.BQ', 'LoggingLevel');
+IF(sLogLevel @= '');
+  sLogLevel = 'OFF';
+ENDIF;
+bLogInfo  = 0;
+IF(sLogLevel @= 'INFO' % sLogLevel @= 'DEBUG');
+  bLogInfo  = 1;
+ENDIF;
+bLogDebug = 0;
+IF(sLogLevel @= 'DEBUG');
+  bLogDebug = 1;
+ENDIF;
+
+# Validate parameters
+IF(pPageFile @= '');
+  LogOutput('ERROR', cProcessName | ' | pPageFile is empty');
+  ProcessError;
+ENDIF;
+IF(pTimePeriod @= '');
+  LogOutput('ERROR', cProcessName | ' | pTimePeriod is empty');
+  ProcessError;
+ENDIF;
+IF(pColNames @= '');
+  LogOutput('ERROR', cProcessName | ' | pColNames is empty');
+  ProcessError;
+ENDIF;
+
+sTimePeriod = pTimePeriod;
+sColNames = pColNames;
+
+# Count columns
+nColCount = 1;
+sTmp = sColNames;
+WHILE(SCAN('|', sTmp) > 0);
+    nPipePos = SCAN('|', sTmp);
+    sTmp = SUBST(sTmp, nPipePos + 1, LONG(sTmp) - nPipePos);
+    nColCount = nColCount + 1;
+END;
+
+IF(bLogInfo = 1);
+  LogOutput('INFO', cProcessName | ' | Loading page: ' | pPageFile | ' | TimePeriod=' | sTimePeriod | ' | Cols=' | TRIM(STR(nColCount, 10, 0)));
+ENDIF;
+
+DatasourceType = 'JSON';
+DatasourceNameForServer = pPageFile;
+DataSourceJsonRootPointer = '/rows';
+DataSourceJsonVariableMapping = JsonAdd('{}', 'vRow', StringToJson('/f'));
+#endregion
+#region Metadata
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+cChannelDim = 'Merch Channel';
+cMeasureDim = 'Merch Actuals Measure';
+
+# Extract location_group (col 0)
+sChannel = JsonGet(vRow, '/0/v');
+IF(SUBST(sChannel, 1, 1) @= '"');
+  sChannel = SUBST(sChannel, 2, LONG(sChannel) - 2);
+ENDIF;
+IF(sChannel @= '' % sChannel @= 'null');
+  ItemSkip;
+ENDIF;
+
+# Create channel element if missing
+IF(DIMIX(cChannelDim, sChannel) = 0);
+  DimensionElementInsertDirect(cChannelDim, '', sChannel, 'N');
+  DimensionElementComponentAddDirect(cChannelDim, 'All Channels', sChannel, 1);
+ENDIF;
+
+# Check measure elements exist for columns 2..N
+sRemainCols = sColNames;
+nColIdx = 0;
+WHILE(LONG(sRemainCols) > 0);
+    nPipe = SCAN('|', sRemainCols);
+    IF(nPipe > 0);
+        sColName = SUBST(sRemainCols, 1, nPipe - 1);
+        sRemainCols = SUBST(sRemainCols, nPipe + 1, LONG(sRemainCols) - nPipe);
+    ELSE;
+        sColName = sRemainCols;
+        sRemainCols = '';
+    ENDIF;
+    IF(nColIdx >= 2);
+        IF(DIMIX(cMeasureDim, sColName) = 0);
+            DimensionElementInsertDirect(cMeasureDim, '', sColName, 'N');
+        ENDIF;
+    ENDIF;
+    nColIdx = nColIdx + 1;
+END;
+#endregion
+#region Data
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+cCube = 'Merch Actuals';
+
+# Extract location_group (col 0)
+sChannel = JsonGet(vRow, '/0/v');
+IF(SUBST(sChannel, 1, 1) @= '"');
+  sChannel = SUBST(sChannel, 2, LONG(sChannel) - 2);
+ENDIF;
+IF(sChannel @= '' % sChannel @= 'null');
+  ItemSkip;
+ENDIF;
+
+# Extract sku (col 1)
+sSKU = JsonGet(vRow, '/1/v');
+IF(SUBST(sSKU, 1, 1) @= '"');
+  sSKU = SUBST(sSKU, 2, LONG(sSKU) - 2);
+ENDIF;
+IF(sSKU @= '' % sSKU @= 'null');
+  ItemSkip;
+ENDIF;
+
+# Skip if SKU not in dimension
+IF(DIMIX('Merch SKU', sSKU) = 0);
+  ItemSkip;
+ENDIF;
+
+nRecordCount = nRecordCount + 1;
+
+# Iterate measure columns (positions 2..nColCount-1)
+sRemainCols = sColNames;
+nColIdx = 0;
+WHILE(LONG(sRemainCols) > 0);
+    nPipe = SCAN('|', sRemainCols);
+    IF(nPipe > 0);
+        sColName = SUBST(sRemainCols, 1, nPipe - 1);
+        sRemainCols = SUBST(sRemainCols, nPipe + 1, LONG(sRemainCols) - nPipe);
+    ELSE;
+        sColName = sRemainCols;
+        sRemainCols = '';
+    ENDIF;
+    IF(nColIdx >= 2);
+        sJsonPath = '/' | TRIM(STR(nColIdx, 5, 0)) | '/v';
+        sVal = JsonGet(vRow, sJsonPath);
+        IF(SUBST(sVal, 1, 1) @= '"');
+          sVal = SUBST(sVal, 2, LONG(sVal) - 2);
+        ENDIF;
+        IF(sVal @<> '' & sVal @<> 'null');
+            nVal = StringToNumber(sVal);
+            IF(CellIsUpdateable(cCube, sSKU, sTimePeriod, sChannel, sColName) = 1);
+              CellPutN(nVal, cCube, sSKU, sTimePeriod, sChannel, sColName);
+              nCellsWritten = nCellsWritten + 1;
+            ENDIF;
+        ENDIF;
+    ENDIF;
+    nColIdx = nColIdx + 1;
+END;
+#endregion
+#region Epilog
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+IF(bLogInfo = 1);
+  LogOutput('INFO', cProcessName | ' | Page records=' | TRIM(STR(nRecordCount, 10, 0)) | ' cells=' | TRIM(STR(nCellsWritten, 10, 0)));
+ENDIF;
+#endregion

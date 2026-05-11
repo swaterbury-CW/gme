@@ -1,0 +1,122 @@
+#region Prolog
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+#Region : Process Header
+# DEVELOPER: Steve Waterbury
+# CREATED ON: 2026-05-01
+# LAST UPDATE: 2026-05-01
+# CHANGED BY: Steve Waterbury
+# CHANGE HISTORY:
+#   2026-05-01 | Steve Waterbury | Initial creation
+# COMMENTS:
+# Loads Merch Store Reference cube. Datasource: leaves subset of Merch Store.
+#EndRegion
+
+cProcessName = GetProcessName();
+cCube = 'Merch Store Reference';
+cStoreDim = 'Merch Store';
+cTimeDim = 'Merch Time Period';
+cMeasure = 'Open Flag';
+nCellsWritten = 0;
+
+sLogLevel = CellGetS('ProcessControl', cProcessName, 'LoggingLevel');
+IF(sLogLevel @= '');
+  sLogLevel = 'OFF';
+ENDIF;
+bLogInfo = 0;
+IF(sLogLevel @= 'INFO' % sLogLevel @= 'DEBUG');
+  bLogInfo = 1;
+ENDIF;
+bLogDebug = 0;
+IF(sLogLevel @= 'DEBUG');
+  bLogDebug = 1;
+ENDIF;
+
+IF(pRefreshDim @= '');
+  pRefreshDim = '1';
+ENDIF;
+IF(pDimProcess @= '');
+  pDimProcess = 'Merch.Dim.LoadStoreHierarchy.BQ';
+ENDIF;
+
+IF(pRefreshDim @= '1');
+  nRC = ExecuteProcess(pDimProcess);
+  IF(nRC <> 0);
+    LogOutput('ERROR', cProcessName | ' | Dim refresh failed, RC=' | TRIM(STR(nRC, 10, 0)));
+    ProcessError;
+  ENDIF;
+ENDIF;
+
+nTimeSize = DIMSIZ(cTimeDim);
+
+sSubName = 'temp_LoadStoreReference';
+sMDX = '{TM1FILTERBYLEVEL({TM1SUBSETALL([Merch Store].[Merch Store])}, 0)}';
+IF(SubsetExists(cStoreDim, sSubName) = 1);
+  SubsetDestroy(cStoreDim, sSubName);
+ENDIF;
+SubsetCreateByMDX(sSubName, sMDX);
+Datasourcetype = 'SUBSET';
+DatasourceNameForServer = cStoreDim;
+DatasourceDimensionSubset = sSubName;
+
+IF(bLogInfo = 1);
+  LogOutput('INFO', 'START: ' | cProcessName | ' | TimePeriods=' | TRIM(STR(nTimeSize, 10, 0)) | ' | RefreshDim=' | pRefreshDim);
+ENDIF;
+
+#endregion
+#region Metadata
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+# no metadata processing
+#endregion
+#region Data
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+IF(vStore @= '');
+  ItemReject('Empty store encountered');
+ENDIF;
+IF(DTYPE('Merch Store', vStore) @<> 'N');
+  ItemSkip;
+ENDIF;
+
+nDateOpened = ATTRN('Merch Store', vStore, 'Date_Opened');
+nDateClosed = ATTRN('Merch Store', vStore, 'Date_Closed');
+
+IF(nDateOpened <= 0);
+  ItemSkip;
+ENDIF;
+
+nT = 1;
+WHILE(nT <= nTimeSize);
+  sWeek = DIMNM('Merch Time Period', nT);
+  IF(DTYPE('Merch Time Period', sWeek) @= 'N');
+    nWeekStart = ATTRN('Merch Time Period', sWeek, 'Start_Date_Serial');
+    nWeekEnd = ATTRN('Merch Time Period', sWeek, 'End_Date_Serial');
+    IF(nWeekStart > 0 & nWeekEnd > 0);
+      IF(nDateOpened <= nWeekEnd);
+        IF(nDateClosed = 0 % nDateClosed >= nWeekStart);
+          IF(CellIsUpdateable('Merch Store Reference', vStore, sWeek, 'Open Flag') = 1);
+            CellPutN(1, 'Merch Store Reference', vStore, sWeek, 'Open Flag');
+            nCellsWritten = nCellsWritten + 1;
+          ENDIF;
+        ENDIF;
+      ENDIF;
+    ENDIF;
+  ENDIF;
+  nT = nT + 1;
+END;
+
+#endregion
+#region Epilog
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+sSubName = 'temp_LoadStoreReference';
+IF(SubsetExists('Merch Store', sSubName) = 1);
+  SubsetDestroy('Merch Store', sSubName);
+ENDIF;
+
+IF(bLogInfo = 1);
+  LogOutput('INFO', 'END: ' | cProcessName | ' | Cells written=' | TRIM(STR(nCellsWritten, 10, 0)));
+ENDIF;
+
+#endregion

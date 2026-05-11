@@ -1,0 +1,170 @@
+#region Prolog
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+#Region : Process Header
+##############################################
+##~~ Merch.Dim.BuildPreOwnedCategoryRolesHierarchy ~~##
+##############################################
+# DEVELOPER  : Steve Waterbury
+# CREATED ON : 2026-05-09
+# LAST UPDATE: 2026-05-09
+# CHANGED BY : Steve Waterbury
+# COMMENTS:
+# Rebuilds the 'Roles' alt hierarchy on Merch PreOwned Category. Mirrors
+# Merch.Dim.BuildRolesHierarchy pattern for Merch SKU. Prolog builds the
+# Director -> Director-2 -> Manager -> planner scaffold; Metadata tab
+# classifies each leaf via SGM_Category_Group attribute and adds the
+# leaf -> planner edge.
+#
+# CHANGE HISTORY:
+#   2026-05-09 | Steve Waterbury | Creation; mirrors Merch.Dim.BuildRolesHierarchy
+#EndRegion
+
+#Region : Logging Configuration
+sLogLevel = CellGetS('ProcessControl', GetProcessName(), 'LoggingLevel');
+IF(sLogLevel @= '');
+  sLogLevel = 'OFF';
+ENDIF;
+bLogInfo = 0;
+bLogDebug = 0;
+IF(sLogLevel @= 'INFO' % sLogLevel @= 'DEBUG');
+  bLogInfo = 1;
+ENDIF;
+IF(sLogLevel @= 'DEBUG');
+  bLogDebug = 1;
+ENDIF;
+IF(bLogInfo = 1);
+  LogOutput('INFO', 'START: ' | GetProcessName());
+ENDIF;
+#EndRegion
+
+#Region : Constants
+cProcessName = GetProcessName();
+sDim = 'Merch PreOwned Category';
+sHier = 'Roles';
+sSubset = 'TI_BuildPOCatRolesHier_Worker';
+#EndRegion
+
+#Region : Destroy and Recreate Roles Hierarchy
+IF(HierarchyExists(sDim, sHier) = 1);
+  HierarchyDestroy(sDim, sHier);
+ENDIF;
+HierarchyCreate(sDim, sHier);
+#EndRegion
+
+#Region : Build Director / Manager / Planner Scaffold
+HierarchyElementInsert(sDim, sHier, '', 'Director', 'C');
+HierarchyElementInsert(sDim, sHier, '', 'Pre-Owned Director', 'C');
+HierarchyElementInsert(sDim, sHier, '', 'Pre-Owned T&C Director', 'C');
+HierarchyElementInsert(sDim, sHier, '', 'Pre-Owned TCG Director', 'C');
+HierarchyElementInsert(sDim, sHier, '', 'Pre-Owned Digital Director', 'C');
+HierarchyElementInsert(sDim, sHier, '', 'Pre-Owned Other Director', 'C');
+HierarchyElementComponentAdd(sDim, sHier, 'Director', 'Pre-Owned Director', 1);
+HierarchyElementComponentAdd(sDim, sHier, 'Director', 'Pre-Owned T&C Director', 1);
+HierarchyElementComponentAdd(sDim, sHier, 'Director', 'Pre-Owned TCG Director', 1);
+HierarchyElementComponentAdd(sDim, sHier, 'Director', 'Pre-Owned Digital Director', 1);
+HierarchyElementComponentAdd(sDim, sHier, 'Director', 'Pre-Owned Other Director', 1);
+
+HierarchyElementInsert(sDim, sHier, '', 'Pre-Owned Manager', 'C');
+HierarchyElementInsert(sDim, sHier, '', 'Pre-Owned T&C Manager', 'C');
+HierarchyElementInsert(sDim, sHier, '', 'Pre-Owned TCG Manager', 'C');
+HierarchyElementInsert(sDim, sHier, '', 'Pre-Owned Digital Manager', 'C');
+HierarchyElementInsert(sDim, sHier, '', 'Pre-Owned Other Manager', 'C');
+HierarchyElementComponentAdd(sDim, sHier, 'Pre-Owned Director', 'Pre-Owned Manager', 1);
+HierarchyElementComponentAdd(sDim, sHier, 'Pre-Owned T&C Director', 'Pre-Owned T&C Manager', 1);
+HierarchyElementComponentAdd(sDim, sHier, 'Pre-Owned TCG Director', 'Pre-Owned TCG Manager', 1);
+HierarchyElementComponentAdd(sDim, sHier, 'Pre-Owned Digital Director', 'Pre-Owned Digital Manager', 1);
+HierarchyElementComponentAdd(sDim, sHier, 'Pre-Owned Other Director', 'Pre-Owned Other Manager', 1);
+
+HierarchyElementInsert(sDim, sHier, '', 'Pre-Owned planner', 'C');
+HierarchyElementInsert(sDim, sHier, '', 'Pre-Owned T&C planner', 'C');
+HierarchyElementInsert(sDim, sHier, '', 'Pre-Owned TCG planner', 'C');
+HierarchyElementInsert(sDim, sHier, '', 'Pre-Owned Digital planner', 'C');
+HierarchyElementInsert(sDim, sHier, '', 'Pre-Owned Other planner', 'C');
+HierarchyElementComponentAdd(sDim, sHier, 'Pre-Owned Manager', 'Pre-Owned planner', 1);
+HierarchyElementComponentAdd(sDim, sHier, 'Pre-Owned T&C Manager', 'Pre-Owned T&C planner', 1);
+HierarchyElementComponentAdd(sDim, sHier, 'Pre-Owned TCG Manager', 'Pre-Owned TCG planner', 1);
+HierarchyElementComponentAdd(sDim, sHier, 'Pre-Owned Digital Manager', 'Pre-Owned Digital planner', 1);
+HierarchyElementComponentAdd(sDim, sHier, 'Pre-Owned Other Manager', 'Pre-Owned Other planner', 1);
+#EndRegion
+
+#Region : Build Worker Subset and Override Datasource
+IF(SubsetExists(sDim, sSubset) = 1);
+  SubsetDestroy(sDim, sSubset);
+ENDIF;
+sMDX = '{TM1FILTERBYLEVEL({TM1SUBSETALL([Merch PreOwned Category])}, 0)}';
+SubsetCreatebyMDX(sSubset, sMDX);
+
+DatasourceType = 'SUBSET';
+DatasourceNameForServer = sDim;
+DatasourceDimensionSubset = sSubset;
+#EndRegion
+
+#Region : Init Counters
+nLeafCount = 0;
+nUnassigned = 0;
+#EndRegion
+
+#endregion
+#region Metadata
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+IF(V1 @= '');
+  ItemSkip;
+ENDIF;
+sCat = V1;
+
+IF(sCat @= 'Caption');
+  ItemSkip;
+ENDIF;
+
+sGroup = ATTRS(sDim, sCat, 'SGM_Category_Group');
+
+sPlanner = 'Unassigned Planner';
+IF(sGroup @= 'PreOwned Software'
+ % sGroup @= 'PreOwned Hardware'
+ % sGroup @= 'PreOwned Accessories');
+  sPlanner = 'Pre-Owned planner';
+ELSEIF(sGroup @= 'PreOwned Trading Cards');
+  sPlanner = 'Pre-Owned TCG planner';
+ELSEIF(sGroup @= 'PreOwned Other');
+  sPlanner = 'Pre-Owned T&C planner';
+ENDIF;
+
+IF(HierarchyElementExists(sDim, sHier, sPlanner) = 0);
+  HierarchyElementInsert(sDim, sHier, '', sPlanner, 'C');
+ENDIF;
+
+HierarchyElementComponentAdd(sDim, sHier, sPlanner, sCat, 1);
+nLeafCount = nLeafCount + 1;
+
+IF(sPlanner @= 'Unassigned Planner');
+  nUnassigned = nUnassigned + 1;
+  IF(bLogDebug = 1);
+    LogOutput('WARN', cProcessName | ' | Unassigned Cat=' | sCat | ' | SGM_Category_Group=' | sGroup);
+  ENDIF;
+ENDIF;
+
+#endregion
+#region Data
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+
+#endregion
+#region Epilog
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+#Region : Epilog
+IF(SubsetExists(sDim, sSubset) = 1);
+  SubsetDestroy(sDim, sSubset);
+ENDIF;
+
+IF(bLogInfo = 1);
+  LogOutput('INFO', cProcessName
+    | ' | Leaves=' | TRIM(STR(nLeafCount, 10, 0))
+    | ' | Unassigned=' | TRIM(STR(nUnassigned, 10, 0)));
+  LogOutput('INFO', 'END: ' | GetProcessName());
+ENDIF;
+#EndRegion
+
+#endregion

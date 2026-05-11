@@ -1,0 +1,16 @@
+{
+	"@type":"Subset",
+	"Name":"PLI_L_C15",
+	"Elements":
+	[
+		{
+			"@id":"Dimensions('Placeholder L4 Values')/Hierarchies('Placeholder L4 Values')/Elements('Unassigned')"
+		},
+		{
+			"@id":"Dimensions('Placeholder L4 Values')/Hierarchies('Placeholder L4 Values')/Elements('Test SKU')"
+		},
+		{
+			"@id":"Dimensions('Placeholder L4 Values')/Hierarchies('Placeholder L4 Values')/Elements('PowerPacks')"
+		}
+	]
+}

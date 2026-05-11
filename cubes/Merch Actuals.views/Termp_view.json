@@ -1,0 +1,27 @@
+{
+	"@type":"MDXView",
+	"Name":"Termp_view",
+	"MDX@Code.link":"Termp_view.mdx",
+	"Meta": {
+		"Aliases": {
+			"[Merch Time Period].[Merch Time Period]": "Caption"
+		},
+		"ExpandAboves": {
+			"[Merch Actuals Measure].[Merch Actuals Measure]": false,
+			"[Merch Time Period].[Merch Time Period]": false,
+			"[Merch SKU].[Merch SKU]": false,
+			"[Merch Channel].[Merch Channel]": false
+		},
+		"ContextSets": {
+			"[Merch Channel].[Merch Channel]": {
+				"Expression": "{[Merch Channel].[Merch Channel].MEMBERS}"
+			}
+		}
+	},
+	"ViewExtractSkipRuleValues": false,
+	"ViewExtractSkipConsolidatedValues": true,
+	"ViewExtractSkipZeroes": true,
+	"IsSuppressComputeOnOpen": false,
+	"IsAutocalculate": true,
+	"IsDeferComputeOnLeafDataEntry": false
+}

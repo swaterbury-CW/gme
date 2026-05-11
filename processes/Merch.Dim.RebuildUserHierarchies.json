@@ -1,0 +1,53 @@
+{
+	"@type":"Process",
+	"Name":"Merch.Dim.RebuildUserHierarchies",
+	"HasSecurityAccess":false,
+	"Code@Code.link":"Merch.Dim.RebuildUserHierarchies.ti",
+	"DataSource":
+	{
+		"Type":"TM1CubeView",
+		"dataSourceNameForServer":"Merch User Hierarchy Assignment",
+		"dataSourceNameForClient":"Merch User Hierarchy Assignment",
+		"view":"}MUH_Build"
+	},
+	"Parameters":[],
+	"Variables":
+	[
+		{
+			"Name":"vMeasure",
+			"Type":"String",
+			"Position":1,
+			"StartByte":0,
+			"EndByte":0
+		},
+		{
+			"Name":"vSKU",
+			"Type":"String",
+			"Position":2,
+			"StartByte":0,
+			"EndByte":0
+		},
+		{
+			"Name":"vClient",
+			"Type":"String",
+			"Position":3,
+			"StartByte":0,
+			"EndByte":0
+		},
+		{
+			"Name":"vValue",
+			"Type":"String",
+			"Position":4,
+			"StartByte":0,
+			"EndByte":0
+		}
+	],
+	"UID": "17775987060001",
+	"UIData": "CubeAction=1511\fDataAction=1503\fCubeLogChanges=0\f",
+	"VariablesUIData": [
+		"VarType=32\fColType=827\f",
+		"VarType=32\fColType=827\f",
+		"VarType=32\fColType=827\f",
+		"VarType=32\fColType=827\f"
+	]
+}

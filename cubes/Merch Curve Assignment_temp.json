@@ -1,0 +1,18 @@
+{
+	"@type":"Cube",
+	"Name":"Merch Curve Assignment_temp",
+	"Dimensions":
+	[
+		{
+			"@id":"Dimensions('Merch Version')"
+		},
+		{
+			"@id":"Dimensions('Merch SKU')"
+		},
+		{
+			"@id":"Dimensions('Merch Curve Assignment Measure')"
+		}
+	],
+	"Rules@Code.link":"Merch Curve Assignment_temp.rules",
+	"Views@Code.links":[]
+}

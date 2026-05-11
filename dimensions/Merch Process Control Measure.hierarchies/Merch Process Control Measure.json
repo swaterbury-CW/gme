@@ -1,0 +1,16 @@
+{
+	"@type":"Hierarchy",
+	"Name":"Merch Process Control Measure",
+	"Elements":
+	[
+		{
+			"Name":"LoggingLevel",
+			"Type":"String"
+		},
+		{
+			"Name":"SubsetCount",
+			"Type":"Numeric"
+		}
+	],
+	"Subsets@Code.links":[]
+}

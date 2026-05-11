@@ -1,0 +1,6 @@
+{
+	"@type":"Subset",
+	"Name":"All Override Measures",
+	"Alias":"MEMBER_NAME",
+	"Expression":"TM1IGNORE_BADTUPLES {TM1FILTERBYPATTERN({TM1FILTERBYLEVEL(TM1SUBSETALL([Merch User Hierarchy Measure].[Merch User Hierarchy Measure]) , 0)},\"*Override*\")}"
+}

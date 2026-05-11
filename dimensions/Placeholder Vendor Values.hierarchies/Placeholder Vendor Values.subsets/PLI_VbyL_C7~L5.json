@@ -1,0 +1,10 @@
+{
+	"@type":"Subset",
+	"Name":"PLI_VbyL_C7~L5",
+	"Elements":
+	[
+		{
+			"@id":"Dimensions('Placeholder Vendor Values')/Hierarchies('Placeholder Vendor Values')/Elements('SATURDAY MORNING CARDS LLC-ZLOOT')"
+		}
+	]
+}

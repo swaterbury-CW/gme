@@ -1,0 +1,6 @@
+{
+	"@type":"Subset",
+	"Name":"Hardware - Lili",
+	"Alias":"Caption",
+	"Expression":"TM1IGNORE_BADTUPLES {DISTINCT({DESCENDANTS([Merch SKU].[Merch SKU].[PS5 Hardware])}),DISTINCT({DESCENDANTS([Merch SKU].[Merch SKU].[Other VG Hardware])}),DISTINCT({DESCENDANTS([Merch SKU].[Merch SKU].[Xbox One Hardware])}),DISTINCT({DESCENDANTS([Merch SKU].[Merch SKU].[PS4 Hardware])}),DISTINCT({DESCENDANTS([Merch SKU].[Merch SKU].[Switch Hardware])}),DISTINCT({DESCENDANTS([Merch SKU].[Merch SKU].[Xbox Series X Hardware])}),DISTINCT({DESCENDANTS([Merch SKU].[Merch SKU].[AR/VR Hardware])}),DISTINCT({DESCENDANTS([Merch SKU].[Merch SKU].[Pre-Owned Other VG Hardware])}),DISTINCT({DESCENDANTS([Merch SKU].[Merch SKU].[Switch 2 Hardware])})}"
+}

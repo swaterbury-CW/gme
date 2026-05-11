@@ -1,0 +1,16 @@
+{
+	"@type":"Hierarchy",
+	"Name":"Placeholder Picklist Measure",
+	"Elements":
+	[
+		{
+			"Name":"Options",
+			"Type":"String"
+		},
+		{
+			"Name":"BuildRunId",
+			"Type":"Numeric"
+		}
+	],
+	"Subsets@Code.links":[]
+}

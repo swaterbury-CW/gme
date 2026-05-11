@@ -1,0 +1,148 @@
+#region Prolog
+
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+#Region : Process Header
+#############################
+##~~ Start Process ~~##
+#############################
+# DEVELOPER : Steve Waterbury
+# CREATED ON : 2026-03-22
+# LAST UPDATE: 2026-04-01
+# COMMENTS:
+# Orchestrator: iterates }Cubes dimension subset, fires RunProcess
+# for each versioned cube to copy in parallel.
+#
+#### CHANGE HISTORY:
+### MODIFICATION DATE  CHANGED BY         COMMENT
+### 2026-03-22         Steve Waterbury    Creation - RunProcess orchestrator
+### 2026-03-23         Steve Waterbury    Refactored to }Cubes TM1DimensionSubset datasource
+### 2026-04-01         Steve Waterbury    Applied guardrails header template
+### 2026-04-01         Steve Waterbury    Code formatting: multi-line logging init
+#
+#EndRegion
+
+cProcessName = GetProcessName();
+
+#Region : Logging Init
+sLogLevel = CellGetS('ProcessControl', cProcessName, 'LoggingLevel');
+IF(sLogLevel @= ''); sLogLevel = 'OFF'; ENDIF;
+bLogInfo = 0;
+IF(sLogLevel @= 'INFO' % sLogLevel @= 'DEBUG');
+  bLogInfo = 1;
+ENDIF;
+bLogDebug = 0;
+IF(sLogLevel @= 'DEBUG');
+  bLogDebug = 1;
+ENDIF;
+#EndRegion
+
+#Region : Validation
+IF(pSourceVersion @= '' % pTargetVersion @= '');
+  LogOutput('ERROR', cProcessName | ' | Missing parameters');
+  ProcessError;
+ENDIF;
+IF(DIMIX('Merch Version', pSourceVersion) = 0);
+  LogOutput('ERROR', cProcessName | ' | Source version not found: ' | pSourceVersion);
+  ProcessError;
+ENDIF;
+IF(DIMIX('Merch Version', pTargetVersion) = 0);
+  LogOutput('ERROR', cProcessName | ' | Target version not found: ' | pTargetVersion);
+  ProcessError;
+ENDIF;
+#EndRegion
+
+IF(bLogInfo = 1);
+  LogOutput('INFO', 'START: ' | cProcessName | ' | ' | pSourceVersion | ' -> ' | pTargetVersion);
+ENDIF;
+
+nCubesDispatched = 0;
+
+#Region : Build dimension subset on }Cubes — all cubes
+### System cubes are filtered in Data tab (they don't have Merch Version)
+sSubset = 'TI_VersionCopy_' | TRIM(STR(NOW, 15, 0));
+SubsetCreateByMDX(sSubset, '{TM1SUBSETALL([}Cubes])}', '}Cubes', 0);
+
+DatasourceType = 'SUBSET';
+DatasourceNameForServer = '}Cubes';
+DatasourceDimensionSubset = sSubset;
+#EndRegion
+
+#endregion
+#region Metadata
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+
+#endregion
+#region Data
+
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+#Region : Dispatch RunProcess for each versioned cube
+### Dimension subset variable: vCube = }Cubes element name
+sCubeName = vCube;
+
+### Skip system/control cubes
+IF(SUBST(sCubeName, 1, 1) @= '}');
+    IF(bLogDebug = 1);
+        LogOutput('DEBUG', cProcessName | ' | Skipping system cube: ' | sCubeName);
+    ENDIF;
+ELSE;
+
+### Check if Merch Version is a dimension of this cube
+nDimCount = CubeDimensionCountGet(sCubeName);
+nDimIdx = 1;
+bHasVersion = 0;
+WHILE(nDimIdx <= nDimCount);
+    IF(TABDIM(sCubeName, nDimIdx) @= 'Merch Version');
+        bHasVersion = 1;
+        nDimIdx = nDimCount;
+    ENDIF;
+    nDimIdx = nDimIdx + 1;
+END;
+
+IF(bHasVersion = 1);
+    IF(nDimCount = 5);
+        RunProcess('Merch.Version.Copy.5Dim',
+            'pCubeName', sCubeName,
+            'pSourceVersion', pSourceVersion,
+            'pTargetVersion', pTargetVersion);
+        nCubesDispatched = nCubesDispatched + 1;
+    ELSEIF(nDimCount = 4);
+        RunProcess('Merch.Version.Copy.TPSKU',
+            'pCubeName', sCubeName,
+            'pSourceVersion', pSourceVersion,
+            'pTargetVersion', pTargetVersion);
+        nCubesDispatched = nCubesDispatched + 1;
+    ELSEIF(nDimCount = 3);
+        RunProcess('Merch.Version.Copy.SKU',
+            'pCubeName', sCubeName,
+            'pSourceVersion', pSourceVersion,
+            'pTargetVersion', pTargetVersion);
+        nCubesDispatched = nCubesDispatched + 1;
+    ELSE;
+        LogOutput('WARN', cProcessName | ' | Unsupported dim count ' | TRIM(STR(nDimCount, 2, 0)) | ' for cube: ' | sCubeName);
+    ENDIF;
+
+    IF(bLogDebug = 1);
+        LogOutput('DEBUG', cProcessName | ' | Dispatched: ' | sCubeName | ' (' | TRIM(STR(nDimCount, 2, 0)) | ' dims)');
+    ENDIF;
+ENDIF;
+
+ENDIF;
+#EndRegion
+
+#endregion
+#region Epilog
+
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+#Region : Wait + Cleanup
+SubsetDestroy('}Cubes', sSubset);
+
+IF(bLogInfo = 1);
+  LogOutput('INFO', 'END: ' | cProcessName | ' | Cubes dispatched=' | TRIM(STR(nCubesDispatched, 10, 0)));
+ENDIF;
+#EndRegion
+
+#endregion

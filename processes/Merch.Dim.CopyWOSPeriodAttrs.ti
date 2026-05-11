@@ -1,0 +1,63 @@
+#region Prolog
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+#Region : Process Header
+#############################
+##~~ Start Process ~~##
+#############################
+# DEVELOPER : Steve Waterbury
+# CREATED ON : 2026-04-15
+# LAST UPDATE: 2026-04-15
+# CHANGED BY : Steve Waterbury
+# COMMENTS: Copies Start_Date and End_Date from Merch Time Period
+#           to Merch WOS Period. TM1DimensionSubset datasource.
+#### CHANGE HISTORY:
+### 2026-04-15  Steve Waterbury  Initial creation
+#
+#EndRegion
+
+sDimSrc = 'Merch Time Period';
+sDimTgt = 'Merch WOS Period';
+nWritten = 0;
+bAbort = 0;
+
+IF(DimensionExists(sDimSrc) = 0);
+  LogOutput('ERROR', GetProcessName() | ' | Source dim not found');
+  bAbort = 1;
+ENDIF;
+IF(DimensionExists(sDimTgt) = 0);
+  LogOutput('ERROR', GetProcessName() | ' | Target dim not found');
+  bAbort = 1;
+ENDIF;
+IF(bAbort = 1);
+  DatasourceType = 'NULL';
+ENDIF;
+#endregion
+#region Metadata
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+
+#endregion
+#region Data
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+IF(bAbort = 1); ItemSkip; ENDIF;
+sElem = vElem;
+IF(DIMIX(sDimSrc, sElem) = 0);
+  ItemSkip;
+ENDIF;
+nStart = ATTRN(sDimSrc, sElem, 'Start_Date');
+nEnd = ATTRN(sDimSrc, sElem, 'End_Date');
+IF(nStart > 0);
+  AttrPutN(nStart, sDimTgt, sElem, 'Start_Date');
+  nWritten = nWritten + 1;
+ENDIF;
+IF(nEnd > 0);
+  AttrPutN(nEnd, sDimTgt, sElem, 'End_Date');
+ENDIF;
+#endregion
+#region Epilog
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+LogOutput('INFO', GetProcessName() | ' | Written=' | TRIM(STR(nWritten, 10, 0)));
+#endregion

@@ -1,0 +1,326 @@
+#region Prolog
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+#Region : Process Header
+#############################
+##~~ Start Process ~~##
+#############################
+# DEVELOPER  : Steve Waterbury
+# CREATED ON : 2026-04-24
+# LAST UPDATE: 2026-05-10
+# CHANGED BY : Steve Waterbury
+# COMMENTS   : Computes Sell Thru curve per-week Target Inventory Pct +
+#              Build/Debuild + Velocity for a given Merch Curve Name
+#              (Curve Type 'Sell Thru'). Also writes the curve-config
+#              attributes on Merch Curve Name so the UI configuration
+#              grid is populated. Fully parameter-driven generator.
+#              Shapes: Straight Line, Logarithmic, Exponential, S-Curve.
+#
+#              PAT-017 NOTE: DimensionElementInsertDirect is required
+#              here (not the non-Direct variant). On v12 SaaS the
+#              non-Direct insert does not become visible until the
+#              prolog tab finishes, so the subsequent same-prolog
+#              CellIsUpdateable/CellPutN on the new curve element fail
+#              with 'Invalid key'. This is an interactive single-element
+#              insert from a UI button, not a bulk load.
+#
+#### CHANGE HISTORY:
+### 2026-04-24 | Steve Waterbury | Initial creation
+### 2026-04-24 | Steve Waterbury | Fix Exponential: TM1 TI LOG() is base-10
+### 2026-05-02 | Steve Waterbury | Expanded params: 10 inputs.
+### 2026-05-10 | Steve Waterbury | Added Velocity per-week write (= BD)
+###                                and Merch Curve Name attribute writes
+###                                (Curve Type, Has_*, Created Date/By,
+###                                Description, Source SKU/Category,
+###                                Source Version, Source Start/End Period
+###                                + serials). New optional params:
+###                                pDescription, pSourceElement,
+###                                pSourceVersion, pSourceStartPeriod,
+###                                pSourceEndPeriod.
+#
+#EndRegion
+
+cProcessName = GetProcessName();
+
+#Region : Constants
+cCube = 'Merch Curve';
+cNameDim = 'Merch Curve Name';
+cShapeDim = 'Merch Curve Shape';
+cSKUDim = 'Merch SKU';
+cTPDim = 'Merch Time Period';
+cVersionDim = 'Merch Version';
+cAttrCurveType = 'Curve Type';
+cAnchorWeek = 'Week 1';
+cMeasTargetEnd = 'Target Ending Inventory Pct';
+cMeasDuration = 'Duration Weeks';
+cMeasShape = 'Curve Shape';
+cMeasPct = 'Target Inventory Pct';
+cMeasBD = 'Build/Debuild';
+cMeasVelocity = 'Velocity';
+cShapeStraight = 'Straight Line';
+cShapeLog = 'Logarithmic';
+cShapeExp = 'Exponential';
+cShapeS = 'S-Curve';
+cWeekPrefix = 'Week ';
+cSellThru = 'Sell Thru';
+cDateFmt = '\Y-\m-\d';
+nLn10 = 2.302585092994046;
+#EndRegion
+
+#Region : Logging
+sLogLevel = 'OFF';
+IF(CubeExists('ProcessControl') = 1);
+  sLogLevel = CellGetS('ProcessControl', cProcessName, 'LoggingLevel');
+  IF(sLogLevel @= '');
+    sLogLevel = 'OFF';
+  ENDIF;
+ENDIF;
+bLogInfo = 0;
+IF(sLogLevel @= 'INFO' % sLogLevel @= 'DEBUG');
+  bLogInfo = 1;
+ENDIF;
+#EndRegion
+
+#Region : Validate curve element
+IF(pCurveName @= '');
+  LogOutput('ERROR', cProcessName | ' | pCurveName required');
+  ProcessError;
+ENDIF;
+IF(DIMIX(cNameDim, pCurveName) = 0);
+  DimensionElementInsertDirect(cNameDim, '', pCurveName, 'N');
+ENDIF;
+#EndRegion
+
+#Region : Validate required inputs
+nTargetEnd = pTargetEndingInventoryPct;
+nDuration = pDurationWeeks;
+sShape = pCurveShape;
+
+IF(nDuration <= 0 % nDuration > 52);
+  LogOutput('ERROR', cProcessName | ' | Invalid pDurationWeeks (1..52): ' | NumberToString(nDuration));
+  ProcessError;
+ENDIF;
+IF(nTargetEnd < 0 % nTargetEnd > 1);
+  LogOutput('ERROR', cProcessName | ' | Invalid pTargetEndingInventoryPct (0..1): ' | NumberToString(nTargetEnd));
+  ProcessError;
+ENDIF;
+IF(sShape @= '');
+  LogOutput('ERROR', cProcessName | ' | pCurveShape required');
+  ProcessError;
+ENDIF;
+IF(sShape @<> cShapeStraight & sShape @<> cShapeLog & sShape @<> cShapeExp & sShape @<> cShapeS);
+  LogOutput('ERROR', cProcessName | ' | Invalid pCurveShape: ' | sShape);
+  ProcessError;
+ENDIF;
+IF(DIMIX(cShapeDim, sShape) = 0);
+  LogOutput('ERROR', cProcessName | ' | pCurveShape not in Merch Curve Shape dim: ' | sShape);
+  ProcessError;
+ENDIF;
+#EndRegion
+
+#Region : Apply defaults for math knobs
+nStartPct = pStartingInventoryPct;
+IF(nStartPct <= 0);
+  nStartPct = 1;
+ENDIF;
+IF(nStartPct > 1);
+  LogOutput('ERROR', cProcessName | ' | Invalid pStartingInventoryPct (0..1): ' | NumberToString(nStartPct));
+  ProcessError;
+ENDIF;
+IF(nStartPct < nTargetEnd);
+  LogOutput('ERROR', cProcessName | ' | pStartingInventoryPct must be >= pTargetEndingInventoryPct');
+  ProcessError;
+ENDIF;
+
+nSteepness = pSCurveSteepness;
+IF(nSteepness <= 0);
+  nSteepness = 10;
+ENDIF;
+
+nExpFloor = pExponentialFloor;
+IF(nExpFloor <= 0);
+  nExpFloor = 0.0001;
+ENDIF;
+IF(nExpFloor >= 1);
+  LogOutput('ERROR', cProcessName | ' | pExponentialFloor must be in (0,1): ' | NumberToString(nExpFloor));
+  ProcessError;
+ENDIF;
+
+nWStart = pWeekStart;
+IF(nWStart <= 0);
+  nWStart = 1;
+ENDIF;
+
+nWEnd = pWeekEnd;
+IF(nWEnd <= 0);
+  nWEnd = nDuration;
+ENDIF;
+
+IF(nWStart > nWEnd);
+  LogOutput('ERROR', cProcessName | ' | pWeekStart (' | NumberToString(nWStart) | ') > pWeekEnd (' | NumberToString(nWEnd) | ')');
+  ProcessError;
+ENDIF;
+IF(nWStart > 52 % nWEnd > 52);
+  LogOutput('ERROR', cProcessName | ' | pWeekStart/pWeekEnd out of range (1..52)');
+  ProcessError;
+ENDIF;
+#EndRegion
+
+#Region : Optional clear of existing curve cells
+IF(pClearFirst = 1);
+  nClr = 1;
+  WHILE(nClr <= 52);
+    sClrWk = cWeekPrefix | NumberToString(nClr);
+    IF(CellIsUpdateable(cCube, pCurveName, sClrWk, cMeasPct) = 1);
+      CellPutN(0, cCube, pCurveName, sClrWk, cMeasPct);
+    ENDIF;
+    IF(CellIsUpdateable(cCube, pCurveName, sClrWk, cMeasBD) = 1);
+      CellPutN(0, cCube, pCurveName, sClrWk, cMeasBD);
+    ENDIF;
+    IF(CellIsUpdateable(cCube, pCurveName, sClrWk, cMeasVelocity) = 1);
+      CellPutN(0, cCube, pCurveName, sClrWk, cMeasVelocity);
+    ENDIF;
+    nClr = nClr + 1;
+  END;
+ENDIF;
+#EndRegion
+
+#Region : Write-back input parameters to Week 1
+IF(CellIsUpdateable(cCube, pCurveName, cAnchorWeek, cMeasTargetEnd) = 1);
+  CellPutN(nTargetEnd, cCube, pCurveName, cAnchorWeek, cMeasTargetEnd);
+ENDIF;
+IF(CellIsUpdateable(cCube, pCurveName, cAnchorWeek, cMeasDuration) = 1);
+  CellPutN(nDuration, cCube, pCurveName, cAnchorWeek, cMeasDuration);
+ENDIF;
+IF(CellIsUpdateable(cCube, pCurveName, cAnchorWeek, cMeasShape) = 1);
+  CellPutS(sShape, cCube, pCurveName, cAnchorWeek, cMeasShape);
+ENDIF;
+#EndRegion
+
+IF(bLogInfo = 1);
+  LogOutput('INFO', cProcessName | ' | START ' | pCurveName | ' | Duration=' | NumberToString(nDuration) | ' Start=' | NumberToString(nStartPct) | ' TargetEnd=' | NumberToString(nTargetEnd) | ' Shape=' | sShape | ' Range=' | NumberToString(nWStart) | '..' | NumberToString(nWEnd) | ' K=' | NumberToString(nSteepness) | ' ExpFloor=' | NumberToString(nExpFloor) | ' Clear=' | NumberToString(pClearFirst));
+ENDIF;
+
+#Region : Pre-compute shape constants
+nDelta = nStartPct - nTargetEnd;
+nK = nSteepness / nDuration;
+nMid = nDuration / 2;
+nF0 = 1 / (1 + EXP(-nK * (0 - nMid)));
+nFN = 1 / (1 + EXP(-nK * (nDuration - nMid)));
+nFRange = nFN - nF0;
+nLogDenom = LOG(nDuration + 1);
+nLnStart = 0;
+IF(nStartPct > 0);
+  nLnStart = LOG(nStartPct) * nLn10;
+ENDIF;
+nExpLnTarget = 0;
+IF(nTargetEnd > 0);
+  nExpLnTarget = LOG(nTargetEnd) * nLn10;
+ELSE;
+  nExpLnTarget = LOG(nExpFloor) * nLn10;
+ENDIF;
+#EndRegion
+
+#endregion
+#region Metadata
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+
+#endregion
+#region Data
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+
+#endregion
+#region Epilog
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+#Region : Write per-week outputs
+nPrev = nStartPct;
+nW = 1;
+WHILE(nW <= 52);
+  sWeek = cWeekPrefix | NumberToString(nW);
+
+  IF(nW <= nDuration);
+    IF(sShape @= cShapeStraight);
+      nPct = nStartPct - (nW / nDuration) * nDelta;
+    ELSEIF(sShape @= cShapeLog);
+      nPct = nStartPct - (LOG(nW + 1) / nLogDenom) * nDelta;
+    ELSEIF(sShape @= cShapeExp);
+      nPct = EXP(nLnStart + (nW / nDuration) * (nExpLnTarget - nLnStart));
+    ELSEIF(sShape @= cShapeS);
+      nFw = 1 / (1 + EXP(-nK * (nW - nMid)));
+      nPct = nStartPct - nDelta * ((nFw - nF0) / nFRange);
+    ELSE;
+      nPct = 0;
+    ENDIF;
+  ELSE;
+    nPct = nTargetEnd;
+  ENDIF;
+
+  IF(nPrev <> 0);
+    nBD = nPct / nPrev;
+  ELSE;
+    nBD = 1;
+  ENDIF;
+
+  IF(nW >= nWStart & nW <= nWEnd);
+    IF(CellIsUpdateable(cCube, pCurveName, sWeek, cMeasPct) = 1);
+      CellPutN(nPct, cCube, pCurveName, sWeek, cMeasPct);
+    ENDIF;
+    IF(CellIsUpdateable(cCube, pCurveName, sWeek, cMeasBD) = 1);
+      CellPutN(nBD, cCube, pCurveName, sWeek, cMeasBD);
+    ENDIF;
+    IF(CellIsUpdateable(cCube, pCurveName, sWeek, cMeasVelocity) = 1);
+      CellPutN(nBD, cCube, pCurveName, sWeek, cMeasVelocity);
+    ENDIF;
+  ENDIF;
+
+  nPrev = nPct;
+  nW = nW + 1;
+END;
+#EndRegion
+
+#Region : Write Merch Curve Name configuration attributes
+AttrPutS(cSellThru, cNameDim, pCurveName, cAttrCurveType);
+AttrPutN(1, cNameDim, pCurveName, 'Has_Velocity');
+AttrPutN(0, cNameDim, pCurveName, 'Has_Seasonality');
+AttrPutN(0, cNameDim, pCurveName, 'Has_Regime');
+AttrPutN(0, cNameDim, pCurveName, 'Has_Markdown');
+AttrPutN(0, cNameDim, pCurveName, 'Has_Level');
+
+AttrPutS(TIMST(NOW(), cDateFmt), cNameDim, pCurveName, 'Created Date');
+AttrPutN(NOW(), cNameDim, pCurveName, 'Created_Date_Serial');
+AttrPutS(TM1User(), cNameDim, pCurveName, 'Created By');
+
+IF(pDescription @<> '');
+  AttrPutS(pDescription, cNameDim, pCurveName, 'Description');
+ENDIF;
+
+IF(pSourceElement @<> '' & DIMIX(cSKUDim, pSourceElement) > 0);
+  IF(DTYPE(cSKUDim, pSourceElement) @= 'N');
+    AttrPutS(pSourceElement, cNameDim, pCurveName, 'Source SKU');
+  ELSE;
+    AttrPutS(pSourceElement, cNameDim, pCurveName, 'Source Category');
+  ENDIF;
+ENDIF;
+
+IF(pSourceVersion @<> '' & DIMIX(cVersionDim, pSourceVersion) > 0);
+  AttrPutS(pSourceVersion, cNameDim, pCurveName, 'Source Version');
+ENDIF;
+
+IF(pSourceStartPeriod @<> '' & DIMIX(cTPDim, pSourceStartPeriod) > 0);
+  AttrPutS(pSourceStartPeriod, cNameDim, pCurveName, 'Source Start Period');
+  AttrPutN(ATTRN(cTPDim, pSourceStartPeriod, 'Start_Date_Serial'), cNameDim, pCurveName, 'Source_Start_Period_Serial');
+ENDIF;
+IF(pSourceEndPeriod @<> '' & DIMIX(cTPDim, pSourceEndPeriod) > 0);
+  AttrPutS(pSourceEndPeriod, cNameDim, pCurveName, 'Source End Period');
+  AttrPutN(ATTRN(cTPDim, pSourceEndPeriod, 'End_Date_Serial'), cNameDim, pCurveName, 'Source_End_Period_Serial');
+ENDIF;
+#EndRegion
+
+IF(bLogInfo = 1);
+  LogOutput('INFO', cProcessName | ' | END ' | pCurveName | ' | Wrote weeks ' | NumberToString(nWStart) | '..' | NumberToString(nWEnd));
+ENDIF;
+
+#endregion

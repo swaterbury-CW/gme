@@ -1,0 +1,7 @@
+#region Prolog
+ExecuteProcess( 'API.BigQuery.Export',
+	'pQuery', 'SELECT * FROM `merchplanning-suite-prod-062.planninganalytics.budget_2026`',
+	'pOutputFile', './budget_2026.json',
+	'pMaxResults', '10000' );
+
+#endregion

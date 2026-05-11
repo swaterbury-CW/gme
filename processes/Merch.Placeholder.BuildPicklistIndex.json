@@ -1,0 +1,43 @@
+{
+	"@type":"Process",
+	"Name":"Merch.Placeholder.BuildPicklistIndex",
+	"HasSecurityAccess":false,
+	"Code@Code.link":"Merch.Placeholder.BuildPicklistIndex.ti",
+	"DataSource":
+	{
+		"Type":"TM1DimensionSubset",
+		"dataSourceNameForServer":"Merch Category",
+		"dataSourceNameForClient":"Merch Category",
+		"subset":"}PLI_O"
+	},
+	"Parameters":
+	[
+		{
+			"Name":"pCategoryFilter",
+			"Prompt":"Optional Category Filter",
+			"Value":"",
+			"Type":"String"
+		},
+		{
+			"Name":"pWorkerName",
+			"Prompt":"Worker Process Name",
+			"Value":"Merch.Placeholder.BuildPicklistIndex.Worker",
+			"Type":"String"
+		}
+	],
+	"Variables":
+	[
+		{
+			"Name":"vCategory",
+			"Type":"String",
+			"Position":1,
+			"StartByte":0,
+			"EndByte":0
+		}
+	],
+	"UID": "17775609190001",
+	"UIData": "CubeAction=1511\fDataAction=1503\fCubeLogChanges=0\f",
+	"VariablesUIData": [
+		"VarType=32\fColType=827\f"
+	]
+}

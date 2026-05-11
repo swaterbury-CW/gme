@@ -1,0 +1,12 @@
+{
+	"@type":"Dimension",
+	"Name":"Merch Curve Start Mode",
+	"Hierarchies@Code.links":
+	[
+		"Merch Curve Start Mode.hierarchies/Merch Curve Start Mode.json"
+	],
+	"DefaultHierarchy":
+	{
+		"@id":"Dimensions('Merch Curve Start Mode')/Hierarchies('Merch Curve Start Mode')"
+	}
+}

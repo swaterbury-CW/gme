@@ -1,0 +1,12 @@
+{
+	"@type":"Hierarchy",
+	"Name":"}System_Control_Measure",
+	"Elements":
+	[
+		{
+			"Name":"String",
+			"Type":"String"
+		}
+	],
+	"Subsets@Code.links":[]
+}

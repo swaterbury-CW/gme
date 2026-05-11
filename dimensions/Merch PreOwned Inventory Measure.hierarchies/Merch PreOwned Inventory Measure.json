@@ -1,0 +1,40 @@
+{
+	"@type":"Hierarchy",
+	"Name":"Merch PreOwned Inventory Measure",
+	"Elements":
+	[
+		{
+			"Name":"BOH Units",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Trade Receipts",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"External Purchases",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Sales Outflow",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Destroys",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Inventory Adjustment",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"EOH Units",
+			"Type":"Consolidated"
+		},
+		{
+			"Name":"WOS",
+			"Type":"Consolidated"
+		}
+	],
+	"Subsets@Code.links":[]
+}

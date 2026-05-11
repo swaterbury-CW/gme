@@ -1,0 +1,12 @@
+{
+	"@type":"Dimension",
+	"Name":"PreOwned_Mix_temp",
+	"Hierarchies@Code.links":
+	[
+		"PreOwned_Mix_temp.hierarchies/PreOwned_Mix_temp.json"
+	],
+	"DefaultHierarchy":
+	{
+		"@id":"Dimensions('PreOwned_Mix_temp')/Hierarchies('PreOwned_Mix_temp')"
+	}
+}
