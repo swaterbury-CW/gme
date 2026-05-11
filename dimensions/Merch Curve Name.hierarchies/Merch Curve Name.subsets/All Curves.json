@@ -1,6 +1,0 @@
-{
-	"@type":"Subset",
-	"Name":"All Curves",
-	"Alias":"MEMBER_NAME",
-	"Expression":"TM1IGNORE_BADTUPLES {TM1FILTERBYLEVEL(TM1SUBSETALL([Merch Curve Name].[Merch Curve Name]) , 0)}"
-}

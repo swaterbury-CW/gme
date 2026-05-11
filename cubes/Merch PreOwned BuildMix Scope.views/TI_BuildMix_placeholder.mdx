@@ -1,1 +1,0 @@
-SELECT {[Merch PreOwned BuildMix Scope Measure].[Scope Flag]} ON COLUMNS, NON EMPTY {TM1FILTERBYLEVEL({TM1SUBSETALL([Merch Time Period])},0)} * {TM1FILTERBYLEVEL({TM1SUBSETALL([Merch PreOwned Category])},0)} ON ROWS FROM [Merch PreOwned BuildMix Scope] WHERE ([Merch Version].[Forecast])

@@ -1,6 +1,0 @@
-{
-	"@type":"Subset",
-	"Name":"All PreOwned Trading Cards",
-	"Alias":"Caption",
-	"Expression":"TM1IGNORE_BADTUPLES {DRILLDOWNMEMBER({[Merch PreOwned Category].[Merch PreOwned Category].[PreOwned Trading Cards]} , {[Merch PreOwned Category].[Merch PreOwned Category].[PreOwned Trading Cards]} , RECURSIVE)}"
-}
