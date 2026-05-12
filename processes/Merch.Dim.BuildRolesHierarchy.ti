@@ -7,17 +7,20 @@
 ##############################################
 # DEVELOPER  : Rose Morgan
 # CREATED ON : 2026-05-08
-# LAST UPDATE: 2026-05-08
-# CHANGED BY : Rose Morgan
+# LAST UPDATE: 2026-05-12
+# CHANGED BY : Steve Waterbury
 # COMMENTS:
 # Rebuilds the 'Roles' alt hierarchy on Merch SKU. Prolog builds the full
-# Director -> Director-2 -> Manager -> planner scaffold up front; Metadata
-# tab classifies each leaf SKU and adds SKU -> planner edge.
+# Director -> Manager -> Planner scaffold; Metadata tab classifies each leaf
+# SKU to its Planner, inserts a per-Planner SGM_Category bucket, and
+# parents the SKU under the bucket. Final shape:
+#   Director -> Manager -> Planner -> '<Planner> - <SGM_Category>' -> SKU.
 #
 # CHANGE HISTORY:
-#   2026-05-08 | Rose Morgan | Creation
-#   2026-05-08 | Rose Morgan | Move structural writes Data->Metadata tab
-#   2026-05-08 | Rose Morgan | Add Director/Manager rollup scaffold (Phase C)
+#   2026-05-08 | Rose Morgan      | Creation
+#   2026-05-08 | Rose Morgan      | Move structural writes Data->Metadata tab
+#   2026-05-08 | Rose Morgan      | Add Director/Manager rollup scaffold (Phase C)
+#   2026-05-12 | Steve Waterbury  | Insert SGM_Category bucket between Planner and SKU; 'Unassigned' bucket for blank SGM_Category
 #EndRegion
 
 #Region : Logging Configuration
@@ -172,6 +175,7 @@ DatasourceDimensionSubset = sSubset;
 nLeafCount = 0;
 nUnassigned = 0;
 nGroupsCreated = 0;
+nSgmNodes = 0;
 #EndRegion
 
 #endregion
@@ -261,7 +265,19 @@ IF(HierarchyElementExists(sDim, sHier, sPlanner) = 0);
   nGroupsCreated = nGroupsCreated + 1;
 ENDIF;
 
-HierarchyElementComponentAdd(sDim, sHier, sPlanner, sSku, 1);
+sSgm = sCategory;
+IF(sSgm @= '');
+  sSgm = 'Unassigned';
+ENDIF;
+sCat = sPlanner | ' - ' | sSgm;
+
+IF(HierarchyElementExists(sDim, sHier, sCat) = 0);
+  HierarchyElementInsert(sDim, sHier, '', sCat, 'C');
+  HierarchyElementComponentAdd(sDim, sHier, sPlanner, sCat, 1);
+  nSgmNodes = nSgmNodes + 1;
+ENDIF;
+
+HierarchyElementComponentAdd(sDim, sHier, sCat, sSku, 1);
 nLeafCount = nLeafCount + 1;
 
 IF(sPlanner @= 'Unassigned Planner');
@@ -294,6 +310,7 @@ ENDIF;
 IF(bLogInfo = 1);
   LogOutput('INFO', cProcessName
     | ' | Planners=' | TRIM(STR(nGroupsCreated, 10, 0))
+    | ' | SgmNodes=' | TRIM(STR(nSgmNodes, 10, 0))
     | ' | Leaves=' | TRIM(STR(nLeafCount, 10, 0))
     | ' | Unassigned=' | TRIM(STR(nUnassigned, 10, 0)));
   LogOutput('INFO', 'END: ' | GetProcessName());
