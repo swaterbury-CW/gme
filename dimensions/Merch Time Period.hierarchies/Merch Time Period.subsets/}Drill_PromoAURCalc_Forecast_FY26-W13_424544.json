@@ -1,0 +1,10 @@
+{
+	"@type":"Subset",
+	"Name":"}Drill_PromoAURCalc_Forecast_FY26-W13_424544",
+	"Elements":
+	[
+		{
+			"@id":"Dimensions('Merch Time Period')/Hierarchies('Merch Time Period')/Elements('FY26-W13')"
+		}
+	]
+}
