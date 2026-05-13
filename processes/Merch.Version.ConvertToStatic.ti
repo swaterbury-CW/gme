@@ -1,0 +1,144 @@
+#region Prolog
+
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+#Region : Process Header
+#############################
+##~~ Start Process ~~##
+#############################
+# DEVELOPER : Steve Waterbury
+# CREATED ON : 2026-03-22
+# LAST UPDATE: 2026-04-01
+# COMMENTS:
+# Freezes a Calculated version. Iterates all cubes with Merch Version
+# dimension, snapshots rule-calculated values by copying version to itself
+# via RunProcess (parallel), then sets Version_Type to Static.
+#
+#### CHANGE HISTORY:
+### MODIFICATION DATE  CHANGED BY         COMMENT
+### 2026-03-22         Steve Waterbury    Creation
+### 2026-03-22         Steve Waterbury    Refactored to RunProcess parallelism with TPSKU worker
+### 2026-04-01         Steve Waterbury    Applied guardrails header template
+### 2026-04-01         Steve Waterbury    Rewritten: dynamic iteration of all versioned cubes
+### 2026-04-01         Steve Waterbury    RunProcess for parallel freeze performance
+### 2026-04-01         Steve Waterbury    Code formatting: multi-line logging init
+#
+#EndRegion
+
+cProcessName = GetProcessName();
+
+#Region : Logging Init
+sLogLevel = CellGetS('ProcessControl', cProcessName, 'LoggingLevel');
+IF(sLogLevel @= ''); sLogLevel = 'OFF'; ENDIF;
+bLogInfo = 0;
+IF(sLogLevel @= 'INFO' % sLogLevel @= 'DEBUG');
+  bLogInfo = 1;
+ENDIF;
+bLogDebug = 0;
+IF(sLogLevel @= 'DEBUG');
+  bLogDebug = 1;
+ENDIF;
+#EndRegion
+
+#Region : Validation
+IF(pVersion @= '');
+  LogOutput('ERROR', cProcessName | ' | pVersion is empty');
+  ProcessError;
+ENDIF;
+IF(DIMIX('Merch Version', pVersion) = 0);
+  LogOutput('ERROR', cProcessName | ' | Version not found: ' | pVersion);
+  ProcessError;
+ENDIF;
+IF(ATTRS('Merch Version', pVersion, 'Version_Type') @<> 'Calculated');
+  LogOutput('ERROR', cProcessName | ' | Version is not Calculated: ' | pVersion | ' | Type=' | ATTRS('Merch Version', pVersion, 'Version_Type'));
+  ProcessError;
+ENDIF;
+#EndRegion
+
+IF(bLogInfo = 1);
+  LogOutput('INFO', 'START: ' | cProcessName | ' | Freezing version ' | pVersion);
+ENDIF;
+
+#Region : Freeze all versioned cubes (copy version to itself to store rule values)
+nCubeIdx = 1;
+nCubesFrozen = 0;
+WHILE(nCubeIdx <= DIMSIZ('}Cubes'));
+  sCubeName = DIMNM('}Cubes', nCubeIdx);
+
+  # Skip system/control cubes
+  IF(SUBST(sCubeName, 1, 1) @<> '}');
+
+    # Check if Merch Version is a dimension of this cube
+    nDimCount = CubeDimensionCountGet(sCubeName);
+    nDimIdx = 1;
+    bHasVersion = 0;
+    WHILE(nDimIdx <= nDimCount);
+      IF(TABDIM(sCubeName, nDimIdx) @= 'Merch Version');
+        bHasVersion = 1;
+        nDimIdx = nDimCount;
+      ENDIF;
+      nDimIdx = nDimIdx + 1;
+    END;
+
+    IF(bHasVersion = 1);
+      IF(nDimCount = 5);
+        RunProcess('Merch.Version.Copy.5Dim',
+          'pCubeName', sCubeName,
+          'pSourceVersion', pVersion,
+          'pTargetVersion', pVersion);
+        nCubesFrozen = nCubesFrozen + 1;
+      ELSEIF(nDimCount = 4);
+        RunProcess('Merch.Version.Copy.TPSKU',
+          'pCubeName', sCubeName,
+          'pSourceVersion', pVersion,
+          'pTargetVersion', pVersion);
+        nCubesFrozen = nCubesFrozen + 1;
+      ELSEIF(nDimCount = 3);
+        RunProcess('Merch.Version.Copy.SKU',
+          'pCubeName', sCubeName,
+          'pSourceVersion', pVersion,
+          'pTargetVersion', pVersion);
+        nCubesFrozen = nCubesFrozen + 1;
+      ELSE;
+        LogOutput('WARN', cProcessName | ' | Unsupported dim count ' | TRIM(STR(nDimCount, 2, 0)) | ' for cube: ' | sCubeName);
+      ENDIF;
+
+      IF(bLogDebug = 1);
+        LogOutput('DEBUG', cProcessName | ' | Dispatched: ' | sCubeName | ' (' | TRIM(STR(nDimCount, 2, 0)) | ' dims)');
+      ENDIF;
+    ENDIF;
+
+  ENDIF;
+
+  nCubeIdx = nCubeIdx + 1;
+END;
+#EndRegion
+
+IF(bLogInfo = 1);
+  LogOutput('INFO', cProcessName | ' | Cubes frozen: ' | TRIM(STR(nCubesFrozen, 10, 0)));
+ENDIF;
+
+#Region : Set Version_Type to Static
+AttrPutS('Static', 'Merch Version', pVersion, 'Version_Type');
+#EndRegion
+
+#endregion
+#region Metadata
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+
+#endregion
+#region Data
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+
+#endregion
+#region Epilog
+
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+IF(bLogInfo = 1);
+  LogOutput('INFO', 'END: ' | cProcessName | ' | Version=' | pVersion | ' converted to Static');
+ENDIF;
+
+#endregion

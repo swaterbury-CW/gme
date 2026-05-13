@@ -1,0 +1,134 @@
+#region Prolog
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+#Region : Process Header
+# DEVELOPER: Steve Waterbury
+# CREATED ON: 2026-05-01
+# LAST UPDATE: 2026-05-01
+# CHANGED BY: Steve Waterbury
+# CHANGE HISTORY:
+#   2026-05-01 | Steve Waterbury | Initial creation
+# COMMENTS:
+# Loads Merch Store dim from BigQuery via API.BigQuery.Export.
+# Processes page_1 inline; dispatches pages 2..N to .Page worker.
+#EndRegion
+
+cProcessName = GetProcessName();
+cDim = 'Merch Store';
+cBaseName = 'store_bq';
+nRecordCount = 0;
+
+IF(pPageProcess @= '');
+  pPageProcess = 'Merch.Dim.LoadStoreHierarchy.BQ.Page';
+ENDIF;
+IF(pKeepFiles @= '');
+  pKeepFiles = '0';
+ENDIF;
+
+sSQL = 'SELECT store_number, store_name, CAST(date_opened AS STRING) AS date_opened, CAST(date_closed AS STRING) AS date_closed FROM `merchplanning-suite-prod-062.planninganalytics.store`';
+
+nRC = ExecuteProcess('API.BigQuery.Export', 'pQuery', sSQL, 'pOutputFile', cBaseName, 'pMaxResults', '50000');
+IF(nRC <> 0);
+  LogOutput('ERROR', cProcessName | ' | API.BigQuery.Export failed, code=' | TRIM(STR(nRC, 10, 0)));
+  ProcessError;
+ENDIF;
+
+DatasourceType = 'JSON';
+DatasourceNameForServer = cBaseName | '_page_1.json';
+DataSourceJsonRootPointer = '/rows';
+DataSourceJsonVariableMapping = JsonAdd('{}', 'vRow', StringToJson('/f'));
+
+#endregion
+#region Metadata
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+cDim = 'Merch Store';
+sStoreNumber = JsonGet(vRow, '/0/v');
+IF(SUBST(sStoreNumber, 1, 1) @= '"');
+  sStoreNumber = SUBST(sStoreNumber, 2, LONG(sStoreNumber) - 2);
+ENDIF;
+IF(sStoreNumber @= '' % sStoreNumber @= 'null');
+  ItemSkip;
+ENDIF;
+
+IF(DIMIX(cDim, sStoreNumber) = 0);
+  DimensionElementInsert(cDim, '', sStoreNumber, 'N');
+  DimensionElementComponentAdd(cDim, 'All Stores', sStoreNumber, 1);
+ENDIF;
+
+#endregion
+#region Data
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+cDim = 'Merch Store';
+sStoreNumber = JsonGet(vRow, '/0/v');
+IF(SUBST(sStoreNumber, 1, 1) @= '"');
+  sStoreNumber = SUBST(sStoreNumber, 2, LONG(sStoreNumber) - 2);
+ENDIF;
+IF(sStoreNumber @= '' % sStoreNumber @= 'null');
+  ItemSkip;
+ENDIF;
+IF(DIMIX(cDim, sStoreNumber) = 0);
+  ItemSkip;
+ENDIF;
+nRecordCount = nRecordCount + 1;
+
+sStoreName = JsonGet(vRow, '/1/v');
+IF(SUBST(sStoreName, 1, 1) @= '"');
+  sStoreName = SUBST(sStoreName, 2, LONG(sStoreName) - 2);
+ENDIF;
+IF(sStoreName @<> '' & sStoreName @<> 'null');
+  AttrPutS(sStoreNumber | ' - ' | sStoreName, cDim, sStoreNumber, 'Store_Name');
+ENDIF;
+
+sDateOpened = JsonGet(vRow, '/2/v');
+IF(SUBST(sDateOpened, 1, 1) @= '"');
+  sDateOpened = SUBST(sDateOpened, 2, LONG(sDateOpened) - 2);
+ENDIF;
+IF(sDateOpened @<> '' & sDateOpened @<> 'null');
+  AttrPutN(DAYNO(sDateOpened), cDim, sStoreNumber, 'Date_Opened');
+ENDIF;
+
+sDateClosed = JsonGet(vRow, '/3/v');
+IF(SUBST(sDateClosed, 1, 1) @= '"');
+  sDateClosed = SUBST(sDateClosed, 2, LONG(sDateClosed) - 2);
+ENDIF;
+IF(sDateClosed @<> '' & sDateClosed @<> 'null');
+  AttrPutN(DAYNO(sDateClosed), cDim, sStoreNumber, 'Date_Closed');
+ENDIF;
+
+#endregion
+#region Epilog
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+LogOutput('INFO', cProcessName | ' | Page 1 records=' | TRIM(STR(nRecordCount, 10, 0)));
+
+nPageNum = 2;
+bMorePages = 1;
+WHILE(bMorePages = 1);
+  sPageFile = cBaseName | '_page_' | TRIM(STR(nPageNum, 5, 0)) | '.json';
+  IF(FileExists(sPageFile) = 1);
+    nRC = ExecuteProcess(pPageProcess, 'pPageFile', sPageFile);
+    IF(nRC <> 0);
+      LogOutput('ERROR', cProcessName | ' | Page ' | TRIM(STR(nPageNum, 5, 0)) | ' failed RC=' | TRIM(STR(nRC, 10, 0)));
+    ENDIF;
+    nPageNum = nPageNum + 1;
+  ELSE;
+    bMorePages = 0;
+  ENDIF;
+END;
+
+IF(pKeepFiles @= '0');
+  nPageClean = 1;
+  WHILE(nPageClean < nPageNum);
+    sCleanFile = cBaseName | '_page_' | TRIM(STR(nPageClean, 5, 0)) | '.json';
+    IF(FileExists(sCleanFile) = 1);
+      ASCIIDelete(sCleanFile);
+    ENDIF;
+    nPageClean = nPageClean + 1;
+  END;
+ENDIF;
+
+LogOutput('INFO', 'END: ' | cProcessName);
+
+#endregion

@@ -1,0 +1,29 @@
+{
+	"@type":"Process",
+	"Name":"Merch.Dim.MerchSkuPicklist.Sync",
+	"HasSecurityAccess":false,
+	"Code@Code.link":"Merch.Dim.MerchSkuPicklist.Sync.ti",
+	"DataSource":
+	{
+		"Type":"TM1DimensionSubset",
+		"dataSourceNameForServer":"Merch SKU",
+		"dataSourceNameForClient":"Merch SKU",
+		"subset":"MSP_Sync_Placeholder"
+	},
+	"Parameters":[],
+	"Variables":
+	[
+		{
+			"Name":"vMerch_SKU",
+			"Type":"String",
+			"Position":1,
+			"StartByte":0,
+			"EndByte":0
+		}
+	],
+	"UID": "17779085510001",
+	"UIData": "CubeAction=1511\fDataAction=1503\fCubeLogChanges=0\f",
+	"VariablesUIData": [
+		"VarType=32\fColType=827\f"
+	]
+}

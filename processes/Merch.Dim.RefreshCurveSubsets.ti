@@ -1,0 +1,131 @@
+#region Prolog
+
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+#Region : Process Header
+#############################
+##~~ Start Process ~~##
+#############################
+# DEVELOPER : Steve Waterbury
+# CREATED ON : 2026-03-18
+# LAST UPDATE: 2026-04-03
+# COMMENTS:
+# Rebuilds public subsets on Merch Curve Name for picklist use.
+# Uses Has_* numeric attributes for reliable multi-type support.
+# Creates: Velocity, Seasonality, Regime, Markdown, Level, Category Build subsets.
+#
+#### CHANGE HISTORY:
+### MODIFICATION DATE  CHANGED BY         COMMENT
+### 2026-03-18         Steve Waterbury    Creation of Process
+### 2026-04-03         Steve Waterbury    Rewrote for all curve types using Has_* attributes
+#
+#EndRegion
+
+#Region : Logging Configuration
+sLogLevel = CellGetS( 'ProcessControl', GetProcessName(), 'LoggingLevel' );
+IF( sLogLevel @= '' ); sLogLevel = 'OFF'; ENDIF;
+bLogInfo = 0;
+bLogDebug = 0;
+IF( sLogLevel @= 'INFO' % sLogLevel @= 'DEBUG' ); bLogInfo = 1; ENDIF;
+IF( sLogLevel @= 'DEBUG' ); bLogDebug = 1; ENDIF;
+IF( bLogInfo = 1 );
+    LogOutput( 'INFO', 'START: ' | GetProcessName() );
+ENDIF;
+#EndRegion
+
+#Region : Constants
+cProcessName = GetProcessName();
+sDim = 'Merch Curve Name';
+sVel = 'Velocity Curves';
+sSea = 'Seasonality Curves';
+sReg = 'Regime Curves';
+sMD = 'Markdown Curves';
+sLvl = 'Level Curves';
+sCB = 'Category Build Curves';
+#EndRegion
+
+#Region : Destroy and recreate all subsets
+IF(SubsetExists(sDim, sVel) = 1); SubsetDestroy(sDim, sVel); ENDIF;
+IF(SubsetExists(sDim, sSea) = 1); SubsetDestroy(sDim, sSea); ENDIF;
+IF(SubsetExists(sDim, sReg) = 1); SubsetDestroy(sDim, sReg); ENDIF;
+IF(SubsetExists(sDim, sMD) = 1); SubsetDestroy(sDim, sMD); ENDIF;
+IF(SubsetExists(sDim, sLvl) = 1); SubsetDestroy(sDim, sLvl); ENDIF;
+IF(SubsetExists(sDim, sCB) = 1); SubsetDestroy(sDim, sCB); ENDIF;
+# Clean up old subsets
+IF(SubsetExists(sDim, 'Sell-Through Curves') = 1); SubsetDestroy(sDim, 'Sell-Through Curves'); ENDIF;
+
+SubsetCreate(sDim, sVel);
+SubsetCreate(sDim, sSea);
+SubsetCreate(sDim, sReg);
+SubsetCreate(sDim, sMD);
+SubsetCreate(sDim, sLvl);
+SubsetCreate(sDim, sCB);
+#EndRegion
+
+#Region : Loop through all elements and classify by Has_* attributes
+nVelIdx = 0;
+nSeaIdx = 0;
+nRegIdx = 0;
+nMDIdx = 0;
+nLvlIdx = 0;
+nCBIdx = 0;
+nCount = DIMSIZ(sDim);
+nIdx = 1;
+While(nIdx <= nCount);
+  sElem = DIMNM(sDim, nIdx);
+  IF(DTYPE(sDim, sElem) @= 'N');
+    # Use Has_* attributes for multi-type support
+    IF(ATTRN(sDim, sElem, 'Has_Velocity') = 1);
+      nVelIdx = nVelIdx + 1;
+      SubsetElementInsert(sDim, sVel, sElem, nVelIdx);
+    ENDIF;
+    IF(ATTRN(sDim, sElem, 'Has_Seasonality') = 1);
+      nSeaIdx = nSeaIdx + 1;
+      SubsetElementInsert(sDim, sSea, sElem, nSeaIdx);
+    ENDIF;
+    IF(ATTRN(sDim, sElem, 'Has_Regime') = 1);
+      nRegIdx = nRegIdx + 1;
+      SubsetElementInsert(sDim, sReg, sElem, nRegIdx);
+    ENDIF;
+    IF(ATTRN(sDim, sElem, 'Has_Markdown') = 1);
+      nMDIdx = nMDIdx + 1;
+      SubsetElementInsert(sDim, sMD, sElem, nMDIdx);
+    ENDIF;
+    IF(ATTRN(sDim, sElem, 'Has_Level') = 1);
+      nLvlIdx = nLvlIdx + 1;
+      SubsetElementInsert(sDim, sLvl, sElem, nLvlIdx);
+    ENDIF;
+    # Category Build uses Curve Type string (not a Has_* flag)
+    IF(ATTRS(sDim, sElem, 'Curve Type') @= 'Category Build');
+      nCBIdx = nCBIdx + 1;
+      SubsetElementInsert(sDim, sCB, sElem, nCBIdx);
+    ENDIF;
+  ENDIF;
+  nIdx = nIdx + 1;
+End;
+#EndRegion
+
+#endregion
+#region Metadata
+
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+
+#endregion
+#region Data
+
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+
+#endregion
+#region Epilog
+
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+#Region : Epilog Logging
+IF( bLogInfo = 1 );
+    LogOutput( 'INFO', 'END: ' | GetProcessName() | ' | Velocity=' | TRIM(STR(nVelIdx, 4, 0)) | ' | Seasonality=' | TRIM(STR(nSeaIdx, 4, 0)) | ' | Regime=' | TRIM(STR(nRegIdx, 4, 0)) | ' | Markdown=' | TRIM(STR(nMDIdx, 4, 0)) | ' | Level=' | TRIM(STR(nLvlIdx, 4, 0)) | ' | CatBuild=' | TRIM(STR(nCBIdx, 4, 0)) );
+ENDIF;
+#EndRegion
+
+#endregion

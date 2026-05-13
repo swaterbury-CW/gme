@@ -1,0 +1,29 @@
+{
+	"@type":"Process",
+	"Name":"Merch.Dim.BuildWOSPeriod",
+	"HasSecurityAccess":false,
+	"Code@Code.link":"Merch.Dim.BuildWOSPeriod.ti",
+	"DataSource":
+	{
+		"Type":"TM1DimensionSubset",
+		"dataSourceNameForServer":"Merch Time Period",
+		"dataSourceNameForClient":"Merch Time Period",
+		"subset":"All"
+	},
+	"Parameters":[],
+	"Variables":
+	[
+		{
+			"Name":"vElem",
+			"Type":"String",
+			"Position":1,
+			"StartByte":0,
+			"EndByte":0
+		}
+	],
+	"UID": "1776351078000",
+	"UIData": "CubeAction=1511\fDataAction=1503\fCubeLogChanges=0\f",
+	"VariablesUIData": [
+		"VarType=32\fColType=827\f"
+	]
+}

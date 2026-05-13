@@ -6,7 +6,7 @@ SKIPCHECK;
 # CUBE: Merch Forecast
 # DEVELOPER: Steve Waterbury
 # CREATED ON: 2026-03-30
-# LAST UPDATE: 2026-05-11
+# LAST UPDATE: 2026-05-12
 # CHANGE HISTORY:
 #   2026-03-30 | Steve Waterbury | Initial creation
 #   2026-04-14 | Steve Waterbury | Margin pct; removed redundant IF division guards
@@ -17,6 +17,9 @@ SKIPCHECK;
 #   2026-04-24 | Steve Waterbury | Phase 2b feeders + cleanup
 #   2026-05-01 | Steve Waterbury | Calc Units rewrite
 #   2026-05-11 | Steve Waterbury | Sellable Flag gate adds Static carve-out
+#   2026-05-12 | Steve Waterbury | Calc Units post-week-1 sources from Expected Calc Sales; week-1 adds Adjustment Units short-circuit
+#   2026-05-12 | Steve Waterbury | Calc Units split into 4 ordered gated rules
+#   2026-05-12 | Steve Waterbury | Replicated Plan Reporting AUC: Sales/Receipt/Inventory AUC + Dollar Inventory chain (BOP$/Receipt$/EOP$/Inv Adj$)
 #EndRegion
 
 #Region : Receipts Lock
@@ -97,13 +100,47 @@ If(ATTRS('Merch Version',!Merch Version,'Version_Type')@='Calculated',
   DB('Merch Version SKU Attributes',!Merch Version,!Merch SKU,'AUC')));
 #EndRegion
 
+#Region : AUC Carry-Forward
+['Sales AUC'] = N:
+  IF(ATTRS('Merch Version',!Merch Version,'Version_Type')@<>'Calculated',CONTINUE,
+  IF(ATTRN('Merch Version',!Merch Version,'Last_Closed_Period')<>0 & ATTRN('Merch Time Period',!Merch Time Period,'Start_Date')<=ATTRN('Merch Version',!Merch Version,'Last_Closed_Period'),CONTINUE,
+  IF(ATTRS('Merch Time Period',!Merch Time Period,'Previous Week')@='',
+     DB('Merch Version SKU Attributes',!Merch Version,!Merch SKU,'Cost'),
+     DB('Merch Forecast',!Merch Version,ATTRS('Merch Time Period',!Merch Time Period,'Previous Week'),!Merch SKU,'Inventory AUC'))));
+['Receipt AUC'] = N:
+  IF(ATTRS('Merch Version',!Merch Version,'Version_Type')@<>'Calculated',CONTINUE,
+  IF(ATTRN('Merch Version',!Merch Version,'Last_Closed_Period')<>0 & ATTRN('Merch Time Period',!Merch Time Period,'Start_Date')<=ATTRN('Merch Version',!Merch Version,'Last_Closed_Period'),CONTINUE,
+  DB('Merch Version SKU Attributes',!Merch Version,!Merch SKU,'Cost')));
+#EndRegion
+
+#Region : Dollar Inventory
+['Receipt Dollars'] = N: ['Receipts'] * ['Receipt AUC'];
+['BOP Dollars'] = N:
+  IF(ATTRS('Merch Time Period',!Merch Time Period,'Previous Week')@='',STET,
+  DB('Merch Forecast',!Merch Version,ATTRS('Merch Time Period',!Merch Time Period,'Previous Week'),!Merch SKU,'EOP Dollars'));
+['EOP Dollars'] = N: ['BOP Dollars'] + ['Receipt Dollars'] - ['Cost'] + ['Inv Adjustment Dollars'];
+['Inventory AUC'] = N: ['EOP Dollars'] \ ['Ending Inventory'];
+#EndRegion
+
 #Region : Derived
 ['Promo'] = N: ['Full Price AUR'] * ['Markdown %'];
 ['Rate Adj Amount'] = N: (['Full Price AUR'] - ['Promo']) * ['Rate Adjustment'];
 
+# Calc Units - ordered gated rules (Calculated versions only; first match wins).
+# Rule 1: both Build/Debuild and Category Build cleared -> 0
 ['Calc Units'] = N:
   IF(ATTRS('Merch Version',!Merch Version,'Version_Type')@<>'Calculated',CONTINUE,
-  IF(ATTRN('Merch Version',!Merch Version,'Last_Closed_Period')<>0 & ATTRN('Merch Time Period',!Merch Time Period,'Start_Date')<>ATTRN('Merch Version',!Merch Version,'Last_Closed_Period')+8,continue,
+  IF(['Build/Debuild']=0 & ['Category Build']=0,0,CONTINUE));
+
+# Rule 2: Adjustment Units set -> Calc Units = 0 (rollup picks up adjustment)
+['Calc Units'] = N:
+  IF(ATTRS('Merch Version',!Merch Version,'Version_Type')@<>'Calculated',CONTINUE,
+  IF(['Adjustment Units']<>0,0,CONTINUE));
+
+# Rule 3: First open week -> prior Units * builds, capped by OI+Receipts
+['Calc Units'] = N:
+  IF(ATTRS('Merch Version',!Merch Version,'Version_Type')@<>'Calculated',CONTINUE,
+  IF(ATTRN('Merch Version',!Merch Version,'Last_Closed_Period')<>0 & ATTRN('Merch Time Period',!Merch Time Period,'Start_Date')<>ATTRN('Merch Version',!Merch Version,'Last_Closed_Period')+8,CONTINUE,
   IF(ROUND(DB('Merch Forecast',!Merch Version,ATTRS('Merch Time Period',!Merch Time Period,'Previous Week'),!Merch SKU,'Units')
     * IF(['Build/Debuild']=0,1,['Build/Debuild'])
     * IF(['Category Build']=0,1,['Category Build'])
@@ -113,20 +150,15 @@ If(ATTRS('Merch Version',!Merch Version,'Version_Type')@='Calculated',
     * IF(['Category Build']=0,1,['Category Build'])
     * IF(['Promo Build']=0,1,['Promo Build'])),
   IF((['Opening Inventory']+['Receipts'])<=0,0,(['Opening Inventory']+['Receipts'])))));
+
+# Rule 4: Post-week-1 open weeks -> Expected Calc Sales, capped by OI+Receipts
 ['Calc Units'] = N:
   IF(ATTRS('Merch Version',!Merch Version,'Version_Type')@<>'Calculated',CONTINUE,
   IF(ATTRN('Merch Version',!Merch Version,'Last_Closed_Period')<>0 & ATTRN('Merch Time Period',!Merch Time Period,'Start_Date')<=ATTRN('Merch Version',!Merch Version,'Last_Closed_Period'),CONTINUE,
   IF(ATTRS('Merch Time Period',!Merch Time Period,'Previous Week')@='',CONTINUE,
-  IF(['Adjustment Units']<>0,0,
-  IF(ROUND(DB('Merch Forecast',!Merch Version,ATTRS('Merch Time Period',!Merch Time Period,'Previous Week'),!Merch SKU,'Calc Units')
-    * IF(['Build/Debuild']=0,1,['Build/Debuild'])
-    * IF(['Category Build']=0,1,['Category Build'])
-    * IF(['Promo Build']=0,1,['Promo Build']))<=(['Opening Inventory']+['Receipts']),
-  ROUND(DB('Merch Forecast',!Merch Version,ATTRS('Merch Time Period',!Merch Time Period,'Previous Week'),!Merch SKU,'Calc Units')
-    * IF(['Build/Debuild']=0,1,['Build/Debuild'])
-    * IF(['Category Build']=0,1,['Category Build'])
-    * IF(['Promo Build']=0,1,['Promo Build'])),
-  IF((['Opening Inventory']+['Receipts'])<=0,0,(['Opening Inventory']+['Receipts'])))))));
+  IF(['Expected Calc Sales']<=(['Opening Inventory']+['Receipts']),['Expected Calc Sales'],
+  IF((['Opening Inventory']+['Receipts'])<=0,0,(['Opening Inventory']+['Receipts']))))));
+
 ['Merch Forecast Measure':'Merch Forecast Measure':'Expected Calc Sales'] = N:
   IF(ATTRS('Merch Version',!Merch Version,'Version_Type')@<>'Calculated',CONTINUE,
   IF(ATTRN('Merch Version',!Merch Version,'Last_Closed_Period')<>0 & ATTRN('Merch Time Period',!Merch Time Period,'Start_Date')<>ATTRN('Merch Version',!Merch Version,'Last_Closed_Period')+8,continue,
@@ -154,6 +186,14 @@ If(ATTRS('Merch Version',!Merch Version,'Version_Type')@='Calculated',
   IF(DTYPE('Merch Time Period',!Merch Time Period)@='N',CONTINUE,
   IF(SUBST(!Merch Time Period,1,4)@='Thru',CONTINUE,
   DB('Merch Forecast',!Merch Version,ATTRS('Merch Time Period',!Merch Time Period,'Last Leaf Week'),!Merch SKU,'Ending Inventory')));
+['BOP Dollars'] = C:
+  IF(DTYPE('Merch Time Period',!Merch Time Period)@='N',CONTINUE,
+  IF(SUBST(!Merch Time Period,1,4)@='Thru',CONTINUE,
+  DB('Merch Forecast',!Merch Version,ATTRS('Merch Time Period',!Merch Time Period,'First Leaf Week'),!Merch SKU,'BOP Dollars')));
+['EOP Dollars'] = C:
+  IF(DTYPE('Merch Time Period',!Merch Time Period)@='N',CONTINUE,
+  IF(SUBST(!Merch Time Period,1,4)@='Thru',CONTINUE,
+  DB('Merch Forecast',!Merch Version,ATTRS('Merch Time Period',!Merch Time Period,'Last Leaf Week'),!Merch SKU,'EOP Dollars')));
 #EndRegion
 
 #Region : C-level BD CB
@@ -216,6 +256,9 @@ If(ATTRS('Merch Version',!Merch Version,'Version_Type')@='Calculated',
 ['Other AUC Adjustment'] = C: ['Other Cost Adjustment'] \ ['Units'];
 ['AUC'] = C: ['Cost'] \ ['Units'];
 ['Margin %'] = C: ['Margin'] \ ['Revenue'];
+['Sales AUC']     = C: ['Cost'] \ ['Units'];
+['Receipt AUC']   = C: ['Receipt Dollars'] \ ['Receipts'];
+['Inventory AUC'] = C: ['EOP Dollars'] \ ['Ending Inventory'];
 #EndRegion
 
 #Region : Ext
@@ -322,6 +365,13 @@ FEEDERS;
 ['Units'] => ['Margin'];
 ['Calc Units']       => DB('Merch Warranty Calculation', !Merch Version, !Merch Time Period, !Merch SKU, 'Forecast Units');
 ['Adjustment Units'] => DB('Merch Warranty Calculation', !Merch Version, !Merch Time Period, !Merch SKU, 'Forecast Units');
+['Receipts'] => ['Receipt Dollars'],['Receipt AUC'],['BOP Dollars'],['EOP Dollars'],['Inventory AUC'];
+['Opening Inventory'] => ['BOP Dollars'],['EOP Dollars'],['Inventory AUC'],['Sales AUC'];
+['Build/Debuild'] => ['Sales AUC'],['EOP Dollars'];
+['Category Build'] => ['Sales AUC'],['EOP Dollars'];
+['Promo Build'] => ['Sales AUC'],['EOP Dollars'];
+['Adjustment Units'] => ['Sales AUC'],['EOP Dollars'];
+['Inv Adjustment Dollars'] => ['BOP Dollars'],['EOP Dollars'],['Inventory AUC'];
 []=>DB( If(elementIndex('Merch Version','Budget Rollup','Budget Rollup - '|!Merch Version)<>0,'Merch Forecast',''), 'Budget rollup':'Budget Rollup - '|!Merch version, !Merch Time Period, !Merch SKU, !Merch Forecast Measure );
 
 

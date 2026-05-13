@@ -1,0 +1,199 @@
+#region Prolog
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+#Region : Header
+# DEVELOPER  : Steve Waterbury
+# CREATED ON : 2026-04-22
+# LAST UPDATE: 2026-05-11
+# CHANGED BY  : Steve Waterbury
+# COMMENTS:
+# Fully view-driven — no WHILE loops. TM1CubeView on scope cube iterates
+# (Version x TimeLeaf x CategoryLeaf filtered SGM_Category_Group<>'')
+# with Scope Flag pinned. Skip Start/End Week sourced from Settings
+# (pre-populated externally, not re-resolved here).
+# CHANGE HISTORY:
+#   2026-04-22 | Steve Waterbury | Initial view-driven (no WHILE)
+#   2026-05-11 | Steve Waterbury | Qualify Merch Version hierarchy in ViewCreateByMDX WHERE
+#EndRegion
+
+cProcessName = GetProcessName();
+sLogLevel = CellGetS('ProcessControl', cProcessName, 'LoggingLevel');
+IF(sLogLevel @= '');
+  sLogLevel = 'OFF';
+ENDIF;
+bLogInfo = 0;
+IF(sLogLevel @= 'INFO' % sLogLevel @= 'DEBUG');
+  bLogInfo = 1;
+ENDIF;
+IF(bLogInfo = 1);
+  LogOutput('INFO', 'START: ' | cProcessName | ' V=' | pVersion);
+ENDIF;
+
+IF(pVersion @= '');
+  LogOutput('ERROR', cProcessName | ' | pVersion required');
+  ProcessError;
+ENDIF;
+IF(DIMIX('Merch Version', pVersion) = 0);
+  LogOutput('ERROR', cProcessName | ' | Invalid version');
+  ProcessError;
+ENDIF;
+
+sCubeSettings = 'Merch PreOwned Settings';
+sCubeForecast = 'Merch PreOwned Forecast';
+sScopeCube = 'Merch PreOwned BuildMix Scope';
+sCategoryDim = 'Merch PreOwned Category';
+cTimeDim = 'Merch Time Period';
+nWritten = 0;
+
+sView = 'TI_BuildScope_' | TRIM(STR(NOW, 15, 0));
+sMDX = 'SELECT {[Merch PreOwned BuildMix Scope Measure].[Scope Flag]} ON COLUMNS, {TM1FILTERBYLEVEL({TM1SUBSETALL([Merch Time Period])},0)} * FILTER({TM1FILTERBYLEVEL({TM1SUBSETALL([Merch PreOwned Category])},0)}, [Merch PreOwned Category].CurrentMember.Properties(''SGM_Category_Group'') <> '''') ON ROWS FROM [Merch PreOwned BuildMix Scope] WHERE ([Merch Version].[Merch Version].[' | pVersion | '])';
+IF(ViewExists(sScopeCube, sView) = 1);
+  ViewDestroy(sScopeCube, sView);
+ENDIF;
+ViewCreateByMDX(sScopeCube, sView, sMDX, 1);
+ViewExtractSkipCalcsSet(sScopeCube, sView, 0);
+ViewExtractSkipZeroesSet(sScopeCube, sView, 0);
+
+DatasourceType = 'VIEW';
+DatasourceNameForServer = sScopeCube;
+DatasourceCubeview = sView;
+
+#endregion
+#region Metadata
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+
+#endregion
+#region Data
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+IF(pVersion @= '');
+  ItemReject('pVersion required');
+ENDIF;
+
+sVer = vMerch_Version;
+sWeek = vMerch_Time_Period;
+sCat = vMerch_PreOwned_Category;
+IF(sWeek @= '' % sCat @= '');
+  ItemSkip;
+ENDIF;
+
+sGroup = ATTRS(sCategoryDim, sCat, 'SGM_Category_Group');
+IF(sGroup @= '');
+  ItemSkip;
+ENDIF;
+
+IF(DIMIX(cTimeDim, 'Thru ' | sWeek) = 0);
+  ItemSkip;
+ENDIF;
+
+nWkNum = ATTRN(cTimeDim, sWeek, 'Week Number');
+IF(nWkNum = 0);
+  ItemSkip;
+ENDIF;
+sFY2 = SUBST(ATTRS(cTimeDim, sWeek, 'Fiscal Year'), 5, 2);
+IF(sFY2 @= '');
+  ItemSkip;
+ENDIF;
+
+nMixL = CellGetN(sCubeSettings, sVer, sCat, 'Applied Mix Lookback Weeks');
+nLookL = CellGetN(sCubeSettings, sVer, sCat, 'Applied Lookback Weeks');
+sSkipStartWk = CellGetS(sCubeSettings, sVer, sCat, 'Applied Skip Start Week');
+sSkipEndWk = CellGetS(sCubeSettings, sVer, sCat, 'Applied Skip End Week');
+
+sSkipPriorWk = '';
+IF(sSkipStartWk @<> '' & sSkipEndWk @<> '');
+  nSSWN = ATTRN(cTimeDim, sSkipStartWk, 'Week Number');
+  sSSFY2 = SUBST(ATTRS(cTimeDim, sSkipStartWk, 'Fiscal Year'), 5, 2);
+  IF(nSSWN > 1);
+    sSkipPriorWk = 'FY' | sSSFY2 | '-W' | IF(nSSWN-1<10,'0','') | TRIM(STR(nSSWN-1, 2, 0));
+  ELSE;
+    nPFs = NUMBR(sSSFY2) - 1;
+    sSkipPriorWk = 'FY' | IF(nPFs<10,'0','') | TRIM(STR(nPFs, 2, 0)) | '-W52';
+  ENDIF;
+ENDIF;
+
+sMixStartWk = '';
+bValidM = 0;
+IF(nMixL > 0);
+  IF(nWkNum > nMixL);
+    sMixStartWk = 'FY' | sFY2 | '-W' | IF(nWkNum-nMixL<10,'0','') | TRIM(STR(nWkNum-nMixL, 2, 0));
+  ELSE;
+    nPFm = NUMBR(sFY2) - 1;
+    sMixStartWk = 'FY' | IF(nPFm<10,'0','') | TRIM(STR(nPFm, 2, 0)) | '-W' | IF(52+nWkNum-nMixL<10,'0','') | TRIM(STR(52+nWkNum-nMixL, 2, 0));
+  ENDIF;
+  IF(DIMIX(cTimeDim, 'Thru ' | sMixStartWk) > 0);
+    bValidM = 1;
+  ENDIF;
+ENDIF;
+
+sLookStartWk = '';
+bValidL = 0;
+IF(nLookL > 0);
+  IF(nWkNum > nLookL);
+    sLookStartWk = 'FY' | sFY2 | '-W' | IF(nWkNum-nLookL<10,'0','') | TRIM(STR(nWkNum-nLookL, 2, 0));
+  ELSE;
+    nPFL = NUMBR(sFY2) - 1;
+    sLookStartWk = 'FY' | IF(nPFL<10,'0','') | TRIM(STR(nPFL, 2, 0)) | '-W' | IF(52+nWkNum-nLookL<10,'0','') | TRIM(STR(52+nWkNum-nLookL, 2, 0));
+  ENDIF;
+  IF(DIMIX(cTimeDim, 'Thru ' | sLookStartWk) > 0);
+    bValidL = 1;
+  ENDIF;
+ENDIF;
+
+nFlag = 0;
+IF(bValidM = 1 % bValidL = 1);
+  IF(CellIsUpdateable(sCubeForecast, sVer, sWeek, sCat, 'Sales Mix Pct') = 1);
+    nFlag = 1;
+  ENDIF;
+  IF(nFlag = 0);
+    IF(CellIsUpdateable(sCubeForecast, sVer, sWeek, sCat, 'AUR') = 1);
+      nFlag = 1;
+    ENDIF;
+  ENDIF;
+  IF(nFlag = 0);
+    IF(CellIsUpdateable(sCubeForecast, sVer, sWeek, sCat, 'AUT') = 1);
+      nFlag = 1;
+    ENDIF;
+  ENDIF;
+  IF(nFlag = 0);
+    IF(CellIsUpdateable(sCubeForecast, sVer, sWeek, sCat, 'Margin Pct') = 1);
+      nFlag = 1;
+    ENDIF;
+  ENDIF;
+ENDIF;
+
+IF(CellIsUpdateable(sScopeCube, sVer, sWeek, sCat, 'Scope Flag') = 1);
+  CellPutN(nFlag, sScopeCube, sVer, sWeek, sCat, 'Scope Flag');
+ENDIF;
+IF(nFlag = 1);
+  IF(CellIsUpdateable(sScopeCube, sVer, sWeek, sCat, 'Skip Start Week') = 1);
+    CellPutS(sSkipStartWk, sScopeCube, sVer, sWeek, sCat, 'Skip Start Week');
+  ENDIF;
+  IF(CellIsUpdateable(sScopeCube, sVer, sWeek, sCat, 'Skip End Week') = 1);
+    CellPutS(sSkipEndWk, sScopeCube, sVer, sWeek, sCat, 'Skip End Week');
+  ENDIF;
+  IF(CellIsUpdateable(sScopeCube, sVer, sWeek, sCat, 'Skip Prior Week') = 1);
+    CellPutS(sSkipPriorWk, sScopeCube, sVer, sWeek, sCat, 'Skip Prior Week');
+  ENDIF;
+  IF(CellIsUpdateable(sScopeCube, sVer, sWeek, sCat, 'Mix Start Week') = 1);
+    CellPutS(sMixStartWk, sScopeCube, sVer, sWeek, sCat, 'Mix Start Week');
+  ENDIF;
+  IF(CellIsUpdateable(sScopeCube, sVer, sWeek, sCat, 'Lookback Start Week') = 1);
+    CellPutS(sLookStartWk, sScopeCube, sVer, sWeek, sCat, 'Lookback Start Week');
+  ENDIF;
+  nWritten = nWritten + 1;
+ENDIF;
+
+#endregion
+#region Epilog
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+IF(ViewExists(sScopeCube, sView) = 1);
+  ViewDestroy(sScopeCube, sView);
+ENDIF;
+IF(bLogInfo = 1);
+  LogOutput('INFO', 'END: ' | cProcessName | ' V=' | pVersion | ' InScopeRows=' | TRIM(STR(nWritten, 10, 0)));
+ENDIF;
+
+#endregion

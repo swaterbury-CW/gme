@@ -1,0 +1,29 @@
+{
+	"@type":"Process",
+	"Name":"Merch.Calc.ApplyForecast",
+	"HasSecurityAccess":false,
+	"Code@Code.link":"Merch.Calc.ApplyForecast.ti",
+	"DataSource":
+	{
+		"Type":"None"
+	},
+	"Parameters":
+	[
+		{
+			"Name":"pVersion",
+			"Prompt":"Version",
+			"Value":"Forecast",
+			"Type":"String"
+		},
+		{
+			"Name":"pFiscalYear",
+			"Prompt":"Fiscal Year",
+			"Value":"FY26",
+			"Type":"String"
+		}
+	],
+	"Variables":[],
+	"UID": "1774212650000",
+	"UIData": "CubeAction=1511\fDataAction=1503\fCubeLogChanges=0\f",
+	"VariablesUIData": []
+}

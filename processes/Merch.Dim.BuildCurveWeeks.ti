@@ -1,0 +1,84 @@
+#region Prolog
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+#Region : Process Header
+#############################
+##~~ Start Process ~~##
+#############################
+# DEVELOPER : Steve Waterbury
+# CREATED ON : 2026-03-13
+# LAST UPDATE: 2026-03-14
+# COMMENTS:
+# Builds the Merch Curve Week dimension with Week 1 through Week 52
+# and a Total Weeks consolidation.
+#
+#### CHANGE HISTORY:
+### MODIFICATION DATE  CHANGED BY         COMMENT
+### 2026-03-13         Steve Waterbury    Creation of Process
+### 2026-03-14         Steve Waterbury    Updated developer name
+#
+#EndRegion
+
+#Region : Logging Configuration
+sLogLevel = CellGetS( 'ProcessControl', GetProcessName(), 'LoggingLevel' );
+IF( sLogLevel @= '' );
+    sLogLevel = 'OFF';
+ENDIF;
+bLogInfo = 0;
+bLogDebug = 0;
+IF( sLogLevel @= 'INFO' % sLogLevel @= 'DEBUG' );
+    bLogInfo = 1;
+ENDIF;
+IF( sLogLevel @= 'DEBUG' );
+    bLogDebug = 1;
+ENDIF;
+
+IF( bLogInfo = 1 );
+    LogOutput( 'INFO', 'START: ' | GetProcessName() | ' | LogLevel=' | sLogLevel );
+ENDIF;
+#EndRegion
+
+#Region : Constants
+cProcessName = GetProcessName();
+cDim = 'Merch Curve Week';
+#EndRegion
+
+#Region : Main Logic
+IF(DimensionExists(cDim) = 0);
+  DimensionCreate(cDim);
+ENDIF;
+
+IF(DIMIX(cDim, 'Total Weeks') = 0);
+  DimensionElementInsertDirect(cDim, '', 'Total Weeks', 'C');
+ENDIF;
+
+nWeek = 1;
+While(nWeek <= 52);
+  sElement = 'Week ' | TRIM(STR(nWeek, 2, 0));
+  IF(DIMIX(cDim, sElement) = 0);
+    DimensionElementInsertDirect(cDim, '', sElement, 'N');
+    DimensionElementComponentAddDirect(cDim, 'Total Weeks', sElement, 1);
+  ENDIF;
+  nWeek = nWeek + 1;
+End;
+#EndRegion
+#endregion
+#region Metadata
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+
+#endregion
+#region Data
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+
+#endregion
+#region Epilog
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+#Region : Epilog Logging
+IF( bLogInfo = 1 );
+    LogOutput( 'INFO', 'END: ' | GetProcessName() | ' | 52 curve weeks created' );
+ENDIF;
+#EndRegion
+#endregion

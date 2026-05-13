@@ -1,0 +1,35 @@
+{
+	"@type":"Process",
+	"Name":"Merch.Version.Create",
+	"HasSecurityAccess":false,
+	"Code@Code.link":"Merch.Version.Create.ti",
+	"DataSource":
+	{
+		"Type":"None"
+	},
+	"Parameters":
+	[
+		{
+			"Name":"pVersionName",
+			"Prompt":"pVersionName",
+			"Value":"",
+			"Type":"String"
+		},
+		{
+			"Name":"pVersionType",
+			"Prompt":"pVersionType",
+			"Value":"Calculated",
+			"Type":"String"
+		},
+		{
+			"Name":"pCopyFrom",
+			"Prompt":"pCopyFrom",
+			"Value":"",
+			"Type":"String"
+		}
+	],
+	"Variables":[],
+	"UID": "1774218794000",
+	"UIData": "CubeAction=1511\fDataAction=1503\fCubeLogChanges=0\f",
+	"VariablesUIData": []
+}

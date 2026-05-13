@@ -1,0 +1,134 @@
+#region Prolog
+
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+#Region : Process Header
+#############################
+##~~ Start Process ~~##
+#############################
+# DEVELOPER : Steve Waterbury
+# CREATED ON : 2026-03-22
+# LAST UPDATE: 2026-04-01
+# COMMENTS:
+# Builds placeholder SKU elements with auto-incrementing names.
+#
+#### CHANGE HISTORY:
+### MODIFICATION DATE  CHANGED BY         COMMENT
+### 2026-03-22         Steve Waterbury    Initial creation
+### 2026-04-01         Steve Waterbury    Applied guardrails header template
+### 2026-04-01         Steve Waterbury    Code formatting: NumberToString -> TRIM(STR)
+#
+#EndRegion
+
+sDim = 'Merch Placeholder SKU';
+sConsol = 'All Placeholder SKUs';
+
+# --- Control-cube logging ---
+sLogLevel = CellGetS('ProcessControl', GetProcessName(), 'LoggingLevel');
+IF(sLogLevel @= '');
+  sLogLevel = 'OFF';
+ENDIF;
+bLogInfo = 0;
+IF(sLogLevel @= 'INFO' % sLogLevel @= 'DEBUG');
+  bLogInfo = 1;
+ENDIF;
+bLogDebug = 0;
+IF(sLogLevel @= 'DEBUG');
+  bLogDebug = 1;
+ENDIF;
+
+IF(bLogInfo = 1);
+  LogOutput('INFO', GetProcessName() | ' | START | pCount=' | TRIM(STR(pCount, 10, 0)) | ' pPrefix=' | pPrefix);
+ENDIF;
+
+# --- Validate parameters ---
+IF(pCount <= 0);
+  LogOutput('ERROR', GetProcessName() | ' | pCount must be > 0, got ' | TRIM(STR(pCount, 10, 0)));
+  ProcessQuit;
+ENDIF;
+
+IF(pPrefix @= '');
+  LogOutput('ERROR', GetProcessName() | ' | pPrefix cannot be empty');
+  ProcessQuit;
+ENDIF;
+
+# --- Find current max suffix number for this prefix ---
+nMaxSuffix = 0;
+nDimSize = DIMSIZ(sDim);
+nI = 1;
+WHILE(nI <= nDimSize);
+  sElem = DIMNM(sDim, nI);
+  nLen = LONG(sElem);
+  nPrefixLen = LONG(pPrefix) + 1;
+
+  IF(nLen > nPrefixLen);
+    sElemPrefix = SUBST(sElem, 1, LONG(pPrefix));
+    sSep = SUBST(sElem, LONG(pPrefix) + 1, 1);
+    IF(sElemPrefix @= pPrefix & sSep @= '-');
+      sSuffix = SUBST(sElem, LONG(pPrefix) + 2, nLen - LONG(pPrefix) - 1);
+      nSuffix = NUMBR(sSuffix);
+      IF(nSuffix > nMaxSuffix);
+        nMaxSuffix = nSuffix;
+      ENDIF;
+    ENDIF;
+  ENDIF;
+  nI = nI + 1;
+END;
+
+IF(bLogDebug = 1);
+  LogOutput('DEBUG', GetProcessName() | ' | Current max suffix for prefix ' | pPrefix | ' = ' | TRIM(STR(nMaxSuffix, 10, 0)));
+ENDIF;
+
+# --- Create new elements ---
+nCreated = 0;
+nJ = 1;
+WHILE(nJ <= pCount);
+  nNext = nMaxSuffix + nJ;
+
+  # Format with leading zeros (3-digit)
+  IF(nNext < 10);
+    sNum = '00' | TRIM(STR(nNext, 1, 0));
+  ELSEIF(nNext < 100);
+    sNum = '0' | TRIM(STR(nNext, 2, 0));
+  ELSE;
+    sNum = TRIM(STR(nNext, 3, 0));
+  ENDIF;
+
+  sNewElem = pPrefix | '-' | sNum;
+
+  IF(DIMIX(sDim, sNewElem) = 0);
+    DimensionElementInsert(sDim, '', sNewElem, 'N');
+    DimensionElementComponentAdd(sDim, sConsol, sNewElem, 1);
+    AttrPutS('Y', sDim, sNewElem, 'sellable_flag');
+    AttrPutS('Y', sDim, sNewElem, 'Active');
+    nCreated = nCreated + 1;
+    IF(bLogDebug = 1);
+      LogOutput('DEBUG', GetProcessName() | ' | Created: ' | sNewElem);
+    ENDIF;
+  ELSE;
+    LogOutput('WARN', GetProcessName() | ' | Element already exists, skipped: ' | sNewElem);
+  ENDIF;
+
+  nJ = nJ + 1;
+END;
+
+IF(bLogInfo = 1);
+  LogOutput('INFO', GetProcessName() | ' | END | Created ' | TRIM(STR(nCreated, 10, 0)) | ' placeholder SKUs');
+ENDIF;
+
+#endregion
+#region Metadata
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+
+#endregion
+#region Data
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+
+#endregion
+#region Epilog
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+
+#endregion

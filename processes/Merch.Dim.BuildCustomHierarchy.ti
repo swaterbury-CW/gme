@@ -1,0 +1,123 @@
+#region Prolog
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+# DEVELOPER: Steve Waterbury
+# CREATED ON: 2026-04-02
+# LAST UPDATE: 2026-05-05
+# CHANGED BY: Steve Waterbury
+# COMMENTS:
+# Builds an alternate hierarchy on Merch SKU from per-user Override Hierarchy N.
+# CHANGE HISTORY:
+#   2026-04-02 | Steve Waterbury | Creation
+#   2026-05-05 | Steve Waterbury | Metadata-tab structural mutations; drop stale DTYPE guard
+
+sCube = 'Merch User Hierarchy Assignment';
+sSKUDim = 'Merch SKU';
+sSubset = 'TI_BuildCustomHier_Worker';
+
+IF(pUser @= '');
+  ProcessError;
+ENDIF;
+IF(DIMIX('}Clients', pUser) = 0);
+  ProcessError;
+ENDIF;
+IF(pHierarchyNumber < 1 % pHierarchyNumber > 5);
+  ProcessError;
+ENDIF;
+
+OnMinorErrorDoItemSkip = 1;
+
+sOverrideMeasure = 'Override Hierarchy ' | TRIM(STR(pHierarchyNumber, 10, 0));
+
+IF(pHierarchyName @<> '');
+  sHierarchyName = pHierarchyName;
+ELSE;
+  sUserPrefix = pUser;
+  nAtPos = SCAN('@', sUserPrefix);
+  IF(nAtPos > 0);
+    sUserPrefix = SUBST(sUserPrefix, 1, nAtPos - 1);
+  ENDIF;
+  sHierarchyName = 'Custom_' | sUserPrefix | '_' | TRIM(STR(pHierarchyNumber, 10, 0));
+ENDIF;
+
+IF(HierarchyExists(sSKUDim, sHierarchyName) = 1);
+  HierarchyDestroy(sSKUDim, sHierarchyName);
+ENDIF;
+HierarchyCreate(sSKUDim, sHierarchyName);
+
+nGroupsCreated = 0;
+nSKUsAssigned = 0;
+
+IF(SubsetExists(sSKUDim, sSubset) = 1);
+  SubsetDestroy(sSKUDim, sSubset);
+ENDIF;
+
+sMDX = '{GENERATE(';
+sMDX = sMDX | 'FILTER({[Merch SKU].[Merch SKU].MEMBERS},';
+sMDX = sMDX | '[Merch User Hierarchy Assignment].([}Clients].[}Clients].[' | pUser | '],';
+sMDX = sMDX | '[Merch User Hierarchy Measure].[Merch User Hierarchy Measure].[' | sOverrideMeasure | ']) <> ""),';
+sMDX = sMDX | 'DESCENDANTS([Merch SKU].[Merch SKU].CURRENTMEMBER, , LEAVES))}';
+
+SubsetCreatebyMDX(sSubset, sMDX, 0);
+
+DatasourceType = 'SUBSET';
+DatasourceNameForServer = sSKUDim;
+DatasourceDimensionSubset = sSubset;
+
+#endregion
+#region Metadata
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+IF(V1 @= '');
+  ItemSkip;
+ENDIF;
+
+sGroup = '';
+sCurrent = V1;
+
+sOverride = CellGetS(sCube, sCurrent, pUser, sOverrideMeasure);
+IF(sOverride @<> '');
+  sGroup = sOverride;
+ENDIF;
+
+nLevel = 1;
+WHILE(sGroup @= '' & nLevel <= 5);
+  sParent = ELPAR(sSKUDim, sCurrent, 1);
+  IF(sParent @= '');
+    nLevel = 99;
+  ELSE;
+    sOverride = CellGetS(sCube, sParent, pUser, sOverrideMeasure);
+    IF(sOverride @<> '');
+      sGroup = sOverride;
+    ENDIF;
+    sCurrent = sParent;
+    nLevel = nLevel + 1;
+  ENDIF;
+END;
+
+IF(sGroup @= '');
+  ItemSkip;
+ENDIF;
+
+IF(DIMIX(sSKUDim, sGroup) = 0);
+  HierarchyElementInsert(sSKUDim, sHierarchyName, '', sGroup, 'C');
+  nGroupsCreated = nGroupsCreated + 1;
+ENDIF;
+
+HierarchyElementComponentAdd(sSKUDim, sHierarchyName, sGroup, V1, 1);
+nSKUsAssigned = nSKUsAssigned + 1;
+
+#endregion
+#region Data
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+
+#endregion
+#region Epilog
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+IF(SubsetExists(sSKUDim, sSubset) = 1);
+  SubsetDestroy(sSKUDim, sSubset);
+ENDIF;
+
+#endregion

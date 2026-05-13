@@ -1,0 +1,83 @@
+{
+	"@type":"Process",
+	"Name":"API.BigQuery.Insert.Extract.MerchPlanReporting",
+	"HasSecurityAccess":false,
+	"Code@Code.link":"API.BigQuery.Insert.Extract.MerchPlanReporting.ti",
+	"DataSource":
+	{
+		"Type":"TM1CubeView",
+		"dataSourceNameForServer":"Merch Plan Reporting",
+		"dataSourceNameForClient":"Merch Plan Reporting",
+		"view":"Test_BQ_Insert_PR_Smoke"
+	},
+	"Parameters":
+	[
+		{
+			"Name":"pView",
+			"Prompt":"Merch Plan Reporting cube view name",
+			"Value":"",
+			"Type":"String"
+		},
+		{
+			"Name":"pOutputFile",
+			"Prompt":"JSONL output file path",
+			"Value":"./merch_plan_reporting_bq.jsonl",
+			"Type":"String"
+		}
+	],
+	"Variables":
+	[
+		{
+			"Name":"vMeasure",
+			"Type":"String",
+			"Position":1,
+			"StartByte":0,
+			"EndByte":0
+		},
+		{
+			"Name":"vSKU",
+			"Type":"String",
+			"Position":2,
+			"StartByte":0,
+			"EndByte":0
+		},
+		{
+			"Name":"vTimePeriod",
+			"Type":"String",
+			"Position":3,
+			"StartByte":0,
+			"EndByte":0
+		},
+		{
+			"Name":"vChannel",
+			"Type":"String",
+			"Position":4,
+			"StartByte":0,
+			"EndByte":0
+		},
+		{
+			"Name":"vLifecycle",
+			"Type":"String",
+			"Position":5,
+			"StartByte":0,
+			"EndByte":0
+		},
+		{
+			"Name":"vVersion",
+			"Type":"String",
+			"Position":6,
+			"StartByte":0,
+			"EndByte":0
+		}
+	],
+	"UID": "17781844520001",
+	"UIData": "CubeAction=1511\fDataAction=1503\fCubeLogChanges=0\f",
+	"VariablesUIData": [
+		"VarType=32\fColType=827\f",
+		"VarType=32\fColType=827\f",
+		"VarType=32\fColType=827\f",
+		"VarType=32\fColType=827\f",
+		"VarType=32\fColType=827\f",
+		"VarType=32\fColType=827\f"
+	]
+}

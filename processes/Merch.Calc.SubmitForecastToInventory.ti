@@ -1,0 +1,104 @@
+#region Prolog
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+#Region : Process Header
+# DEVELOPER : Steve Waterbury
+# CREATED ON : 2026-03-28
+# LAST UPDATE: 2026-04-24
+# CHANGED BY : Steve Waterbury
+# COMMENTS: Submits Merch Forecast to Merch Plan Reporting with channel splash.
+# Single-pass TM1CubeView over 8 carry-over measures.
+#### CHANGE HISTORY:
+### 2026-04-24  Steve Waterbury  Widened VIEW to 8 measures incl. Receipts
+#EndRegion
+
+cProcessName = GetProcessName();
+sLogLevel = CellGetS('ProcessControl', cProcessName, 'LoggingLevel');
+IF(sLogLevel @= ''); sLogLevel = 'OFF'; ENDIF;
+bLogInfo = 0;
+IF(sLogLevel @= 'INFO' % sLogLevel @= 'DEBUG'); bLogInfo = 1; ENDIF;
+IF(bLogInfo = 1); LogOutput('INFO', 'START ' | cProcessName | ' V=' | pVersion | ' SKU=' | pSKUElement); ENDIF;
+
+IF(DIMIX('Merch Version', pVersion) = 0);
+  LogOutput('ERROR', cProcessName | ' | Invalid pVersion: ' | pVersion);
+  ProcessError;
+ENDIF;
+IF(pSKUElement @= '' % DIMIX('Merch SKU', pSKUElement) = 0);
+  LogOutput('ERROR', cProcessName | ' | Invalid pSKUElement: ' | pSKUElement);
+  ProcessError;
+ENDIF;
+
+sSrcCube = 'Merch Forecast';
+sDstCube = 'Merch Plan Reporting';
+sCubeSplit = 'Merch Channel Split';
+sViewName = 'temp_SubmitForecast';
+
+sMeasSet = '{[Merch Forecast Measure].[Merch Forecast Measure].[Calc Units],[Merch Forecast Measure].[Merch Forecast Measure].[Buy Units],[Merch Forecast Measure].[Merch Forecast Measure].[Receipts],[Merch Forecast Measure].[Merch Forecast Measure].[Opening Inventory],[Merch Forecast Measure].[Merch Forecast Measure].[Full Price AUR],[Merch Forecast Measure].[Merch Forecast Measure].[Base AUC],[Merch Forecast Measure].[Merch Forecast Measure].[Base Revenue],[Merch Forecast Measure].[Merch Forecast Measure].[Base Cost]}';
+
+sMDX = 'SELECT NON EMPTY ' | sMeasSet | ' ON COLUMNS, NON EMPTY {TM1FILTERBYLEVEL({DESCENDANTS([Merch SKU].[Merch SKU].[' | pSKUElement | '])},0)} * {TM1FILTERBYLEVEL({TM1SUBSETALL([Merch Time Period].[Merch Time Period])},0)} ON ROWS FROM [Merch Forecast] WHERE ([Merch Version].[Merch Version].[' | pVersion | '])';
+
+IF(ViewExists(sSrcCube, sViewName) = 1); ViewDestroy(sSrcCube, sViewName); ENDIF;
+ViewCreateByMDX(sSrcCube, sViewName, sMDX);
+DatasourceType = 'VIEW';
+DatasourceNameForServer = sSrcCube;
+DatasourceCubeview = sViewName;
+nWritten = 0;
+nSkipped = 0;
+
+#endregion
+#region Metadata
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+
+#endregion
+#region Data
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+IF(Value = 0); ItemSkip; ENDIF;
+
+sMeas = vMerch_Forecast_Measure;
+sLifecycle = ATTRS('Merch SKU', vMerch_SKU, 'Lifecycle_Status_Description');
+IF(DIMIX('Merch Lifecycle', sLifecycle) = 0); sLifecycle = 'Active'; ENDIF;
+sCategory = ATTRS('Merch SKU', vMerch_SKU, 'SGM_Category');
+IF(sCategory @= '' % DIMIX('Merch Category', sCategory) = 0);
+  nSkipped = nSkipped + 1;
+  ItemReject('Invalid or missing SGM_Category for SKU ' | vMerch_SKU);
+ENDIF;
+
+bApplySplit = 1;
+IF(sMeas @= 'Full Price AUR' % sMeas @= 'Base AUC'); bApplySplit = 0; ENDIF;
+
+nChDim = DIMSIZ('Merch Channel');
+i = 1;
+WHILE(i <= nChDim);
+  sCh = DIMNM('Merch Channel', i);
+  IF(ELLEV('Merch Channel', sCh) = 0);
+    nSplit = CellGetN(sCubeSplit, pVersion, vMerch_Time_Period, sCategory, sCh, 'Split Pct');
+    IF(nSplit <> 0);
+      IF(bApplySplit = 1);
+        nOut = Value * nSplit;
+      ELSE;
+        nOut = Value;
+      ENDIF;
+      IF(CellIsUpdateable(sDstCube, pVersion, vMerch_Time_Period, vMerch_SKU, sCh, sLifecycle, sMeas) = 1);
+        CellPutN(nOut, sDstCube, pVersion, vMerch_Time_Period, vMerch_SKU, sCh, sLifecycle, sMeas);
+        nWritten = nWritten + 1;
+      ELSE;
+        LogOutput('ERROR', cProcessName | ' | Not updateable: ' | vMerch_SKU | '/' | sCh | '/' | sMeas);
+      ENDIF;
+    ENDIF;
+  ENDIF;
+  i = i + 1;
+END;
+
+#endregion
+#region Epilog
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+IF(ViewExists(sSrcCube, sViewName) = 1); ViewDestroy(sSrcCube, sViewName); ENDIF;
+RunProcess('Merch.Calc.SubmitForecastToInventory.Log', 'pVersion', pVersion, 'pSKUElement', pSKUElement);
+IF(bLogInfo = 1);
+  LogOutput('INFO', 'END ' | cProcessName | ' Written=' | TRIM(STR(nWritten, 10, 0)) | ' Skipped=' | TRIM(STR(nSkipped, 10, 0)));
+ENDIF;
+
+#endregion

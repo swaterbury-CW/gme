@@ -1,0 +1,248 @@
+#region Prolog
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+#Region : Process Header
+#############################
+##~~ Start Process ~~##
+#############################
+# DEVELOPER : Steve Waterbury
+# CREATED ON : 2026-03-13
+# LAST UPDATE: 2026-04-03
+# COMMENTS:
+# Loads Merch SKU dimension from CSV. Creates elements, sets all 21
+# attributes, builds SGM_Category hierarchy consolidations on default hierarchy.
+# SKUs with missing SGM_Category assigned to 'No SGM_Category' (no orphans).
+# Datasource: ASCII CSV, comma-delimited, 1 header row.
+#
+#### CHANGE HISTORY:
+### MODIFICATION DATE  CHANGED BY         COMMENT
+### 2026-03-13         Steve Waterbury    Creation of Process
+### 2026-03-14         Steve Waterbury    Configured ASCII datasource, updated developer name
+### 2026-03-15         Steve Waterbury    Set DatasourceType and full datasource config in prolog
+### 2026-03-16         Steve Waterbury    Add Street_Date_ISO normalization (M/D/YYYY -> YYYY-MM-DD)
+### 2026-03-23         Steve Waterbury    Populate Street_Date_Serial and Last_Price_MarkDown_Date_Serial
+### 2026-04-03         Steve Waterbury    Default hierarchy changed from Category_Name to SGM_Category with no-orphan logic
+#
+#EndRegion
+
+#Region : Logging Configuration
+sLogLevel = CellGetS( 'ProcessControl', GetProcessName(), 'LoggingLevel' );
+IF( sLogLevel @= '' );
+    sLogLevel = 'OFF';
+ENDIF;
+bLogInfo = 0;
+bLogDebug = 0;
+IF( sLogLevel @= 'INFO' % sLogLevel @= 'DEBUG' );
+    bLogInfo = 1;
+ENDIF;
+IF( sLogLevel @= 'DEBUG' );
+    bLogDebug = 1;
+ENDIF;
+
+IF( bLogInfo = 1 );
+    LogOutput( 'INFO', 'START: ' | GetProcessName() | ' | LogLevel=' | sLogLevel | ' | pFileName=' | pFileName );
+ENDIF;
+#EndRegion
+
+#Region : Constants
+cProcessName = GetProcessName();
+cDim = 'Merch SKU';
+nRecordCount = 0;
+#EndRegion
+
+#Region : Parameter Validation
+IF( pFileName @= '' );
+    LogOutput( 'ERROR', cProcessName | ' | Required parameter pFileName is empty' );
+    ProcessError;
+ENDIF;
+#EndRegion
+
+#Region : Datasource Configuration
+DatasourceType = 'CHARACTERDELIMITED';
+DatasourceNameForServer = pFileName;
+DatasourceASCIIDelimiter = ',';
+DatasourceASCIIHeaderRecords = 1;
+DatasourceASCIIQuoteCharacter = '"';
+DatasourceASCIIDecimalSeparator = '.';
+DatasourceASCIIThousandSeparator = '';
+#EndRegion
+
+#Region : Dimension Setup
+IF(DimensionExists(cDim) = 0);
+  DimensionCreate(cDim);
+ENDIF;
+
+AttrInsert(cDim, '', 'Item_Desc', 'S');
+AttrInsert(cDim, '', 'SGM_Category_Group', 'S');
+AttrInsert(cDim, '', 'SGM_Category', 'S');
+AttrInsert(cDim, '', 'Category_Name', 'S');
+AttrInsert(cDim, '', 'Level_1', 'S');
+AttrInsert(cDim, '', 'Level_2', 'S');
+AttrInsert(cDim, '', 'Level_3', 'S');
+AttrInsert(cDim, '', 'Level_4', 'S');
+AttrInsert(cDim, '', 'Level_5', 'S');
+AttrInsert(cDim, '', 'Publisher_Name', 'S');
+AttrInsert(cDim, '', 'Vendor_Name', 'S');
+AttrInsert(cDim, '', 'Family_Name', 'S');
+AttrInsert(cDim, '', 'Franchise_Name', 'S');
+AttrInsert(cDim, '', 'Lifecycle_Status_Description', 'S');
+AttrInsert(cDim, '', 'Street_Date', 'S');
+AttrInsert(cDim, '', 'Street_Date_ISO', 'S');
+AttrInsert(cDim, '', 'Street_Date_Serial', 'N');
+AttrInsert(cDim, '', 'Last_Price_MarkDown_Date', 'S');
+AttrInsert(cDim, '', 'Last_Price_MarkDown_Date_Serial', 'N');
+AttrInsert(cDim, '', 'Cost', 'N');
+AttrInsert(cDim, '', 'Sales_Price', 'N');
+AttrInsert(cDim, '', 'Is_Drop_Ship', 'S');
+AttrInsert(cDim, '', 'sellable_flag', 'S');
+AttrInsert(cDim, '', 'Reservable_Flag', 'S');
+
+nCount = DIMSIZ(cDim);
+nIdx = nCount;
+While(nIdx >= 1);
+  sEl = DIMNM(cDim, nIdx);
+  IF(DTYPE(cDim, sEl) @= 'C');
+    DimensionElementDeleteDirect(cDim, sEl);
+  ENDIF;
+  nIdx = nIdx - 1;
+End;
+
+DimensionElementInsertDirect(cDim, '', 'All SKUs', 'C');
+DimensionElementInsertDirect(cDim, '', 'No SGM_Category', 'C');
+DimensionElementComponentAddDirect(cDim, 'All SKUs', 'No SGM_Category', 1);
+#EndRegion
+#endregion
+#region Metadata
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+#Region : Build Elements and SGM_Category Hierarchy
+cDim = 'Merch SKU';
+sSKU = vSku;
+sSGMCategory = vSGM_Category;
+
+IF(sSKU @= '' % sSKU @= 'sku');
+  ItemSkip;
+ENDIF;
+
+nRecordCount = nRecordCount + 1;
+
+IF(DIMIX(cDim, sSKU) = 0);
+  DimensionElementInsertDirect(cDim, '', sSKU, 'N');
+  IF( bLogDebug = 1 );
+      LogOutput( 'DEBUG', cProcessName | ' | Created element: ' | sSKU );
+  ENDIF;
+ENDIF;
+
+IF(sSGMCategory @<> '' & sSGMCategory @<> 'null');
+  IF(DIMIX(cDim, sSGMCategory) = 0);
+    DimensionElementInsertDirect(cDim, '', sSGMCategory, 'C');
+    DimensionElementComponentAddDirect(cDim, 'All SKUs', sSGMCategory, 1);
+  ENDIF;
+  IF(ELISCOMP(cDim, sSGMCategory, sSKU) = 0);
+    DimensionElementComponentAddDirect(cDim, sSGMCategory, sSKU, 1);
+  ENDIF;
+ELSE;
+  IF(ELISCOMP(cDim, 'No SGM_Category', sSKU) = 0);
+    DimensionElementComponentAddDirect(cDim, 'No SGM_Category', sSKU, 1);
+  ENDIF;
+ENDIF;
+#EndRegion
+#endregion
+#region Data
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+#Region : Set Attributes
+cDim = 'Merch SKU';
+sSKU = vSku;
+
+IF(sSKU @= '' % sSKU @= 'sku');
+  ItemSkip;
+ENDIF;
+
+AttrPutS(vItem_Desc, cDim, sSKU, 'Item_Desc');
+AttrPutS(vSGM_Category_Group, cDim, sSKU, 'SGM_Category_Group');
+AttrPutS(vSGM_Category, cDim, sSKU, 'SGM_Category');
+AttrPutS(vCategory_Name, cDim, sSKU, 'Category_Name');
+AttrPutS(vLevel_1, cDim, sSKU, 'Level_1');
+AttrPutS(vLevel_2, cDim, sSKU, 'Level_2');
+AttrPutS(vLevel_3, cDim, sSKU, 'Level_3');
+AttrPutS(vLevel_4, cDim, sSKU, 'Level_4');
+AttrPutS(vLevel_5, cDim, sSKU, 'Level_5');
+AttrPutS(vPublisher_Name, cDim, sSKU, 'Publisher_Name');
+AttrPutS(vVendor_Name, cDim, sSKU, 'Vendor_Name');
+AttrPutS(vFamily_Name, cDim, sSKU, 'Family_Name');
+AttrPutS(vFranchise_Name, cDim, sSKU, 'Franchise_Name');
+AttrPutS(vLifecycle_Status_Description, cDim, sSKU, 'Lifecycle_Status_Description');
+AttrPutS(vStreet_Date, cDim, sSKU, 'Street_Date');
+AttrPutS(vLast_Price_MarkDown_Date, cDim, sSKU, 'Last_Price_MarkDown_Date');
+AttrPutN(vCost, cDim, sSKU, 'Cost');
+AttrPutN(vSales_Price, cDim, sSKU, 'Sales_Price');
+AttrPutS(vIs_Drop_Ship, cDim, sSKU, 'Is_Drop_Ship');
+AttrPutS(vsellable_flag, cDim, sSKU, 'sellable_flag');
+AttrPutS(vReservable_Flag, cDim, sSKU, 'Reservable_Flag');
+
+# Normalize Street_Date (M/D/YYYY) to Street_Date_ISO (YYYY-MM-DD)
+sRawDate = TRIM(vStreet_Date);
+sISO = '';
+IF(sRawDate @<> '');
+  nSlash1 = SCAN('/', sRawDate);
+  IF(nSlash1 > 0);
+    sMonth = SUBST(sRawDate, 1, nSlash1 - 1);
+    sRest = SUBST(sRawDate, nSlash1 + 1, LONG(sRawDate) - nSlash1);
+    nSlash2 = SCAN('/', sRest);
+    IF(nSlash2 > 0);
+      sDay = SUBST(sRest, 1, nSlash2 - 1);
+      sYear = SUBST(sRest, nSlash2 + 1, LONG(sRest) - nSlash2);
+      IF(LONG(sMonth) = 1);
+        sMonth = '0' | sMonth;
+      ENDIF;
+      IF(LONG(sDay) = 1);
+        sDay = '0' | sDay;
+      ENDIF;
+      sISO = sYear | '-' | sMonth | '-' | sDay;
+      AttrPutS(sISO, cDim, sSKU, 'Street_Date_ISO');
+    ENDIF;
+  ENDIF;
+ENDIF;
+
+# Compute Street_Date_Serial from the ISO date
+IF(sISO @<> '');
+    nStreetDateSerial = DAYNO(sISO);
+    AttrPutN(nStreetDateSerial, cDim, sSKU, 'Street_Date_Serial');
+ENDIF;
+
+# Compute Last_Price_MarkDown_Date_Serial
+sRawMDDate = TRIM(vLast_Price_MarkDown_Date);
+IF(sRawMDDate @<> '');
+    nSlash1MD = SCAN('/', sRawMDDate);
+    IF(nSlash1MD > 0);
+        sMonthMD = SUBST(sRawMDDate, 1, nSlash1MD - 1);
+        sRestMD = SUBST(sRawMDDate, nSlash1MD + 1, LONG(sRawMDDate) - nSlash1MD);
+        nSlash2MD = SCAN('/', sRestMD);
+        IF(nSlash2MD > 0);
+            sDayMD = SUBST(sRestMD, 1, nSlash2MD - 1);
+            sYearMD = SUBST(sRestMD, nSlash2MD + 1, LONG(sRestMD) - nSlash2MD);
+            IF(LONG(sMonthMD) = 1); sMonthMD = '0' | sMonthMD; ENDIF;
+            IF(LONG(sDayMD) = 1); sDayMD = '0' | sDayMD; ENDIF;
+            sISOmd = sYearMD | '-' | sMonthMD | '-' | sDayMD;
+            nMDSerial = DAYNO(sISOmd);
+            AttrPutN(nMDSerial, cDim, sSKU, 'Last_Price_MarkDown_Date_Serial');
+        ENDIF;
+    ENDIF;
+ENDIF;
+
+IF( bLogDebug = 1 );
+    LogOutput( 'DEBUG', cProcessName | ' | Set attributes for: ' | sSKU );
+ENDIF;
+#EndRegion
+#endregion
+#region Epilog
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+#Region : Epilog Logging
+IF( bLogInfo = 1 );
+    LogOutput( 'INFO', 'END: ' | GetProcessName() | ' | Records processed=' | TRIM(STR(nRecordCount, 10, 0)) );
+ENDIF;
+#EndRegion
+
+#endregion

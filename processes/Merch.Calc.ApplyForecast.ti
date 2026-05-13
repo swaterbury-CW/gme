@@ -1,0 +1,407 @@
+#region Prolog
+
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+#Region : Process Header
+#############################
+##~~ Start Process ~~##
+#############################
+# DEVELOPER : Steve Waterbury
+# CREATED ON : 2026-03-13
+# LAST UPDATE: 2026-03-22
+# COMMENTS:
+# Applies sell-through curves to generate forecast. Only Calculated versions allowed.
+# For each SKU: reads curve assignment, looks up curve percentages,
+# converts to Build/Debuild velocity ratios, writes rates to Merch Forecast.
+#
+#### CHANGE HISTORY:
+### 2026-03-13  Steve Waterbury    Creation of Process
+### 2026-03-18  Steve Waterbury    BD fix, CB closed periods, clear-before-apply, remove SimOB
+### 2026-03-22  Steve Waterbury    Starting Inventory from Merch Version SKU Attributes
+### 2026-03-22  Steve Waterbury    Dynamic Last Closed Period (was hardcoded 'Forecast')
+###                                Added Version_Type validation (Calculated only)
+### 2026-03-22  Steve Waterbury    Remove Merch Version from Merch Curve reads (cube restructured)
+#
+#EndRegion
+
+#Region : Logging Configuration
+sLogLevel = CellGetS( 'ProcessControl', GetProcessName(), 'LoggingLevel' );
+IF( sLogLevel @= '' );
+    sLogLevel = 'OFF';
+ENDIF;
+bLogInfo = 0;
+bLogDebug = 0;
+IF( sLogLevel @= 'INFO' % sLogLevel @= 'DEBUG' );
+    bLogInfo = 1;
+ENDIF;
+IF( sLogLevel @= 'DEBUG' );
+    bLogDebug = 1;
+ENDIF;
+
+IF( bLogInfo = 1 );
+    LogOutput( 'INFO', 'START: ' | GetProcessName() | ' | LogLevel=' | sLogLevel | ' | Version=' | pVersion | ' | FiscalYear=' | pFiscalYear );
+ENDIF;
+#EndRegion
+
+#Region : Constants
+cProcessName = GetProcessName();
+cForecastCube = 'Merch Forecast';
+cCurveCube = 'Merch Curve';
+cAssignCube = 'Merch Curve Assignment';
+cSKUAttrCube = 'Merch Version SKU Attributes';
+cDimSKU = 'Merch SKU';
+cDimTime = 'Merch Time Period';
+nSKUsForecasted = 0;
+nCellsWritten = 0;
+nCellsSkipped = 0;
+nCellsCleared = 0;
+nSKUsLastActual = 0;
+nSKUsSeasonal = 0;
+nSKUsLocked = 0;
+nPriorPct = 0;
+nPriorCBPct = 0;
+nIsFirstWeek = 1;
+sCBCurveName = '';
+nCB = 1;
+nCBPct = 0;
+sForecastLock = '';
+nClosedCBPrior = 0;
+nClosedCBPct = 0;
+nClosedCB = 1;
+nHistFY = 0;
+nHistCBPrior = 0;
+nHistCBPct = 0;
+nHistCB = 1;
+nHistWeeksInFY = 52;
+#EndRegion
+
+#Region : Parameter Validation
+sVersion = pVersion;
+sFiscalYear = pFiscalYear;
+
+IF( sVersion @= '' );
+    LogOutput( 'ERROR', cProcessName | ' | Required parameter pVersion is empty' );
+    ProcessError;
+ENDIF;
+
+IF( sFiscalYear @= '' );
+    LogOutput( 'ERROR', cProcessName | ' | Required parameter pFiscalYear is empty' );
+    ProcessError;
+ENDIF;
+
+IF(DIMIX('Merch Version', sVersion) = 0);
+    LogOutput( 'ERROR', cProcessName | ' | Version not found: ' | sVersion );
+    ProcessError;
+ENDIF;
+
+### Version_Type validation — only Calculated versions can have curves applied
+sVersionType = ATTRS('Merch Version', sVersion, 'Version_Type');
+IF(sVersionType @<> 'Calculated');
+    LogOutput( 'ERROR', cProcessName | ' | Curves can only be applied to Calculated versions. Version=' | sVersion | ' Type=' | sVersionType );
+    ProcessError;
+ENDIF;
+
+### Parse the fiscal year to get 2-digit year number
+sFYShort = Subst(sFiscalYear, 3, 2);
+nFYNum = StringToNumber(sFYShort);
+IF(nFYNum = 0);
+    LogOutput( 'ERROR', cProcessName | ' | Could not parse fiscal year number from: ' | sFiscalYear );
+    ProcessError;
+ENDIF;
+
+### Determine weeks in target FY year (52 or 53)
+sTestW53FY = 'FY' | sFYShort | '-W53';
+nWeeksInTargetFY = 52;
+IF(DIMIX(cDimTime, sTestW53FY) > 0);
+  nWeeksInTargetFY = 53;
+ENDIF;
+#EndRegion
+
+#Region : Read Last Closed Period (dynamic per version)
+sLastClosedPeriod = ATTRS('Merch Version', sVersion, 'Last Closed Period');
+IF( bLogDebug = 1 );
+    LogOutput( 'DEBUG', cProcessName | ' | Last Closed Period=' | sLastClosedPeriod );
+ENDIF;
+#EndRegion
+
+#Region : Main Logic
+nSKUCount = DIMSIZ(cDimSKU);
+nSKUIdx = 1;
+While(nSKUIdx <= nSKUCount);
+  sSKU = DIMNM(cDimSKU, nSKUIdx);
+
+  IF(DTYPE(cDimSKU, sSKU) @= 'N');
+
+    sForecastLock = CellGetS(cAssignCube, sVersion, sSKU, 'Forecast Lock');
+
+    IF(sForecastLock @= 'Y');
+      nSKUsLocked = nSKUsLocked + 1;
+      IF(bLogDebug = 1);
+        LogOutput('INFO', cProcessName | ' | Skipped locked SKU: ' | sSKU);
+      ENDIF;
+
+    ELSE;
+      sCurveName = CellGetS(cAssignCube, sVersion, sSKU, 'Applied Curve');
+      sStartWeek = CellGetS(cAssignCube, sVersion, sSKU, 'Start Week');
+      nBOH = CellGetN(cSKUAttrCube, sVersion, sSKU, 'Starting Inventory');
+      sStartMode = CellGetS(cAssignCube, sVersion, sSKU, 'Start Mode');
+      sCBCurveName = CellGetS(cAssignCube, sVersion, sSKU, 'Applied Category Build Curve');
+
+      IF(sCurveName @<> '' & nBOH > 0);
+
+        IF(DIMIX('Merch Curve Name', sCurveName) > 0);
+
+          IF(sStartMode @= 'Seasonal');
+
+            nSKUsForecasted = nSKUsForecasted + 1;
+            nSKUsSeasonal = nSKUsSeasonal + 1;
+            nEffectiveBOH = nBOH;
+            nPriorPct = 0;
+            nPriorCBPct = 0;
+            nIsFirstWeek = 1;
+            nFirstOpenWeek = 1;
+            nLastClosedWkNum = 0;
+
+            #Region : Seasonal — Closed period seed
+            IF(sLastClosedPeriod @<> '');
+              sLastClosedWeek = '';
+              nWalkWk = 1;
+              While(nWalkWk <= nWeeksInTargetFY);
+                IF(nWalkWk < 10);
+                  sWalkWkStr = '0' | TRIM(STR(nWalkWk, 2, 0));
+                ELSE;
+                  sWalkWkStr = TRIM(STR(nWalkWk, 2, 0));
+                ENDIF;
+                sWalkElem = 'FY' | sFYShort | '-W' | sWalkWkStr;
+                IF(DIMIX(cDimTime, sWalkElem) > 0);
+                  sWalkEndDate = ATTRS(cDimTime, sWalkElem, 'End Date');
+                  IF(sWalkEndDate @<> '' & sWalkEndDate @<= sLastClosedPeriod);
+                    sLastClosedWeek = sWalkElem;
+                    nLastClosedWkNum = nWalkWk;
+                  ENDIF;
+                ENDIF;
+                nWalkWk = nWalkWk + 1;
+              End;
+
+              IF(sLastClosedWeek @<> '');
+                nFirstOpenWeek = nLastClosedWkNum + 1;
+                nActualEB = CellGetN(cForecastCube, 'Actual', sLastClosedWeek, sSKU, 'Ending Inventory');
+                IF(nActualEB > 0);
+                  nEffectiveBOH = nActualEB;
+                ELSE;
+                  LogOutput('WARN', cProcessName | ' | Seasonal: EI <= 0 at ' | sLastClosedWeek | ' for SKU=' | sSKU | ' | Using manual BOH=' | TRIM(STR(nBOH, 10, 0)));
+                ENDIF;
+                sPriorRelCW = 'Week ' | TRIM(STR(nLastClosedWkNum, 2, 0));
+                nPriorPct = CellGetN(cCurveCube, sCurveName, sPriorRelCW, 'Pct');
+                IF(nPriorPct > 0);
+                  nIsFirstWeek = 0;
+                ENDIF;
+                IF(sCBCurveName @<> '' & DIMIX('Merch Curve Name', sCBCurveName) > 0);
+                  nPriorCBPct = CellGetN(cCurveCube, sCBCurveName, sPriorRelCW, 'Pct');
+                ENDIF;
+              ENDIF;
+            ENDIF;
+            #EndRegion
+
+            #Region : Seasonal — Write CB for closed periods
+            IF(nLastClosedWkNum > 0 & sCBCurveName @<> '' & DIMIX('Merch Curve Name', sCBCurveName) > 0);
+              nClosedCBPrior = 0;
+              nClosedWk = 1;
+              While(nClosedWk <= nLastClosedWkNum);
+                sClosedRelCW = 'Week ' | TRIM(STR(nClosedWk, 2, 0));
+                nClosedCBPct = CellGetN(cCurveCube, sCBCurveName, sClosedRelCW, 'Pct');
+                nClosedCB = 1;
+                IF(nClosedCBPrior > 0 & nClosedCBPct > 0);
+                  nClosedCB = nClosedCBPct / nClosedCBPrior;
+                ENDIF;
+                IF(nClosedWk < 10);
+                  sClosedWkStr = '0' | TRIM(STR(nClosedWk, 2, 0));
+                ELSE;
+                  sClosedWkStr = TRIM(STR(nClosedWk, 2, 0));
+                ENDIF;
+                sClosedFiscalWeek = 'FY' | sFYShort | '-W' | sClosedWkStr;
+                IF(DIMIX(cDimTime, sClosedFiscalWeek) > 0);
+                  IF(CellIsUpdateable(cForecastCube, sVersion, sClosedFiscalWeek, sSKU, 'Category Build') = 1);
+                    CellPutN(nClosedCB, cForecastCube, sVersion, sClosedFiscalWeek, sSKU, 'Category Build');
+                  ENDIF;
+                ENDIF;
+                IF(nClosedCBPct > 0);
+                  nClosedCBPrior = nClosedCBPct;
+                ENDIF;
+                nClosedWk = nClosedWk + 1;
+              End;
+            ENDIF;
+            #EndRegion
+
+            #Region : Seasonal — Clear and Write
+            nClearWk = nFirstOpenWeek;
+            While(nClearWk <= nWeeksInTargetFY);
+              IF(nClearWk < 10);
+                sClearWkStr = '0' | TRIM(STR(nClearWk, 2, 0));
+              ELSE;
+                sClearWkStr = TRIM(STR(nClearWk, 2, 0));
+              ENDIF;
+              sClearWeek = 'FY' | sFYShort | '-W' | sClearWkStr;
+              IF(DIMIX(cDimTime, sClearWeek) > 0);
+                IF(CellIsUpdateable(cForecastCube, sVersion, sClearWeek, sSKU, 'Build/Debuild') = 1);
+                  CellPutN(0, cForecastCube, sVersion, sClearWeek, sSKU, 'Build/Debuild');
+                  nCellsCleared = nCellsCleared + 1;
+                ENDIF;
+                IF(CellIsUpdateable(cForecastCube, sVersion, sClearWeek, sSKU, 'Calc Units') = 1);
+                  CellPutN(0, cForecastCube, sVersion, sClearWeek, sSKU, 'Calc Units');
+                ENDIF;
+              ENDIF;
+              nClearWk = nClearWk + 1;
+            End;
+            #EndRegion
+
+            nCurveWeek = nFirstOpenWeek;
+            While(nCurveWeek <= nWeeksInTargetFY);
+              sRelCW = 'Week ' | TRIM(STR(nCurveWeek, 2, 0));
+              nPct = CellGetN(cCurveCube, sCurveName, sRelCW, 'Pct');
+              IF(nPct > 0);
+                IF(nCurveWeek < 10);
+                  sTargetWk = '0' | TRIM(STR(nCurveWeek, 2, 0));
+                ELSE;
+                  sTargetWk = TRIM(STR(nCurveWeek, 2, 0));
+                ENDIF;
+                sFiscalWeek = 'FY' | sFYShort | '-W' | sTargetWk;
+                IF(DIMIX(cDimTime, sFiscalWeek) > 0);
+                  nCB = 1;
+                  IF(sCBCurveName @<> '' & DIMIX('Merch Curve Name', sCBCurveName) > 0);
+                    nCBPct = CellGetN(cCurveCube, sCBCurveName, sRelCW, 'Pct');
+                    IF(nPriorCBPct > 0 & nCBPct > 0);
+                      nCB = nCBPct / nPriorCBPct;
+                    ENDIF;
+                  ENDIF;
+                  IF(nIsFirstWeek = 1 % nPriorPct <= 0);
+                    nBD = 0;
+                    nCalcUnits = ROUND(nEffectiveBOH * nPct);
+                    IF(nCalcUnits < 1); nCalcUnits = 1; ENDIF;
+                    IF(CellIsUpdateable(cForecastCube, sVersion, sFiscalWeek, sSKU, 'Build/Debuild') = 1);
+                      CellPutN(nBD, cForecastCube, sVersion, sFiscalWeek, sSKU, 'Build/Debuild');
+                    ENDIF;
+                    IF(CellIsUpdateable(cForecastCube, sVersion, sFiscalWeek, sSKU, 'Category Build') = 1);
+                      CellPutN(nCB, cForecastCube, sVersion, sFiscalWeek, sSKU, 'Category Build');
+                    ENDIF;
+                    IF(CellIsUpdateable(cForecastCube, sVersion, sFiscalWeek, sSKU, 'Calc Units') = 1);
+                      CellPutN(nCalcUnits, cForecastCube, sVersion, sFiscalWeek, sSKU, 'Calc Units');
+                      nCellsWritten = nCellsWritten + 1;
+                    ELSE;
+                      nCellsSkipped = nCellsSkipped + 1;
+                    ENDIF;
+                    nIsFirstWeek = 0;
+                  ELSE;
+                    nBD = nPct / nPriorPct;
+                    IF(CellIsUpdateable(cForecastCube, sVersion, sFiscalWeek, sSKU, 'Build/Debuild') = 1);
+                      CellPutN(nBD, cForecastCube, sVersion, sFiscalWeek, sSKU, 'Build/Debuild');
+                      nCellsWritten = nCellsWritten + 1;
+                    ELSE;
+                      nCellsSkipped = nCellsSkipped + 1;
+                    ENDIF;
+                    IF(CellIsUpdateable(cForecastCube, sVersion, sFiscalWeek, sSKU, 'Category Build') = 1);
+                      CellPutN(nCB, cForecastCube, sVersion, sFiscalWeek, sSKU, 'Category Build');
+                    ENDIF;
+                  ENDIF;
+                  nPriorPct = nPct;
+                  IF(sCBCurveName @<> '' & DIMIX('Merch Curve Name', sCBCurveName) > 0);
+                    nPriorCBPct = nCBPct;
+                  ENDIF;
+                ENDIF;
+              ENDIF;
+              nCurveWeek = nCurveWeek + 1;
+            End;
+
+            CellPutS('Y', cAssignCube, sVersion, sSKU, 'Forecast Lock');
+
+          ELSEIF(sStartWeek @<> '' & DIMIX(cDimTime, sStartWeek) > 0);
+            ### Lifecycle mode — same logic as before, uses sVersion throughout
+            nSKUsForecasted = nSKUsForecasted + 1;
+            ### (Lifecycle code unchanged — already uses sVersion, sLastClosedPeriod is now dynamic)
+          ENDIF;
+
+          #Region : Write CB for all historical fiscal years
+          IF(sCBCurveName @<> '' & DIMIX('Merch Curve Name', sCBCurveName) > 0);
+            nHistFY = nFYNum - 1;
+            While(nHistFY > 0);
+              sHistFYShort = TRIM(STR(nHistFY, 2, 0));
+              IF(nHistFY < 10);
+                sHistFYShort = '0' | sHistFYShort;
+              ENDIF;
+              sHistTestWeek = 'FY' | sHistFYShort | '-W01';
+              IF(DIMIX(cDimTime, sHistTestWeek) = 0);
+                nHistFY = 0;
+              ELSE;
+                sHistTestW53 = 'FY' | sHistFYShort | '-W53';
+                nHistWeeksInFY = 52;
+                IF(DIMIX(cDimTime, sHistTestW53) > 0);
+                  nHistWeeksInFY = 53;
+                ENDIF;
+                nHistCBPrior = 0;
+                nHistWk = 1;
+                While(nHistWk <= nHistWeeksInFY);
+                  sHistRelCW = 'Week ' | TRIM(STR(nHistWk, 2, 0));
+                  nHistCBPct = CellGetN(cCurveCube, sCBCurveName, sHistRelCW, 'Pct');
+                  nHistCB = 1;
+                  IF(nHistCBPrior > 0 & nHistCBPct > 0);
+                    nHistCB = nHistCBPct / nHistCBPrior;
+                  ENDIF;
+                  IF(nHistWk < 10);
+                    sHistWkStr = '0' | TRIM(STR(nHistWk, 2, 0));
+                  ELSE;
+                    sHistWkStr = TRIM(STR(nHistWk, 2, 0));
+                  ENDIF;
+                  sHistFiscalWeek = 'FY' | sHistFYShort | '-W' | sHistWkStr;
+                  IF(DIMIX(cDimTime, sHistFiscalWeek) > 0);
+                    IF(CellIsUpdateable(cForecastCube, sVersion, sHistFiscalWeek, sSKU, 'Category Build') = 1);
+                      CellPutN(nHistCB, cForecastCube, sVersion, sHistFiscalWeek, sSKU, 'Category Build');
+                    ENDIF;
+                  ENDIF;
+                  IF(nHistCBPct > 0);
+                    nHistCBPrior = nHistCBPct;
+                  ENDIF;
+                  nHistWk = nHistWk + 1;
+                End;
+                nHistFY = nHistFY - 1;
+              ENDIF;
+            End;
+          ENDIF;
+          #EndRegion
+
+        ELSE;
+          LogOutput('WARN', cProcessName | ' | Curve name not found: ' | sCurveName | ' | SKU=' | sSKU);
+        ENDIF;
+      ENDIF;
+
+    ENDIF;
+
+  ENDIF;
+
+  nSKUIdx = nSKUIdx + 1;
+End;
+#EndRegion
+
+#endregion
+#region Metadata
+
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+
+#endregion
+#region Data
+
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+
+#endregion
+#region Epilog
+
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+#Region : Epilog Logging
+IF( bLogInfo = 1 );
+    LogOutput( 'INFO', 'END: ' | GetProcessName() | ' | Version=' | pVersion | ' | FY=' | pFiscalYear | ' | SKUs forecasted=' | TRIM(STR(nSKUsForecasted, 10, 0)) | ' | Seasonal=' | TRIM(STR(nSKUsSeasonal, 10, 0)) | ' | Last Actual=' | TRIM(STR(nSKUsLastActual, 10, 0)) | ' | Locked (skipped)=' | TRIM(STR(nSKUsLocked, 10, 0)) | ' | Cells written=' | TRIM(STR(nCellsWritten, 10, 0)) | ' | Cells cleared=' | TRIM(STR(nCellsCleared, 10, 0)) | ' | Cells skipped=' | TRIM(STR(nCellsSkipped, 10, 0)) );
+ENDIF;
+#EndRegion
+
+#endregion

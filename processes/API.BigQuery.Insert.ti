@@ -1,0 +1,212 @@
+#region Prolog
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+#==========================================================================
+# PROCESS:     API.BigQuery.Insert
+# DEVELOPER:   Steve Waterbury
+# CREATED ON:  2026-05-07
+# LAST UPDATE: 2026-05-07
+# CHANGED BY:  Steve Waterbury
+# PURPOSE:     Read a JSONL file produced by API.BigQuery.Insert.Extract.* and
+#              POST batches to BigQuery insertAll. pMode='FILE' (default) writes
+#              the would-be POST body to a capture file per batch instead of
+#              calling BQ — safe for development.
+# CHANGE HISTORY:
+#   2026-05-07 | Steve Waterbury | Initial creation. Reverse of API.BigQuery.Export.
+#==========================================================================
+
+DatasourceType = 'CHARACTERDELIMITED';
+DatasourceNameForServer = pInputFile;
+
+sProcess = GetProcessName();
+sLogLevel = CellGetS('ProcessControl', sProcess, 'LoggingLevel');
+IF(sLogLevel @= '');
+  sLogLevel = 'OFF';
+ENDIF;
+bLogInfo = 0;
+IF(sLogLevel @= 'INFO' % sLogLevel @= 'DEBUG');
+  bLogInfo = 1;
+ENDIF;
+
+IF(pInputFile @= '');
+  LogOutput('ERROR', sProcess | ' | pInputFile is empty.');
+  ProcessError;
+ENDIF;
+IF(pTable @= '');
+  LogOutput('ERROR', sProcess | ' | pTable is empty.');
+  ProcessError;
+ENDIF;
+IF(pBatchSize @= '');
+  pBatchSize = '500';
+ENDIF;
+IF(pSkipInvalidRows @= '');
+  pSkipInvalidRows = 'false';
+ENDIF;
+IF(pMode @= '');
+  pMode = 'FILE';
+ENDIF;
+IF(pDryRunFile @= '');
+  pDryRunFile = './bq_insert_dryrun';
+ENDIF;
+IF(pMode @<> 'FILE' & pMode @<> 'POST');
+  LogOutput('ERROR', sProcess | ' | pMode must be FILE or POST.');
+  ProcessError;
+ENDIF;
+
+sProject = '';
+sDataset = '';
+sTableId = '';
+nDot1 = SCAN('.', pTable);
+IF(nDot1 = 0);
+  LogOutput('ERROR', sProcess | ' | pTable must be project.dataset.table or dataset.table.');
+  ProcessError;
+ENDIF;
+sFirst = SUBST(pTable, 1, nDot1 - 1);
+sRest  = SUBST(pTable, nDot1 + 1, LONG(pTable) - nDot1);
+nDot2 = SCAN('.', sRest);
+IF(nDot2 > 0);
+  sProject = sFirst;
+  sDataset = SUBST(sRest, 1, nDot2 - 1);
+  sTableId = SUBST(sRest, nDot2 + 1, LONG(sRest) - nDot2);
+ELSE;
+  sDataset = sFirst;
+  sTableId = sRest;
+ENDIF;
+IF(sProject @= '');
+  sProject = CellGetS('}GCP_Service_Account', 'project_id', 'Value');
+ENDIF;
+IF(sProject @= '' % sDataset @= '' % sTableId @= '');
+  LogOutput('ERROR', sProcess | ' | Could not parse pTable: ' | pTable);
+  ProcessError;
+ENDIF;
+
+sURL = 'https://bigquery.googleapis.com/bigquery/v2/projects/' | sProject | '/datasets/' | sDataset | '/tables/' | sTableId | '/insertAll';
+
+sToken = '';
+IF(pMode @= 'POST');
+  sClientEmail = CellGetS('}GCP_Service_Account', 'client_email', 'Value');
+  sPrivateKey  = CellGetS('}GCP_Service_Account', 'private_key', 'Value');
+  sTokenURI    = CellGetS('}GCP_Service_Account', 'token_uri', 'Value');
+  IF(sTokenURI @= '');
+    sTokenURI = 'https://oauth2.googleapis.com/token';
+  ENDIF;
+  IF(sClientEmail @= '' % sPrivateKey @= '');
+    LogOutput('ERROR', sProcess | ' | GCP credentials missing.');
+    ProcessError;
+  ENDIF;
+  sPayload = JsonAdd('{}', 'iss', StringToJson(sClientEmail));
+  sPayload = JsonAdd(sPayload, 'sub', StringToJson(sClientEmail));
+  sPayload = JsonAdd(sPayload, 'aud', StringToJson(sTokenURI));
+  sPayload = JsonAdd(sPayload, 'scope', StringToJson('https://www.googleapis.com/auth/bigquery.insertdata'));
+  sPayload = JsonAdd(sPayload, 'iat', 0);
+  sPayload = JsonAdd(sPayload, 'exp', 3600);
+  sJWT = JwtCreate('RS256', sPayload, sPrivateKey, '');
+  IF(sJWT @= '');
+    LogOutput('ERROR', sProcess | ' | JwtCreate failed.');
+    ProcessError;
+  ENDIF;
+  ExecuteHttpRequest('POST', sTokenURI, '-h Content-Type:application/x-www-form-urlencoded', '-d grant_type=urn:ietf:params:oauth:grant-type:jwt-bearer&assertion=' | sJWT);
+  nStatus = HttpResponseGetStatusCode();
+  IF(nStatus <> 200);
+    LogOutput('ERROR', sProcess | ' | Token exchange HTTP ' | TRIM(STR(nStatus, 10, 0)));
+    ProcessError;
+  ENDIF;
+  sTokenResp = HttpResponseGetBody();
+  sToken = JsonGet(sTokenResp, 'access_token');
+  IF(SUBST(sToken, 1, 1) @= '"');
+    sToken = SUBST(sToken, 2, LONG(sToken) - 2);
+  ENDIF;
+  IF(sToken @= '');
+    LogOutput('ERROR', sProcess | ' | No access_token.');
+    ProcessError;
+  ENDIF;
+ENDIF;
+
+nBatchSize = StringToNumber(pBatchSize);
+sBuf = '';
+nBatchRows = 0;
+nBatchNum = 0;
+nTotalRows = 0;
+
+IF(bLogInfo = 1);
+  LogOutput('INFO', sProcess | ' | START | mode=' | pMode | ' | input=' | pInputFile | ' | table=' | sProject | '.' | sDataset | '.' | sTableId);
+ENDIF;
+
+#endregion
+#region Metadata
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+
+#endregion
+#region Data
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+IF(TRIM(vLine) @= '');
+  ItemSkip;
+ENDIF;
+
+IF(nBatchRows = 0);
+  sBuf = '{"skipInvalidRows":' | pSkipInvalidRows | ',"rows":[' | vLine;
+ELSE;
+  sBuf = sBuf | ',' | vLine;
+ENDIF;
+nBatchRows = nBatchRows + 1;
+nTotalRows = nTotalRows + 1;
+
+IF(nBatchRows >= nBatchSize);
+  sBuf = sBuf | ']}';
+  nBatchNum = nBatchNum + 1;
+  IF(pMode @= 'POST');
+    ExecuteHttpRequest('POST', sURL, '-h Authorization: Bearer ' | sToken, '-h Content-Type: application/json', '-d ' | sBuf);
+    nStatus = HttpResponseGetStatusCode();
+    IF(nStatus <> 200);
+      LogOutput('ERROR', sProcess | ' | Batch ' | TRIM(STR(nBatchNum, 5, 0)) | ' HTTP ' | TRIM(STR(nStatus, 10, 0)) | ' | ' | HttpResponseGetBody());
+      ProcessError;
+    ENDIF;
+    sResp = HttpResponseGetBody();
+    IF(SCAN('"insertErrors"', sResp) > 0);
+      LogOutput('ERROR', sProcess | ' | Batch ' | TRIM(STR(nBatchNum, 5, 0)) | ' insertErrors: ' | sResp);
+      ProcessError;
+    ENDIF;
+  ELSE;
+    sCapture = pDryRunFile | '_batch_' | TRIM(STR(nBatchNum, 5, 0)) | '.json';
+    ASCIIOutput(sCapture, sBuf);
+  ENDIF;
+  sBuf = '';
+  nBatchRows = 0;
+ENDIF;
+
+#endregion
+#region Epilog
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+IF(nBatchRows > 0);
+  sBuf = sBuf | ']}';
+  nBatchNum = nBatchNum + 1;
+  IF(pMode @= 'POST');
+    ExecuteHttpRequest('POST', sURL, '-h Authorization: Bearer ' | sToken, '-h Content-Type: application/json', '-d ' | sBuf);
+    nStatus = HttpResponseGetStatusCode();
+    IF(nStatus <> 200);
+      LogOutput('ERROR', sProcess | ' | Final batch HTTP ' | TRIM(STR(nStatus, 10, 0)) | ' | ' | HttpResponseGetBody());
+      ProcessError;
+    ENDIF;
+    sResp = HttpResponseGetBody();
+    IF(SCAN('"insertErrors"', sResp) > 0);
+      LogOutput('ERROR', sProcess | ' | Final batch insertErrors: ' | sResp);
+      ProcessError;
+    ENDIF;
+  ELSE;
+    sCapture = pDryRunFile | '_batch_' | TRIM(STR(nBatchNum, 5, 0)) | '.json';
+    ASCIIOutput(sCapture, sBuf);
+  ENDIF;
+ENDIF;
+
+IF(CellIsUpdateable('ProcessControl', sProcess, 'SubsetCount') = 1);
+  CellPutN(nBatchNum, 'ProcessControl', sProcess, 'SubsetCount');
+ENDIF;
+
+IF(bLogInfo = 1);
+  LogOutput('INFO', sProcess | ' | END | rows=' | TRIM(STR(nTotalRows, 10, 0)) | ' | batches=' | TRIM(STR(nBatchNum, 10, 0)) | ' | mode=' | pMode);
+ENDIF;
+
+#endregion

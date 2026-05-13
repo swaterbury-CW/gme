@@ -1,0 +1,211 @@
+#region Prolog
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+#Region : Process Header
+# DEVELOPER : Steve Waterbury
+# CREATED ON : 2026-04-08
+# LAST UPDATE: 2026-05-08
+# CHANGED BY : Steve Waterbury
+# COMMENTS:
+# Populates Merch Promo Calendar from Merch Promo Settings.
+# Epilog chains Merch.Calc.ApplyPromosToForecast.
+# CHANGE HISTORY:
+#   2026-04-08 Steve Waterbury  Initial creation
+#   2026-04-13 Steve Waterbury  SKU-level rewrite, date parsing
+#   2026-04-20 Steve Waterbury  Chain ApplyPromosToForecast; ProcessError validation
+#   2026-05-01 Steve Waterbury  Repointed Curve Name read to Applied Curve Name
+#   2026-05-08 Steve Waterbury  Add 'Clearance' to PCTOFF/BOGO50 ladder; read nBeginDate/nEndDate from Settings 'Applied Begin/End Date' (rule-derived) instead of re-parsing Resolved string. Plan 52f7d463ed97.
+#EndRegion
+
+cProcessName = GetProcessName();
+sLogLevel = CellGetS('ProcessControl', cProcessName, 'LoggingLevel');
+IF(sLogLevel @= '');
+  sLogLevel = 'OFF';
+ENDIF;
+bLogInfo = 0;
+bLogDebug = 0;
+IF(sLogLevel @= 'INFO' % sLogLevel @= 'DEBUG');
+  bLogInfo = 1;
+ENDIF;
+IF(sLogLevel @= 'DEBUG');
+  bLogDebug = 1;
+ENDIF;
+IF(bLogInfo = 1);
+  LogOutput('INFO', 'START: ' | cProcessName | ' V=' | pVersion);
+ENDIF;
+
+IF(DIMIX('Merch Version', pVersion) = 0);
+  LogOutput('ERROR', cProcessName | ' | Invalid version: ' | pVersion);
+  ProcessError;
+ENDIF;
+
+sCubeSettings = 'Merch Promo Settings';
+sCubeCalendar = 'Merch Promo Calendar';
+sCubeCurve = 'Merch Curve';
+sDimPromo = 'Merch Promo ID';
+sDimSKU = 'Merch SKU';
+sDimTime = 'Merch Time Period';
+nSKUCount = DIMSIZ(sDimSKU);
+nTimeCount = DIMSIZ(sDimTime);
+nApplied = 0;
+nSkipped = 0;
+
+sViewZero = '}ApplyPromos_Zero';
+IF(pPromoID @<> '' & DIMIX(sDimPromo, pPromoID) > 0);
+  sZeroMDX = 'SELECT {TM1SUBSETALL([Merch Promo Calendar Measure].[Merch Promo Calendar Measure])} ON COLUMNS, '
+    | 'NON EMPTY {TM1FILTERBYLEVEL({TM1SUBSETALL([Merch SKU].[Merch SKU])}, 0)} * '
+    | '{TM1FILTERBYLEVEL({TM1SUBSETALL([Merch Time Period].[Merch Time Period])}, 0)} ON ROWS '
+    | 'FROM [Merch Promo Calendar] '
+    | 'WHERE ([Merch Version].[Merch Version].[' | pVersion | '], '
+    | '[Merch Promo ID].[Merch Promo ID].[' | pPromoID | '])';
+ELSE;
+  sZeroMDX = 'SELECT {TM1SUBSETALL([Merch Promo Calendar Measure].[Merch Promo Calendar Measure])} ON COLUMNS, '
+    | 'NON EMPTY {TM1FILTERBYLEVEL({TM1SUBSETALL([Merch SKU].[Merch SKU])}, 0)} * '
+    | '{TM1FILTERBYLEVEL({TM1SUBSETALL([Merch Time Period].[Merch Time Period])}, 0)} * '
+    | '{TM1FILTERBYLEVEL({TM1SUBSETALL([Merch Promo ID].[Merch Promo ID])}, 0)} ON ROWS '
+    | 'FROM [Merch Promo Calendar] '
+    | 'WHERE ([Merch Version].[Merch Version].[' | pVersion | '])';
+ENDIF;
+IF(ViewExists(sCubeCalendar, sViewZero) = 1);
+  ViewDestroy(sCubeCalendar, sViewZero);
+ENDIF;
+ViewCreateByMDX(sCubeCalendar, sViewZero, sZeroMDX);
+ViewZeroOut(sCubeCalendar, sViewZero);
+ViewDestroy(sCubeCalendar, sViewZero);
+
+IF(pPromoID @<> '' & DIMIX(sDimPromo, pPromoID) > 0);
+  nPromoStart = DIMIX(sDimPromo, pPromoID);
+  nPromoEnd = nPromoStart;
+ELSE;
+  nPromoStart = 1;
+  nPromoEnd = DIMSIZ(sDimPromo);
+ENDIF;
+nP = nPromoStart;
+WHILE(nP <= nPromoEnd);
+  sPromoID = DIMNM(sDimPromo, nP);
+  IF(ELLEV(sDimPromo, sPromoID) = 0);
+    nS = 1;
+    WHILE(nS <= nSKUCount);
+      sSKU = DIMNM(sDimSKU, nS);
+      IF(ELLEV(sDimSKU, sSKU) = 0);
+        nActive = CellGetN(sCubeSettings, pVersion, sSKU, sPromoID, 'Applied Active');
+        IF(nActive = 1);
+          nDiscountPct = CellGetN(sCubeSettings, pVersion, sSKU, sPromoID, 'Applied Discount Pct');
+          nPromoPrice = CellGetN(sCubeSettings, pVersion, sSKU, sPromoID, 'Applied Promo Price');
+          nProOnly = CellGetN(sCubeSettings, pVersion, sSKU, sPromoID, 'Applied Pro Only');
+          nBaseAUR = CellGetN(sCubeSettings, pVersion, sSKU, sPromoID, 'Applied Base AUR');
+          nSalesLift = CellGetN(sCubeSettings, pVersion, sSKU, sPromoID, 'Applied Sales Lift Pct');
+          nBER = CellGetN(sCubeSettings, pVersion, sSKU, sPromoID, 'Applied BER');
+          sPromoType = CellGetS(sCubeSettings, pVersion, sSKU, sPromoID, 'Promo Type');
+          sPromoName = CellGetS(sCubeSettings, pVersion, sSKU, sPromoID, 'Promo Name');
+          sCurveName = CellGetS(sCubeSettings, pVersion, sSKU, sPromoID, 'Applied Curve Name');
+          nBeginDate = CellGetN(sCubeSettings, pVersion, sSKU, sPromoID, 'Applied Begin Date');
+          nEndDate = CellGetN(sCubeSettings, pVersion, sSKU, sPromoID, 'Applied End Date');
+          IF(nBeginDate > 0 & nEndDate > 0 & nEndDate >= nBeginDate);
+            nStaticPromoAUR = nBaseAUR;
+            IF(sPromoType @= 'PCTOFF' % sPromoType @= 'BOGO50' % sPromoType @= 'Clearance');
+              nStaticPromoAUR = nBaseAUR * (1 - nDiscountPct);
+            ENDIF;
+            IF(sPromoType @= 'PRICE');
+              nStaticPromoAUR = nPromoPrice;
+            ENDIF;
+            IF(sPromoType @= 'B2G1' & nBaseAUR <> 0);
+              nStaticPromoAUR = nBaseAUR * 2 / 3;
+            ENDIF;
+            IF(sPromoType @= 'B3G1' & nBaseAUR <> 0);
+              nStaticPromoAUR = nBaseAUR * 3 / 4;
+            ENDIF;
+            nT = 1;
+            WHILE(nT <= nTimeCount);
+              sWeek = DIMNM(sDimTime, nT);
+              IF(ELLEV(sDimTime, sWeek) = 0);
+                nWkStart = ATTRN(sDimTime, sWeek, 'Start_Date');
+                nWkEnd = ATTRN(sDimTime, sWeek, 'End_Date');
+                IF(nWkStart > 0 & nWkEnd > 0);
+                  IF(nBeginDate <= nWkEnd & nEndDate >= nWkStart);
+                    nOverlapStart = nBeginDate;
+                    IF(nWkStart > nBeginDate);
+                      nOverlapStart = nWkStart;
+                    ENDIF;
+                    nOverlapEnd = nEndDate;
+                    IF(nWkEnd < nEndDate);
+                      nOverlapEnd = nWkEnd;
+                    ENDIF;
+                    nPctOfWeek = (nOverlapEnd - nOverlapStart + 1) / 7;
+                    IF(nPctOfWeek > 1);
+                      nPctOfWeek = 1;
+                    ENDIF;
+                    nWeekPromoAUR = nStaticPromoAUR;
+                    nWeekSalesLift = nSalesLift;
+                    IF(sCurveName @<> '');
+                      IF(DIMIX('Merch Curve Name', sCurveName) > 0);
+                        nCurveAUR = CellGetN(sCubeCurve, sCurveName, sWeek, 'AUR');
+                        IF(nCurveAUR <> 0);
+                          nWeekPromoAUR = nCurveAUR;
+                        ENDIF;
+                        nCurveLift = CellGetN(sCubeCurve, sCurveName, sWeek, 'Level');
+                        IF(nCurveLift <> 0);
+                          nWeekSalesLift = nCurveLift;
+                        ENDIF;
+                      ENDIF;
+                    ENDIF;
+                    nAURImpact = 0;
+                    IF(nBaseAUR <> 0);
+                      nAURImpact = (nWeekPromoAUR - nBaseAUR) / nBaseAUR;
+                    ENDIF;
+                    nWeightedAUR = nWeekPromoAUR * nPctOfWeek;
+                    IF(CellIsUpdateable(sCubeCalendar, pVersion, sWeek, sSKU, sPromoID, 'Active') = 1);
+                      CellPutN(1, sCubeCalendar, pVersion, sWeek, sSKU, sPromoID, 'Active');
+                      CellPutN(nPctOfWeek, sCubeCalendar, pVersion, sWeek, sSKU, sPromoID, 'Pct of Week');
+                      CellPutN(1, sCubeCalendar, pVersion, sWeek, sSKU, sPromoID, 'Promo Unit Pct');
+                      CellPutN(nBaseAUR, sCubeCalendar, pVersion, sWeek, sSKU, sPromoID, 'Base AUR');
+                      CellPutN(nWeekPromoAUR, sCubeCalendar, pVersion, sWeek, sSKU, sPromoID, 'Promo AUR');
+                      CellPutN(nAURImpact, sCubeCalendar, pVersion, sWeek, sSKU, sPromoID, 'AUR Impact Pct');
+                      CellPutN(nWeightedAUR, sCubeCalendar, pVersion, sWeek, sSKU, sPromoID, 'Weighted AUR Contribution');
+                      CellPutN(nProOnly, sCubeCalendar, pVersion, sWeek, sSKU, sPromoID, 'Pro Only');
+                      CellPutN(nWeekSalesLift, sCubeCalendar, pVersion, sWeek, sSKU, sPromoID, 'Calc Sales Lift Pct');
+                      CellPutN(nBER, sCubeCalendar, pVersion, sWeek, sSKU, sPromoID, 'BER');
+                      CellPutN(nBeginDate, sCubeCalendar, pVersion, sWeek, sSKU, sPromoID, 'Begin Date');
+                      CellPutN(nEndDate, sCubeCalendar, pVersion, sWeek, sSKU, sPromoID, 'End Date');
+                      CellPutS(sPromoType, sCubeCalendar, pVersion, sWeek, sSKU, sPromoID, 'Promo Type');
+                      CellPutS(sPromoName, sCubeCalendar, pVersion, sWeek, sSKU, sPromoID, 'Promo Name');
+                      nApplied = nApplied + 1;
+                    ELSE;
+                      nSkipped = nSkipped + 1;
+                    ENDIF;
+                  ENDIF;
+                ENDIF;
+              ENDIF;
+              nT = nT + 1;
+            END;
+          ENDIF;
+        ENDIF;
+      ENDIF;
+      nS = nS + 1;
+    END;
+  ENDIF;
+  nP = nP + 1;
+END;
+
+#endregion
+#region Metadata
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+
+#endregion
+#region Data
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+
+#endregion
+#region Epilog
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+nRC = ExecuteProcess('Merch.Calc.ApplyPromosToForecast', 'pVersion', pVersion);
+IF(nRC <> 0);
+  LogOutput('ERROR', cProcessName | ' | ApplyPromosToForecast chain failed RC=' | TRIM(STR(nRC, 10, 0)));
+ENDIF;
+IF(bLogInfo = 1);
+  LogOutput('INFO', 'END: ' | cProcessName | ' Applied=' | TRIM(STR(nApplied, 10, 0)) | ' Skipped=' | TRIM(STR(nSkipped, 10, 0)));
+ENDIF;
+#endregion

@@ -1,0 +1,69 @@
+{
+	"@type":"Process",
+	"Name":"PreOwned.Calc.BuildMix.BuildScope",
+	"HasSecurityAccess":false,
+	"Code@Code.link":"PreOwned.Calc.BuildMix.BuildScope.ti",
+	"DataSource":
+	{
+		"Type":"TM1CubeView",
+		"dataSourceNameForServer":"Merch PreOwned BuildMix Scope",
+		"dataSourceNameForClient":"Merch PreOwned BuildMix Scope",
+		"view":"TI_BuildMix_placeholder"
+	},
+	"Parameters":
+	[
+		{
+			"Name":"pVersion",
+			"Prompt":"Version",
+			"Value":"Forecast",
+			"Type":"String"
+		}
+	],
+	"Variables":
+	[
+		{
+			"Name":"vMerch_PreOwned_BuildMix_Scope_Measure",
+			"Type":"String",
+			"Position":1,
+			"StartByte":0,
+			"EndByte":0
+		},
+		{
+			"Name":"vMerch_Time_Period",
+			"Type":"String",
+			"Position":2,
+			"StartByte":0,
+			"EndByte":0
+		},
+		{
+			"Name":"vMerch_PreOwned_Category",
+			"Type":"String",
+			"Position":3,
+			"StartByte":0,
+			"EndByte":0
+		},
+		{
+			"Name":"vMerch_Version",
+			"Type":"String",
+			"Position":4,
+			"StartByte":0,
+			"EndByte":0
+		},
+		{
+			"Name":"vValue",
+			"Type":"Numeric",
+			"Position":5,
+			"StartByte":0,
+			"EndByte":0
+		}
+	],
+	"UID": "17768312210001",
+	"UIData": "CubeAction=1511\fDataAction=1503\fCubeLogChanges=0\f",
+	"VariablesUIData": [
+		"VarType=32\fColType=827\f",
+		"VarType=32\fColType=827\f",
+		"VarType=32\fColType=827\f",
+		"VarType=32\fColType=827\f",
+		"VarType=33\fColType=827\f"
+	]
+}

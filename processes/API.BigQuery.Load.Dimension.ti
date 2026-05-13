@@ -1,0 +1,357 @@
+#region Prolog
+
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+
+#==========================================================================
+# PROCESS:    API.BigQuery.Load.Dimension
+# PURPOSE:    Generic loader — BigQuery JSON → TM1 dimension (elements + attrs)
+# DEVELOPER:  Steve Waterbury
+# DATE:       2026-03-26
+#
+# CHANGE HISTORY:
+# 2026-03-26 | Steve Waterbury | Initial creation
+### 2026-04-01         Steve Waterbury    Code formatting: multi-line IF blocks, NumberToString -> STR
+#
+# PARAMETERS:
+#   pInputFile   - JSON file path in server file store
+#   pDimension   - Target dimension name
+#   pElementCol  - Column index (0-based) for element name
+#   pAttrCols    - Comma-delimited column indices for attributes
+#   pAttrNames   - Comma-delimited attribute names (same order as pAttrCols)
+#   pAttrTypes   - Comma-delimited attribute types: S=String, N=Numeric, A=Alias
+#
+# DATASOURCE:
+#   JSON datasource with DataSourceJsonRootPointer = '/rows'
+#   Variables vCol0..vCol19 mapped to /f/0/v../f/19/v (BigQuery format)
+#
+# EXAMPLE:
+#   pInputFile  = 'Product_results.json'
+#   pDimension  = 'Merch SKU'
+#   pElementCol = '0'          (SKU is column 0)
+#   pAttrCols   = '1,2,3'      (Setup_Date, Lifecycle_Status, SKU_Active_Flag)
+#   pAttrNames  = 'Setup_Date,Lifecycle_Status,SKU_Active_Flag'
+#   pAttrTypes  = 'S,S,S'
+#==========================================================================
+
+sProcess = GetProcessName();
+sLogLevel = CellGetS('ProcessControl', sProcess, 'LoggingLevel');
+IF(sLogLevel @= '');
+  sLogLevel = 'OFF';
+ENDIF;
+bLogInfo  = 0;
+IF(sLogLevel @= 'INFO' % sLogLevel @= 'DEBUG');
+  bLogInfo  = 1;
+ENDIF;
+bLogDebug = 0;
+IF(sLogLevel @= 'DEBUG');
+  bLogDebug = 1;
+ENDIF;
+
+IF(pInputFile @= '');
+  LogOutput('ERROR', sProcess | ' | pInputFile is empty.');
+  ProcessError;
+ENDIF;
+IF(pDimension @= '');
+  LogOutput('ERROR', sProcess | ' | pDimension is empty.');
+  ProcessError;
+ENDIF;
+IF(DimensionExists(pDimension) = 0);
+  LogOutput('ERROR', sProcess | ' | Dimension not found: ' | pDimension);
+  ProcessError;
+ENDIF;
+
+nElementCol = StringToNumber(pElementCol);
+
+nAttrCount = 0;
+IF(pAttrCols @<> '');
+  nAttrCount = 1;
+  nScan = 1;
+  WHILE(nScan <= LONG(pAttrCols));
+    IF(SUBST(pAttrCols, nScan, 1) @= ',');
+      nAttrCount = nAttrCount + 1;
+    ENDIF;
+    nScan = nScan + 1;
+  END;
+ENDIF;
+
+IF(bLogInfo = 1);
+  LogOutput('INFO', sProcess | ' | File: ' | pInputFile | ' | Dim: ' | pDimension | ' | ElemCol: ' | pElementCol | ' | Attrs: ' | TRIM(STR(nAttrCount, 10, 0)));
+ENDIF;
+
+# Ensure attributes exist
+IF(nAttrCount > 0);
+  sRemainNames = pAttrNames;
+  sRemainTypes = pAttrTypes;
+  nIdx = 0;
+  WHILE(nIdx < nAttrCount);
+    nComma = SCAN(',', sRemainNames);
+    IF(nComma > 0);
+      sAttrName = SUBST(sRemainNames, 1, nComma - 1);
+      sRemainNames = SUBST(sRemainNames, nComma + 1, LONG(sRemainNames) - nComma);
+    ELSE;
+      sAttrName = sRemainNames;
+    ENDIF;
+    nComma = SCAN(',', sRemainTypes);
+    IF(nComma > 0);
+      sAttrType = SUBST(sRemainTypes, 1, nComma - 1);
+      sRemainTypes = SUBST(sRemainTypes, nComma + 1, LONG(sRemainTypes) - nComma);
+    ELSE;
+      sAttrType = sRemainTypes;
+    ENDIF;
+    IF(sAttrType @= 'N');
+      sFullType = 'Numeric';
+    ELSEIF(sAttrType @= 'A');
+      sFullType = 'Alias';
+    ELSE;
+      sFullType = 'String';
+    ENDIF;
+    IF(DimensionExists('}ElementAttributes_' | pDimension) = 0 % DIMIX('}ElementAttributes_' | pDimension, sAttrName) = 0);
+      AttrInsert(pDimension, '', sAttrName, sFullType);
+      IF(bLogInfo = 1);
+        LogOutput('INFO', sProcess | ' | Created attr: ' | sAttrName | ' (' | sFullType | ')');
+      ENDIF;
+    ENDIF;
+    nIdx = nIdx + 1;
+  END;
+ENDIF;
+
+DataSourceType = 'JSON';
+DatasourceNameForServer = pInputFile;
+DataSourceJsonRootPointer = '/rows';
+DataSourceJsonVariableMapping = JsonAdd('{}', 'vCol0', StringToJson('/f/0/v'));
+DataSourceJsonVariableMapping = JsonAdd(DataSourceJsonVariableMapping, 'vCol1', StringToJson('/f/1/v'));
+DataSourceJsonVariableMapping = JsonAdd(DataSourceJsonVariableMapping, 'vCol2', StringToJson('/f/2/v'));
+DataSourceJsonVariableMapping = JsonAdd(DataSourceJsonVariableMapping, 'vCol3', StringToJson('/f/3/v'));
+DataSourceJsonVariableMapping = JsonAdd(DataSourceJsonVariableMapping, 'vCol4', StringToJson('/f/4/v'));
+DataSourceJsonVariableMapping = JsonAdd(DataSourceJsonVariableMapping, 'vCol5', StringToJson('/f/5/v'));
+DataSourceJsonVariableMapping = JsonAdd(DataSourceJsonVariableMapping, 'vCol6', StringToJson('/f/6/v'));
+DataSourceJsonVariableMapping = JsonAdd(DataSourceJsonVariableMapping, 'vCol7', StringToJson('/f/7/v'));
+DataSourceJsonVariableMapping = JsonAdd(DataSourceJsonVariableMapping, 'vCol8', StringToJson('/f/8/v'));
+DataSourceJsonVariableMapping = JsonAdd(DataSourceJsonVariableMapping, 'vCol9', StringToJson('/f/9/v'));
+DataSourceJsonVariableMapping = JsonAdd(DataSourceJsonVariableMapping, 'vCol10', StringToJson('/f/10/v'));
+DataSourceJsonVariableMapping = JsonAdd(DataSourceJsonVariableMapping, 'vCol11', StringToJson('/f/11/v'));
+DataSourceJsonVariableMapping = JsonAdd(DataSourceJsonVariableMapping, 'vCol12', StringToJson('/f/12/v'));
+DataSourceJsonVariableMapping = JsonAdd(DataSourceJsonVariableMapping, 'vCol13', StringToJson('/f/13/v'));
+DataSourceJsonVariableMapping = JsonAdd(DataSourceJsonVariableMapping, 'vCol14', StringToJson('/f/14/v'));
+DataSourceJsonVariableMapping = JsonAdd(DataSourceJsonVariableMapping, 'vCol15', StringToJson('/f/15/v'));
+DataSourceJsonVariableMapping = JsonAdd(DataSourceJsonVariableMapping, 'vCol16', StringToJson('/f/16/v'));
+DataSourceJsonVariableMapping = JsonAdd(DataSourceJsonVariableMapping, 'vCol17', StringToJson('/f/17/v'));
+DataSourceJsonVariableMapping = JsonAdd(DataSourceJsonVariableMapping, 'vCol18', StringToJson('/f/18/v'));
+DataSourceJsonVariableMapping = JsonAdd(DataSourceJsonVariableMapping, 'vCol19', StringToJson('/f/19/v'));
+
+nRowCount = 0;
+nInserted = 0;
+nSkipped = 0;
+
+#endregion
+#region Metadata
+
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+
+sElement = '';
+IF(nElementCol = 0);
+  sElement = JsonToString(vCol0);
+ELSEIF(nElementCol = 1);
+  sElement = JsonToString(vCol1);
+ELSEIF(nElementCol = 2);
+  sElement = JsonToString(vCol2);
+ELSEIF(nElementCol = 3);
+  sElement = JsonToString(vCol3);
+ELSEIF(nElementCol = 4);
+  sElement = JsonToString(vCol4);
+ELSEIF(nElementCol = 5);
+  sElement = JsonToString(vCol5);
+ELSEIF(nElementCol = 6);
+  sElement = JsonToString(vCol6);
+ELSEIF(nElementCol = 7);
+  sElement = JsonToString(vCol7);
+ELSEIF(nElementCol = 8);
+  sElement = JsonToString(vCol8);
+ELSEIF(nElementCol = 9);
+  sElement = JsonToString(vCol9);
+ELSEIF(nElementCol = 10);
+  sElement = JsonToString(vCol10);
+ELSEIF(nElementCol = 11);
+  sElement = JsonToString(vCol11);
+ELSEIF(nElementCol = 12);
+  sElement = JsonToString(vCol12);
+ELSEIF(nElementCol = 13);
+  sElement = JsonToString(vCol13);
+ELSEIF(nElementCol = 14);
+  sElement = JsonToString(vCol14);
+ELSEIF(nElementCol = 15);
+  sElement = JsonToString(vCol15);
+ELSEIF(nElementCol = 16);
+  sElement = JsonToString(vCol16);
+ELSEIF(nElementCol = 17);
+  sElement = JsonToString(vCol17);
+ELSEIF(nElementCol = 18);
+  sElement = JsonToString(vCol18);
+ELSEIF(nElementCol = 19);
+  sElement = JsonToString(vCol19);
+ENDIF;
+
+IF(sElement @= '' % sElement @= 'null');
+  nSkipped = nSkipped + 1;
+  ItemSkip;
+ENDIF;
+
+IF(DIMIX(pDimension, sElement) = 0);
+  DimensionElementInsertDirect(pDimension, '', sElement, 'N');
+  nInserted = nInserted + 1;
+ENDIF;
+
+#endregion
+#region Data
+
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+
+nRowCount = nRowCount + 1;
+
+sElement = '';
+IF(nElementCol = 0);
+  sElement = JsonToString(vCol0);
+ELSEIF(nElementCol = 1);
+  sElement = JsonToString(vCol1);
+ELSEIF(nElementCol = 2);
+  sElement = JsonToString(vCol2);
+ELSEIF(nElementCol = 3);
+  sElement = JsonToString(vCol3);
+ELSEIF(nElementCol = 4);
+  sElement = JsonToString(vCol4);
+ELSEIF(nElementCol = 5);
+  sElement = JsonToString(vCol5);
+ELSEIF(nElementCol = 6);
+  sElement = JsonToString(vCol6);
+ELSEIF(nElementCol = 7);
+  sElement = JsonToString(vCol7);
+ELSEIF(nElementCol = 8);
+  sElement = JsonToString(vCol8);
+ELSEIF(nElementCol = 9);
+  sElement = JsonToString(vCol9);
+ELSEIF(nElementCol = 10);
+  sElement = JsonToString(vCol10);
+ELSEIF(nElementCol = 11);
+  sElement = JsonToString(vCol11);
+ELSEIF(nElementCol = 12);
+  sElement = JsonToString(vCol12);
+ELSEIF(nElementCol = 13);
+  sElement = JsonToString(vCol13);
+ELSEIF(nElementCol = 14);
+  sElement = JsonToString(vCol14);
+ELSEIF(nElementCol = 15);
+  sElement = JsonToString(vCol15);
+ELSEIF(nElementCol = 16);
+  sElement = JsonToString(vCol16);
+ELSEIF(nElementCol = 17);
+  sElement = JsonToString(vCol17);
+ELSEIF(nElementCol = 18);
+  sElement = JsonToString(vCol18);
+ELSEIF(nElementCol = 19);
+  sElement = JsonToString(vCol19);
+ENDIF;
+
+IF(sElement @= '' % sElement @= 'null');
+  nSkipped = nSkipped + 1;
+  ItemSkip;
+ENDIF;
+
+IF(nAttrCount > 0);
+  sRemainCols = pAttrCols;
+  sRemainNames = pAttrNames;
+  sRemainTypes = pAttrTypes;
+  nAttrIdx = 0;
+  WHILE(nAttrIdx < nAttrCount);
+    nComma = SCAN(',', sRemainCols);
+    IF(nComma > 0);
+      sColIdx = SUBST(sRemainCols, 1, nComma - 1);
+      sRemainCols = SUBST(sRemainCols, nComma + 1, LONG(sRemainCols) - nComma);
+    ELSE;
+      sColIdx = sRemainCols;
+    ENDIF;
+    nColIdx = StringToNumber(sColIdx);
+    nComma = SCAN(',', sRemainNames);
+    IF(nComma > 0);
+      sAttrName = SUBST(sRemainNames, 1, nComma - 1);
+      sRemainNames = SUBST(sRemainNames, nComma + 1, LONG(sRemainNames) - nComma);
+    ELSE;
+      sAttrName = sRemainNames;
+    ENDIF;
+    nComma = SCAN(',', sRemainTypes);
+    IF(nComma > 0);
+      sAttrType = SUBST(sRemainTypes, 1, nComma - 1);
+      sRemainTypes = SUBST(sRemainTypes, nComma + 1, LONG(sRemainTypes) - nComma);
+    ELSE;
+      sAttrType = sRemainTypes;
+    ENDIF;
+    sVal = '';
+    IF(nColIdx = 0);
+      sVal = JsonToString(vCol0);
+    ELSEIF(nColIdx = 1);
+      sVal = JsonToString(vCol1);
+    ELSEIF(nColIdx = 2);
+      sVal = JsonToString(vCol2);
+    ELSEIF(nColIdx = 3);
+      sVal = JsonToString(vCol3);
+    ELSEIF(nColIdx = 4);
+      sVal = JsonToString(vCol4);
+    ELSEIF(nColIdx = 5);
+      sVal = JsonToString(vCol5);
+    ELSEIF(nColIdx = 6);
+      sVal = JsonToString(vCol6);
+    ELSEIF(nColIdx = 7);
+      sVal = JsonToString(vCol7);
+    ELSEIF(nColIdx = 8);
+      sVal = JsonToString(vCol8);
+    ELSEIF(nColIdx = 9);
+      sVal = JsonToString(vCol9);
+    ELSEIF(nColIdx = 10);
+      sVal = JsonToString(vCol10);
+    ELSEIF(nColIdx = 11);
+      sVal = JsonToString(vCol11);
+    ELSEIF(nColIdx = 12);
+      sVal = JsonToString(vCol12);
+    ELSEIF(nColIdx = 13);
+      sVal = JsonToString(vCol13);
+    ELSEIF(nColIdx = 14);
+      sVal = JsonToString(vCol14);
+    ELSEIF(nColIdx = 15);
+      sVal = JsonToString(vCol15);
+    ELSEIF(nColIdx = 16);
+      sVal = JsonToString(vCol16);
+    ELSEIF(nColIdx = 17);
+      sVal = JsonToString(vCol17);
+    ELSEIF(nColIdx = 18);
+      sVal = JsonToString(vCol18);
+    ELSEIF(nColIdx = 19);
+      sVal = JsonToString(vCol19);
+    ENDIF;
+    IF(sVal @<> '' & sVal @<> 'null');
+      IF(sAttrType @= 'N');
+        AttrPutN(StringToNumber(sVal), pDimension, sElement, sAttrName);
+      ELSE;
+        AttrPutS(sVal, pDimension, sElement, sAttrName);
+      ENDIF;
+    ENDIF;
+    nAttrIdx = nAttrIdx + 1;
+  END;
+ENDIF;
+
+IF(bLogDebug = 1 & nRowCount <= 5);
+  LogOutput('DEBUG', sProcess | ' | Row ' | TRIM(STR(nRowCount, 10, 0)) | ' | Elem: ' | sElement);
+ENDIF;
+
+#endregion
+#region Epilog
+
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+
+IF(bLogInfo = 1);
+  LogOutput('INFO', sProcess | ' | Done. Rows: ' | TRIM(STR(nRowCount, 10, 0)) | ' | Inserted: ' | TRIM(STR(nInserted, 10, 0)) | ' | Skipped: ' | TRIM(STR(nSkipped, 10, 0)));
+ENDIF;
+
+#endregion

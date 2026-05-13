@@ -1,0 +1,131 @@
+#region Prolog
+
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+#Region : Process Header
+#############################
+##~~ Start Process ~~##
+#############################
+# DEVELOPER : Steve Waterbury
+# CREATED ON : 2026-03-24
+# LAST UPDATE: 2026-04-01
+# COMMENTS:
+# Populates }Merch Closed Period Feed control cube for a version.
+#
+#### CHANGE HISTORY:
+### MODIFICATION DATE  CHANGED BY         COMMENT
+### 2026-03-24         Steve Waterbury    Initial creation for GME-Dev (v12 SaaS)
+### 2026-03-31         Steve Waterbury    Start_Date_Serial to Start_Date; Last_Closed_Period_Serial to Last_Closed_Period
+### 2026-04-01         Steve Waterbury    Applied guardrails header template
+### 2026-04-01         Steve Waterbury    Code formatting: multi-line IF/ENDIF blocks
+#
+#EndRegion
+
+cProcessName = GetProcessName();
+
+#Region : Logging Init
+sLogLevel = CellGetS('ProcessControl', cProcessName, 'LoggingLevel');
+IF(sLogLevel @= '');
+  sLogLevel = 'OFF';
+ENDIF;
+bLogInfo = 0;
+IF(sLogLevel @= 'INFO' % sLogLevel @= 'DEBUG');
+  bLogInfo = 1;
+ENDIF;
+bLogDebug = 0;
+IF(sLogLevel @= 'DEBUG');
+  bLogDebug = 1;
+ENDIF;
+
+IF(bLogInfo = 1);
+    LogOutput('INFO', 'START: ' | cProcessName | ' | pVersion=' | pVersion | ' | pPeriod=' | pPeriod);
+ENDIF;
+#EndRegion
+
+#Region : Validation
+IF(pVersion @= '');
+    LogOutput('ERROR', cProcessName | ' | pVersion is required');
+    ProcessError;
+ENDIF;
+IF(DIMIX('Merch Version', pVersion) = 0);
+    LogOutput('ERROR', cProcessName | ' | Version not found: ' | pVersion);
+    ProcessError;
+ENDIF;
+IF(ATTRS('Merch Version', pVersion, 'Version_Type') @<> 'Calculated');
+    LogOutput('ERROR', cProcessName | ' | Version is not Calculated: ' | pVersion);
+    ProcessError;
+ENDIF;
+IF(pPeriod @<> '');
+    IF(DIMIX('Merch Time Period', pPeriod) = 0);
+        LogOutput('ERROR', cProcessName | ' | Period not found: ' | pPeriod);
+        ProcessError;
+    ENDIF;
+ENDIF;
+#EndRegion
+
+nFeedCount = 0;
+nLastClosedSerial = ATTRN('Merch Version', pVersion, 'Last_Closed_Period');
+
+IF(nLastClosedSerial = 0 & pPeriod @= '');
+    IF(bLogInfo = 1);
+        LogOutput('INFO', cProcessName | ' | No closed periods. Nothing to load.');
+    ENDIF;
+    ProcessQuit;
+ENDIF;
+
+#Region : Build VIEW datasource on Merch Forecast[Actual]
+sView = 'TI_LoadFeed_' | TRIM(STR(NOW, 15, 0));
+
+IF(pPeriod @<> '');
+    sMDX = 'SELECT {[Merch Forecast Measure].[Units]} ON COLUMNS, '
+         | 'NON EMPTY {Descendants([Merch Time Period].[' | pPeriod | '])} '
+         | '* {TM1FILTERBYLEVEL({TM1SUBSETALL([Merch SKU])}, 0)} ON ROWS '
+         | 'FROM [Merch Forecast] WHERE ([Merch Version].[Actual])';
+ELSE;
+    sMDX = 'SELECT {[Merch Forecast Measure].[Units]} ON COLUMNS, '
+         | 'NON EMPTY CROSSJOIN('
+         | '{FILTER(TM1FILTERBYLEVEL({TM1SUBSETALL([Merch Time Period])}, 0), '
+         | 'ATTRN([Merch Time Period].[Merch Time Period].CURRENTMEMBER, "Start_Date") <= ' | TRIM(STR(nLastClosedSerial, 15, 0))
+         | ')}, '
+         | 'TM1FILTERBYLEVEL({TM1SUBSETALL([Merch SKU])}, 0)'
+         | ') ON ROWS '
+         | 'FROM [Merch Forecast] WHERE ([Merch Version].[Actual])';
+ENDIF;
+ViewCreateByMDX( 'Merch Forecast', sView, sMDX, 1 );
+ViewSuppressZeroesSet( 'Merch Forecast', sView, 1 );
+
+
+# ViewCreate('Merch Forecast', sView, 0);
+# ViewMDXSet('Merch Forecast', sView, sMDX);
+
+DatasourceType = 'VIEW';
+DatasourceNameForServer = 'Merch Forecast';
+DatasourceCubeview = sView;
+#EndRegion
+
+#endregion
+#region Metadata
+
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+
+#endregion
+#region Data
+
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+CellPutN(1, '}Merch Closed Period Feed', pVersion, vTP, vSKU);
+nFeedCount = nFeedCount + 1;
+
+#endregion
+#region Epilog
+
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+ViewDestroy('Merch Forecast', sView);
+
+IF(bLogInfo = 1);
+    LogOutput('INFO', 'END: ' | cProcessName | ' | Version=' | pVersion | ' | Period=' | pPeriod | ' | Feed cells=' | TRIM(STR(nFeedCount, 10, 0)));
+ENDIF;
+
+#endregion

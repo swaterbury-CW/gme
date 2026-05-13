@@ -1,0 +1,29 @@
+{
+	"@type":"Process",
+	"Name":"Merch.Dim.BuildPlaceholderSKUs",
+	"HasSecurityAccess":false,
+	"Code@Code.link":"Merch.Dim.BuildPlaceholderSKUs.ti",
+	"DataSource":
+	{
+		"Type":"None"
+	},
+	"Parameters":
+	[
+		{
+			"Name":"pCount",
+			"Prompt":"Number of placeholder SKUs to create",
+			"Value":10,
+			"Type":"Numeric"
+		},
+		{
+			"Name":"pPrefix",
+			"Prompt":"Prefix for placeholder SKU names",
+			"Value":"PH",
+			"Type":"String"
+		}
+	],
+	"Variables":[],
+	"UID": "17743918260002",
+	"UIData": "CubeAction=1511\fDataAction=1503\fCubeLogChanges=0\f",
+	"VariablesUIData": []
+}

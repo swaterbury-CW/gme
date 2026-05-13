@@ -1,0 +1,108 @@
+#region Prolog
+
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+#Region : Process Header
+#############################
+##~~ Start Process ~~##
+#############################
+# DEVELOPER : Steve Waterbury
+# CREATED ON : 2026-03-22
+# LAST UPDATE: 2026-04-19
+# COMMENTS:
+# Converts a Static version to Calculated.
+# Sets Version_Type, copies Last_Closed_Period from Actual,
+# calls ActualsToCalc for all versioned cubes,
+# then calls PreOwned.Calc.BuildMix to populate stored mix pcts and rate averages.
+#
+#### CHANGE HISTORY:
+### MODIFICATION DATE  CHANGED BY         COMMENT
+### 2026-03-22         Steve Waterbury    Creation
+### 2026-03-24         Steve Waterbury    Copy Last_Closed_Period_Serial; call Feed.LoadClosedPeriods
+### 2026-04-01         Steve Waterbury    Applied guardrails header template
+### 2026-04-03         Steve Waterbury    Added ActualsToCalc for all Merch + PreOwned cubes
+### 2026-04-19         Steve Waterbury    Added PreOwned.Calc.BuildMix call after ActualsToCalc chain
+#
+#EndRegion
+
+cProcessName = GetProcessName();
+
+#Region : Logging Init
+sLogLevel = CellGetS('ProcessControl', cProcessName, 'LoggingLevel');
+IF(sLogLevel @= ''); sLogLevel = 'OFF'; ENDIF;
+bLogInfo = 0;
+IF(sLogLevel @= 'INFO' % sLogLevel @= 'DEBUG');
+  bLogInfo = 1;
+ENDIF;
+bLogDebug = 0;
+IF(sLogLevel @= 'DEBUG');
+  bLogDebug = 1;
+ENDIF;
+#EndRegion
+
+IF(bLogInfo = 1);
+    LogOutput('INFO', 'START: ' | cProcessName | ' | pVersion=' | pVersion);
+ENDIF;
+
+IF(pVersion @= '' % DIMIX('Merch Version', pVersion) = 0 % pVersion @= 'Actual');
+    LogOutput('ERROR', cProcessName | ' | Invalid version: ' | pVersion);
+    ProcessError;
+ENDIF;
+sVersionType = ATTRS('Merch Version', pVersion, 'Version_Type');
+IF(sVersionType @<> 'Static' & sVersionType @<> '');
+    LogOutput('ERROR', cProcessName | ' | Must be Static or empty: ' | sVersionType);
+    ProcessError;
+ENDIF;
+
+AttrPutS('Calculated', 'Merch Version', pVersion, 'Version_Type');
+
+nActualSerial = ATTRN('Merch Version', 'Actual', 'Last_Closed_Period');
+AttrPutN(nActualSerial, 'Merch Version', pVersion, 'Last_Closed_Period');
+
+#Region : Populate closed period actuals on all versioned cubes
+IF(nActualSerial > 0);
+    IF(bLogInfo = 1);
+        LogOutput('INFO', cProcessName | ' | Loading actuals to ' | pVersion | ' for closed periods...');
+    ENDIF;
+    # Merch_Forecast_4dim
+    ExecuteProcess('Merch.Load.ActualsToCalc', 'pCubeName', 'Merch Forecast', 'pTargetVersion', pVersion);
+    # PreOwned_Forecast_4dim
+    ExecuteProcess('Merch.Load.ActualsToCalc', 'pCubeName', 'Merch PreOwned Forecast', 'pTargetVersion', pVersion);
+    # PreOwned_Inventory_4dim
+    ExecuteProcess('Merch.Load.ActualsToCalc', 'pCubeName', 'Merch PreOwned Inventory', 'pTargetVersion', pVersion);
+    # PreOwned_Warranty_5dim
+    ExecuteProcess('Merch.Load.ActualsToCalc.5Dim', 'pCubeName', 'Merch PreOwned Warranty', 'pTargetVersion', pVersion);
+ENDIF;
+#EndRegion
+
+#Region : Populate PreOwned mix pcts and rate averages
+IF(bLogInfo = 1);
+    LogOutput('INFO', cProcessName | ' | Building PreOwned mix pcts and rate averages for ' | pVersion);
+ENDIF;
+ExecuteProcess('PreOwned.Calc.BuildMix', 'pVersion', pVersion);
+#EndRegion
+
+IF(bLogInfo = 1);
+    LogOutput('INFO', 'END: ' | cProcessName | ' | ' | pVersion | ' converted to Calculated');
+ENDIF;
+
+#endregion
+#region Metadata
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+
+#endregion
+#region Data
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+
+#endregion
+#region Epilog
+
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+IF(bLogInfo = 1);
+  LogOutput('INFO', 'END: ' | cProcessName | ' | Version=' | pVersion | ' converted to Calculated');
+ENDIF;
+
+#endregion

@@ -1,0 +1,43 @@
+{
+	"@type":"Process",
+	"Name":"Merch.Load.StoreReference.BQ",
+	"HasSecurityAccess":false,
+	"Code@Code.link":"Merch.Load.StoreReference.BQ.ti",
+	"DataSource":
+	{
+		"Type":"TM1DimensionSubset",
+		"dataSourceNameForServer":"Merch Store",
+		"dataSourceNameForClient":"Merch Store",
+		"subset":"temp_LoadStoreReference"
+	},
+	"Parameters":
+	[
+		{
+			"Name":"pRefreshDim",
+			"Prompt":"1=refresh dim from BQ first",
+			"Value":"1",
+			"Type":"String"
+		},
+		{
+			"Name":"pDimProcess",
+			"Prompt":"Dim loader process name",
+			"Value":"Merch.Dim.LoadStoreHierarchy.BQ",
+			"Type":"String"
+		}
+	],
+	"Variables":
+	[
+		{
+			"Name":"vStore",
+			"Type":"String",
+			"Position":1,
+			"StartByte":0,
+			"EndByte":0
+		}
+	],
+	"UID": "1777667000000",
+	"UIData": "CubeAction=1511\fDataAction=1503\fCubeLogChanges=0\f",
+	"VariablesUIData": [
+		"VarType=32\fColType=827\f"
+	]
+}

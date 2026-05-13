@@ -1,0 +1,28 @@
+{
+	"@type":"Process",
+	"Name":"Merch.Load.Actuals.BQ-LoadCustomWeeks",
+	"HasSecurityAccess":false,
+	"Code@Code.link":"Merch.Load.Actuals.BQ-LoadCustomWeeks.ti",
+	"DataSource":
+	{
+		"Type":"TM1DimensionSubset",
+		"dataSourceNameForServer":"Merch Time Period:Merch Time Period",
+		"dataSourceNameForClient":"Merch Time Period:Merch Time Period",
+		"subset":"CustomWeeks"
+	},
+	"Parameters":[],
+	"Variables":
+	[
+		{
+			"Name":"vMerch_Time_Period",
+			"Type":"String",
+			"Position":1,
+			"StartByte":0,
+			"EndByte":0
+		}
+	],
+	"UID": "1777313310000",
+	"VariablesUIData": [
+		"VarType=32\fColType=827\f"
+	]
+}

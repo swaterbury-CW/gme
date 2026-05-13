@@ -1,0 +1,75 @@
+{
+	"@type":"Process",
+	"Name":"Merch.Period.Close",
+	"HasSecurityAccess":false,
+	"Code@Code.link":"Merch.Period.Close.ti",
+	"DataSource":
+	{
+		"Type":"TM1CubeView",
+		"dataSourceNameForServer":"",
+		"dataSourceNameForClient":"",
+		"view":"TI_PeriodClose_placeholder"
+	},
+	"Parameters":
+	[
+		{
+			"Name":"pVersion",
+			"Prompt":"Version (must be Calculated type)",
+			"Value":"Forecast",
+			"Type":"String"
+		},
+		{
+			"Name":"pTargetPeriod",
+			"Prompt":"Target period week to close (e.g. FY26-W11)",
+			"Value":"",
+			"Type":"String"
+		}
+	],
+	"Variables":
+	[
+		{
+			"Name":"vVersion",
+			"Type":"String",
+			"Position":1,
+			"StartByte":0,
+			"EndByte":0
+		},
+		{
+			"Name":"vTP",
+			"Type":"String",
+			"Position":2,
+			"StartByte":0,
+			"EndByte":0
+		},
+		{
+			"Name":"vSKU",
+			"Type":"String",
+			"Position":3,
+			"StartByte":0,
+			"EndByte":0
+		},
+		{
+			"Name":"vMeasure",
+			"Type":"String",
+			"Position":4,
+			"StartByte":0,
+			"EndByte":0
+		},
+		{
+			"Name":"Value",
+			"Type":"String",
+			"Position":5,
+			"StartByte":0,
+			"EndByte":0
+		}
+	],
+	"UID": "1774388541000",
+	"UIData": "CubeAction=1511\fDataAction=1503\fCubeLogChanges=0\f",
+	"VariablesUIData": [
+		"VarType=32\fColType=827\f",
+		"VarType=32\fColType=827\f",
+		"VarType=32\fColType=827\f",
+		"VarType=32\fColType=827\f",
+		"VarType=32\fColType=827\f"
+	]
+}

@@ -1,0 +1,43 @@
+{
+	"@type":"Process",
+	"Name":"Merch.Dim.LoadStoreHierarchy.BQ",
+	"HasSecurityAccess":false,
+	"Code@Code.link":"Merch.Dim.LoadStoreHierarchy.BQ.ti",
+	"DataSource":
+	{
+		"Type":"JSON",
+		"dataSourceNameForServer":"store_bq_page_1.json",
+		"jsonRootPointer":"/rows",
+		"jsonVariableMapping":""
+	},
+	"Parameters":
+	[
+		{
+			"Name":"pPageProcess",
+			"Prompt":"Page worker process name",
+			"Value":"Merch.Dim.LoadStoreHierarchy.BQ.Page",
+			"Type":"String"
+		},
+		{
+			"Name":"pKeepFiles",
+			"Prompt":"1=keep page files, 0=delete",
+			"Value":"0",
+			"Type":"String"
+		}
+	],
+	"Variables":
+	[
+		{
+			"Name":"vRow",
+			"Type":"String",
+			"Position":1,
+			"StartByte":0,
+			"EndByte":0
+		}
+	],
+	"UID": "1777666571000",
+	"UIData": "CubeAction=1511\fDataAction=1503\fCubeLogChanges=0\f",
+	"VariablesUIData": [
+		"VarType=32\fColType=827\f"
+	]
+}

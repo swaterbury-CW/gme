@@ -1,0 +1,15 @@
+{
+	"@type":"Process",
+	"Name":"Merch.Dim.RefreshCurveSubsets",
+	"HasSecurityAccess":false,
+	"Code@Code.link":"Merch.Dim.RefreshCurveSubsets.ti",
+	"DataSource":
+	{
+		"Type":"None"
+	},
+	"Parameters":[],
+	"Variables":[],
+	"UID": "1774212657000",
+	"UIData": "CubeAction=1511\fDataAction=1503\fCubeLogChanges=0\f",
+	"VariablesUIData": []
+}

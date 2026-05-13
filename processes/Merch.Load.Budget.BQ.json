@@ -1,0 +1,47 @@
+{
+	"@type":"Process",
+	"Name":"Merch.Load.Budget.BQ",
+	"HasSecurityAccess":false,
+	"Code@Code.link":"Merch.Load.Budget.BQ.ti",
+	"DataSource":
+	{
+		"Type":"None"
+	},
+	"Parameters":
+	[
+		{
+			"Name":"pVersion",
+			"Prompt":"Target Merch Version element",
+			"Value":"Budget",
+			"Type":"String"
+		},
+		{
+			"Name":"pFilePrefix",
+			"Prompt":"Page-file name prefix",
+			"Value":"budget_2026.json_page_",
+			"Type":"String"
+		},
+		{
+			"Name":"pPageCount",
+			"Prompt":"Number of pages to dispatch",
+			"Value":"7",
+			"Type":"String"
+		},
+		{
+			"Name":"pUseRunProcess",
+			"Prompt":"1=parallel, 0=sequential",
+			"Value":"1",
+			"Type":"String"
+		},
+		{
+			"Name":"pClearFirst",
+			"Prompt":"1=ViewZeroOut staging cube on pVersion before load",
+			"Value":"1",
+			"Type":"String"
+		}
+	],
+	"Variables":[],
+	"UID": "1778080398000",
+	"UIData": "CubeAction=1511\fDataAction=1503\fCubeLogChanges=0\f",
+	"VariablesUIData": []
+}

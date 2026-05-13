@@ -1,0 +1,75 @@
+#region Prolog
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+#Region : Process Header
+# DEVELOPER: Steve Waterbury
+# CREATED ON: 2026-05-06
+# LAST UPDATE: 2026-05-06
+# CHANGED BY: Steve Waterbury
+# CHANGE HISTORY:
+#   2026-05-06 | Steve Waterbury | v2: orchestrator iterates Merch Category leaves; worker builds own SKU subset.
+#EndRegion
+
+cCategoryDim = 'Merch Category';
+cProcessName = GetProcessName();
+nStart = NOW;
+nDispatched = 0;
+
+IF(pCubeName @= '' % pSourceVersion @= '' % pTargetVersion @= '');
+  LogOutput('ERROR', cProcessName | ' | Missing param');
+  ProcessError;
+ENDIF;
+IF(CubeExists(pCubeName) = 0);
+  LogOutput('ERROR', cProcessName | ' | Cube missing: ' | pCubeName);
+  ProcessError;
+ENDIF;
+IF(DIMIX('Merch Version', pSourceVersion) = 0);
+  LogOutput('ERROR', cProcessName | ' | Source missing: ' | pSourceVersion);
+  ProcessError;
+ENDIF;
+
+sRunTag = TRIM(STR(NOW, 15, 0));
+LogOutput('INFO', 'TIMING START: ' | cProcessName | ' | Cube=' | pCubeName | ' | Src=' | pSourceVersion | ' | Tgt=' | pTargetVersion | ' | RunTag=' | sRunTag);
+
+sCatSubset = 'TI_VerCopyCats_' | sRunTag;
+IF(SubsetExists(cCategoryDim, sCatSubset) = 1);
+  SubsetDestroy(cCategoryDim, sCatSubset);
+ENDIF;
+SubsetCreateByMDX(sCatSubset, '{TM1FILTERBYLEVEL({TM1SUBSETALL([Merch Category].[Merch Category])}, 0)}', cCategoryDim, 0);
+
+DatasourceType = 'SUBSET';
+DatasourceNameForServer = cCategoryDim;
+DatasourceDimensionSubset = sCatSubset;
+
+#endregion
+#region Metadata
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+
+#endregion
+#region Data
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+sCat = vCategory;
+IF(ELLEV('Merch Category', sCat) = 0);
+  RunProcess('Merch.Version.Copy.TPSKU.Cat_temp',
+    'pCubeName', pCubeName,
+    'pSourceVersion', pSourceVersion,
+    'pTargetVersion', pTargetVersion,
+    'pCategory', sCat);
+  nDispatched = nDispatched + 1;
+ENDIF;
+
+#endregion
+#region Epilog
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+nDummy = WaitForInternalJobs();
+
+IF(SubsetExists(cCategoryDim, sCatSubset) = 1);
+  SubsetDestroy(cCategoryDim, sCatSubset);
+ENDIF;
+
+LogOutput('INFO', 'TIMING END: ' | cProcessName | ' | Cube=' | pCubeName | ' | Dispatched=' | TRIM(STR(nDispatched, 12, 0)) | ' | Elapsed=' | TRIM(STR((NOW - nStart) * 86400, 12, 1)) | 's');
+
+#endregion
