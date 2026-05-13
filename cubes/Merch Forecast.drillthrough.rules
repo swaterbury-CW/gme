@@ -1,0 +1,15 @@
+SKIPCHECK;
+['Full Price AUR', 'CubeDrillString'] = S: 'PromoAURCalc';
+['Promo', 'CubeDrillString'] = S: 'PromoAURCalc';
+['Markdown %', 'CubeDrillString'] = S: 'PromoAURCalc';
+['Applied/Effective AUR', 'CubeDrillString'] = S: 'PromoAURCalc';
+['Markdown Revenue', 'CubeDrillString'] = S: 'PromoAURCalc';
+['Rate Adj Amount', 'CubeDrillString'] = S: 'PromoAURCalc';
+['Base AUC', 'CubeDrillString'] = S: 'VersionSKUAttrs';
+['AUC', 'CubeDrillString'] = S: 'VersionSKUAttrs';
+['Base Cost', 'CubeDrillString'] = S: 'VersionSKUAttrs';
+['Opening Inventory', 'CubeDrillString'] = S: 'VersionSKUAttrs';
+['Backend Adjustment', 'CubeDrillString'] = S: 'VersionSKUAttrs';
+['Other AUC Adjustment', 'CubeDrillString'] = S: 'VersionSKUAttrs';
+['Calc Units', 'CubeDrillString'] = S: 'VersionSKUAttrs';
+['Build/Debuild', 'CubeDrillString'] = S: 'VersionSKUAttrs';

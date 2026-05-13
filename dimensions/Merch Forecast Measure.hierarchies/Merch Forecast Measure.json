@@ -1,0 +1,331 @@
+{
+	"@type":"Hierarchy",
+	"Name":"Merch Forecast Measure",
+	"Elements":
+	[
+		{
+			"Name":"Base Revenue",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Revenue",
+			"Type":"Consolidated"
+		},
+		{
+			"Name":"Base AUC",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Backend Adjustment",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Other AUC Adjustment",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Base Cost",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Backend Cost",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Other Cost Adjustment",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"AUC",
+			"Type":"Consolidated"
+		},
+		{
+			"Name":"Cost",
+			"Type":"Consolidated"
+		},
+		{
+			"Name":"Margin",
+			"Type":"Consolidated"
+		},
+		{
+			"Name":"Buy Units",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Build/Debuild",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Calc Units",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Adjustment Units",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Units",
+			"Type":"Consolidated"
+		},
+		{
+			"Name":"Category Build",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"CB Weighted Calc",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Opening Inventory",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Ending Inventory",
+			"Type":"Consolidated"
+		},
+		{
+			"Name":"Promo",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Rate Adjustment",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Price Adjustment",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Applied/Effective AUR",
+			"Type":"Consolidated"
+		},
+		{
+			"Name":"Markdown %",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Full Price AUR",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Rate Adj Amount",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Markdown Revenue",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Revenue Adjustment",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Level",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Seasonality",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Velocity",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Regime",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Promo Build",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Forecast vs Actual BD",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Margin %",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Receipts",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Reservations",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Comp SKU LY",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Comp Store Units",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Comp Store Units LY",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Comp Store Dollars",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Comp Store Dollars LY",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Expected Calc Sales",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Sales AUC",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Receipt AUC",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Inventory AUC",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Receipt Dollars",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"BOP Dollars",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"EOP Dollars",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Inv Adjustment Dollars",
+			"Type":"Numeric"
+		}
+	],
+	"Edges":
+	[
+		{
+			"ParentName":"Revenue",
+			"ComponentName":"Base Revenue",
+			"Weight":1
+		},
+		{
+			"ParentName":"Revenue",
+			"ComponentName":"Markdown Revenue",
+			"Weight":-1
+		},
+		{
+			"ParentName":"Revenue",
+			"ComponentName":"Revenue Adjustment",
+			"Weight":1
+		},
+		{
+			"ParentName":"AUC",
+			"ComponentName":"Base AUC",
+			"Weight":1
+		},
+		{
+			"ParentName":"AUC",
+			"ComponentName":"Backend Adjustment",
+			"Weight":-1
+		},
+		{
+			"ParentName":"AUC",
+			"ComponentName":"Other AUC Adjustment",
+			"Weight":1
+		},
+		{
+			"ParentName":"Cost",
+			"ComponentName":"Base Cost",
+			"Weight":1
+		},
+		{
+			"ParentName":"Cost",
+			"ComponentName":"Backend Cost",
+			"Weight":-1
+		},
+		{
+			"ParentName":"Cost",
+			"ComponentName":"Other Cost Adjustment",
+			"Weight":1
+		},
+		{
+			"ParentName":"Margin",
+			"ComponentName":"Revenue",
+			"Weight":1
+		},
+		{
+			"ParentName":"Margin",
+			"ComponentName":"Cost",
+			"Weight":-1
+		},
+		{
+			"ParentName":"Units",
+			"ComponentName":"Adjustment Units",
+			"Weight":1
+		},
+		{
+			"ParentName":"Units",
+			"ComponentName":"Calc Units",
+			"Weight":1
+		},
+		{
+			"ParentName":"Ending Inventory",
+			"ComponentName":"Opening Inventory",
+			"Weight":1
+		},
+		{
+			"ParentName":"Ending Inventory",
+			"ComponentName":"Receipts",
+			"Weight":1
+		},
+		{
+			"ParentName":"Ending Inventory",
+			"ComponentName":"Units",
+			"Weight":-1
+		},
+		{
+			"ParentName":"Applied/Effective AUR",
+			"ComponentName":"Full Price AUR",
+			"Weight":1
+		},
+		{
+			"ParentName":"Applied/Effective AUR",
+			"ComponentName":"Promo",
+			"Weight":-1
+		},
+		{
+			"ParentName":"Applied/Effective AUR",
+			"ComponentName":"Rate Adjustment",
+			"Weight":0
+		},
+		{
+			"ParentName":"Applied/Effective AUR",
+			"ComponentName":"Price Adjustment",
+			"Weight":1
+		},
+		{
+			"ParentName":"Applied/Effective AUR",
+			"ComponentName":"Markdown %",
+			"Weight":0
+		},
+		{
+			"ParentName":"Applied/Effective AUR",
+			"ComponentName":"Rate Adj Amount",
+			"Weight":1
+		}
+	],
+	"Subsets@Code.links":
+	[
+		"Merch Forecast Measure.subsets/Default.json",
+		"Merch Forecast Measure.subsets/Forecast Default.json",
+		"Merch Forecast Measure.subsets/Inventory.json",
+		"Merch Forecast Measure.subsets/Margin.json"
+	]
+}

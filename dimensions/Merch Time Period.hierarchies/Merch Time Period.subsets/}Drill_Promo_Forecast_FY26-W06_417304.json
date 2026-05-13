@@ -1,0 +1,10 @@
+{
+	"@type":"Subset",
+	"Name":"}Drill_Promo_Forecast_FY26-W06_417304",
+	"Elements":
+	[
+		{
+			"@id":"Dimensions('Merch Time Period')/Hierarchies('Merch Time Period')/Elements('FY26-W06')"
+		}
+	]
+}

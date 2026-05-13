@@ -1,0 +1,28 @@
+{
+	"@type":"Cube",
+	"Name":"Merch Forecast",
+	"Dimensions":
+	[
+		{
+			"@id":"Dimensions('Merch Version')"
+		},
+		{
+			"@id":"Dimensions('Merch Time Period')"
+		},
+		{
+			"@id":"Dimensions('Merch SKU')"
+		},
+		{
+			"@id":"Dimensions('Merch Forecast Measure')"
+		}
+	],
+	"Rules@Code.link":"Merch Forecast.rules",
+	"DrillthroughRules@Code.link":"Merch Forecast.drillthrough.rules",
+	"Views@Code.links":
+	[
+		"Merch Forecast.views/TI_CopyTPSKU_placeholder.json",
+		"Merch Forecast.views/Damon Check.json",
+		"Merch Forecast.views/Rose Check.json",
+		"Merch Forecast.views/Test_BQ_Insert_Smoke.json"
+	]
+}

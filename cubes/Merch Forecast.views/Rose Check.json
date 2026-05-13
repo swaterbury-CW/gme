@@ -1,0 +1,30 @@
+{
+	"@type":"MDXView",
+	"Name":"Rose Check",
+	"MDX@Code.link":"Rose Check.mdx",
+	"Meta": {
+		"Aliases": {
+			"[Merch SKU].[Merch SKU]": "Caption"
+		},
+		"ExpandAboves": {
+			"[Merch Forecast Measure].[Merch Forecast Measure]": false,
+			"[Merch Time Period].[Merch Time Period]": false,
+			"[Merch SKU].[Merch SKU]": false,
+			"[Merch Version].[Merch Version]": false
+		},
+		"ContextSets": {
+			"[Merch SKU].[Merch SKU]": {
+				"Expression": "{FILTER(TM1SubsetAll([Merch SKU].[Merch SKU]), (INSTR(1, [Merch SKU].[Merch SKU].CURRENTMEMBER.PROPERTIES(\"sellable_flag\"), \"Y\", 1) >= 1))}"
+			},
+			"[Merch Version].[Merch Version]": {
+				"Expression": "{[Merch Version].[Merch Version].MEMBERS}"
+			}
+		}
+	},
+	"ViewExtractSkipRuleValues": false,
+	"ViewExtractSkipConsolidatedValues": true,
+	"ViewExtractSkipZeroes": true,
+	"IsSuppressComputeOnOpen": false,
+	"IsAutocalculate": true,
+	"IsDeferComputeOnLeafDataEntry": false
+}
