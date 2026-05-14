@@ -1,0 +1,66 @@
+{
+	"@type":"Process",
+	"Name":"Merch.Version.Copy.Forecast.ExtractByCat",
+	"HasSecurityAccess":false,
+	"Code@Code.link":"Merch.Version.Copy.Forecast.ExtractByCat.ti",
+	"DataSource":
+	{
+		"Type":"TM1DimensionSubset",
+		"dataSourceNameForServer":"Merch Category",
+		"dataSourceNameForClient":"Merch Category",
+		"subset":"ForecastVerCopyCat_bootstrap"
+	},
+	"Parameters":
+	[
+		{
+			"Name":"pSourceVersion",
+			"Prompt":"pSourceVersion",
+			"Value":"",
+			"Type":"String"
+		},
+		{
+			"Name":"pLY",
+			"Prompt":"pLY",
+			"Value":"",
+			"Type":"String"
+		},
+		{
+			"Name":"pCY",
+			"Prompt":"pCY",
+			"Value":"",
+			"Type":"String"
+		},
+		{
+			"Name":"pNY",
+			"Prompt":"pNY",
+			"Value":"",
+			"Type":"String"
+		},
+		{
+			"Name":"pBatchTag",
+			"Prompt":"pBatchTag",
+			"Value":"",
+			"Type":"String"
+		},
+		{
+			"Name":"pCategoryFilter",
+			"Prompt":"pCategoryFilter",
+			"Value":"",
+			"Type":"String"
+		}
+	],
+	"Variables":
+	[
+		{
+			"Name":"vMerch_Category",
+			"Type":"String",
+			"Position":1,
+			"StartByte":0,
+			"EndByte":0
+		}
+	],
+	"UIData": "CubeAction=1511\fDataAction=1503\fCubeLogChanges=0\f",
+	"VariablesUIData": [
+		"VarType=32\fColType=827\f"
+	]
+}
