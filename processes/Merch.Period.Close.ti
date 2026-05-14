@@ -1,0 +1,115 @@
+#region Prolog
+#****Begin: Generated Statements***
+DatasourceType = 'SUBSET';
+#****End: Generated Statements****
+#=============================================================
+# PROCESS: Merch.Period.Close
+# PURPOSE: Close next open week via parallel per-Role Cat dispatch,
+#          then advance Last_Closed_Period and load actuals + feed.
+# DEVELOPER: Steve Waterbury
+# CREATED ON: 2026-03-24
+# LAST UPDATE: 2026-05-14
+# CHANGED BY: Steve Waterbury
+# CHANGE HISTORY:
+#   2026-03-24 | Steve Waterbury | Initial single-thread
+#   2026-03-31 | Steve Waterbury | Start_Date_Serial -> Start_Date; Last_Closed_Period_Serial -> Last_Closed_Period
+#   2026-04-01 | Steve Waterbury | Applied guardrails header template
+#   2026-05-14 | Steve Waterbury | Refactor to per-Role parallel dispatch (subset DS + alt-hier 'Merch SKU:Roles' override)
+#=============================================================
+
+cProcessName = GetProcessName();
+
+sLogLevel = CellGetS('ProcessControl', cProcessName, 'LoggingLevel');
+IF(sLogLevel @= '');
+    sLogLevel = 'OFF';
+ENDIF;
+bLogInfo = 0;
+IF(sLogLevel @= 'INFO' % sLogLevel @= 'DEBUG');
+    bLogInfo = 1;
+ENDIF;
+
+IF(DIMIX('Merch Version', pVersion) = 0);
+    LogOutput('ERROR', cProcessName | ' | pVersion "' | pVersion | '" not found.');
+    ProcessError;
+ENDIF;
+IF(ATTRS('Merch Version', pVersion, 'Version_Type') @<> 'Calculated');
+    LogOutput('ERROR', cProcessName | ' | pVersion not Calculated');
+    ProcessError;
+ENDIF;
+
+IF(pTargetPeriod @= '');
+    LogOutput('ERROR', cProcessName | ' | pTargetPeriod blank');
+    ProcessError;
+ENDIF;
+IF(DIMIX('Merch Time Period', pTargetPeriod) = 0);
+    LogOutput('ERROR', cProcessName | ' | pTargetPeriod not in Merch Time Period');
+    ProcessError;
+ENDIF;
+IF(DTYPE('Merch Time Period', pTargetPeriod) @<> 'N');
+    LogOutput('ERROR', cProcessName | ' | pTargetPeriod not a leaf');
+    ProcessError;
+ENDIF;
+
+nLastClosedSerial = ATTRN('Merch Version', pVersion, 'Last_Closed_Period');
+IF(nLastClosedSerial <> 0);
+    sPrevWeek = ATTRS('Merch Time Period', pTargetPeriod, 'Previous Week');
+    IF(sPrevWeek @= '');
+        LogOutput('ERROR', cProcessName | ' | pTargetPeriod has no Previous Week');
+        ProcessError;
+    ENDIF;
+    nPrevSerial = ATTRN('Merch Time Period', sPrevWeek, 'Start_Date');
+    IF(nPrevSerial > nLastClosedSerial);
+        LogOutput('ERROR', cProcessName | ' | pTargetPeriod is not the next open week.');
+        ProcessError;
+    ENDIF;
+ENDIF;
+
+nStart = NOW;
+LogOutput('INFO', 'TIMING START: ' | cProcessName | ' | V=' | pVersion | ' | P=' | pTargetPeriod);
+
+sRoleSubset = 'TI_PeriodCloseRoles_' | TRIM(STR(NOW, 15, 0));
+IF(HierarchySubsetExists('Merch SKU', 'Roles', sRoleSubset) = 1);
+    HierarchySubsetDestroy('Merch SKU', 'Roles', sRoleSubset);
+ENDIF;
+sMDX = '{FILTER({DESCENDANTS([Merch SKU].[Roles].[Director])}, [Merch SKU].[Roles].CurrentMember.LEVEL.ORDINAL = 4)}';
+SubsetCreateByMDX(sRoleSubset, sMDX);
+
+DatasourceNameForServer   = 'Merch SKU:Roles';
+DatasourceDimensionSubset = sRoleSubset;
+
+nDispatched = 0;
+
+#endregion
+#region Metadata
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+
+#endregion
+#region Data
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+RunProcess('Merch.Period.Close.Cat',
+    'pVersion',      pVersion,
+    'pTargetPeriod', pTargetPeriod,
+    'pRole',         vMerch_SKU);
+nDispatched = nDispatched + 1;
+
+#endregion
+#region Epilog
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+nDummy = WaitForInternalJobs();
+
+nEndDateSerial = ATTRN('Merch Time Period', pTargetPeriod, 'End_Date');
+AttrPutN(nEndDateSerial, 'Merch Version', pVersion, 'Last_Closed_Period');
+
+ExecuteProcess('Merch.Load.ActualsToForecast', 'pTimePeriod', pTargetPeriod);
+ExecuteProcess('Merch.Feed.LoadClosedPeriods', 'pVersion', pVersion, 'pPeriod', pTargetPeriod);
+
+IF(HierarchySubsetExists('Merch SKU', 'Roles', sRoleSubset) = 1);
+    HierarchySubsetDestroy('Merch SKU', 'Roles', sRoleSubset);
+ENDIF;
+
+LogOutput('INFO', 'TIMING END: ' | cProcessName | ' | Dispatched=' | TRIM(STR(nDispatched, 10, 0)) | ' | Elapsed=' | TRIM(STR((NOW - nStart) * 86400, 12, 1)) | 's');
+
+#endregion

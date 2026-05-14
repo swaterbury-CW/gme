@@ -1,0 +1,86 @@
+#region Prolog
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+#=============================================================
+# PROCESS: Merch.Period.Close.Cat
+# PURPOSE: Per-Role BD copy worker for parallel period close.
+# DEVELOPER: Steve Waterbury
+# CREATED ON: 2026-05-14
+# LAST UPDATE: 2026-05-14
+# CHANGED BY: Steve Waterbury
+# CHANGE HISTORY:
+#   2026-05-14 | Steve Waterbury | Initial creation
+#=============================================================
+
+cProcessName = GetProcessName();
+sLogLevel = CellGetS('ProcessControl', cProcessName, 'LoggingLevel');
+IF(sLogLevel @= '');
+    sLogLevel = 'OFF';
+ENDIF;
+bLogInfo = 0;
+IF(sLogLevel @= 'INFO' % sLogLevel @= 'DEBUG');
+    bLogInfo = 1;
+ENDIF;
+
+IF(pVersion @= '');
+    LogOutput('ERROR', cProcessName | ' | pVersion empty');
+    ProcessError;
+ENDIF;
+IF(pTargetPeriod @= '');
+    LogOutput('ERROR', cProcessName | ' | pTargetPeriod empty');
+    ProcessError;
+ENDIF;
+IF(pRole @= '');
+    LogOutput('ERROR', cProcessName | ' | pRole empty');
+    ProcessError;
+ENDIF;
+
+nStart = NOW;
+LogOutput('INFO', 'TIMING START: ' | cProcessName | ' | V=' | pVersion | ' | P=' | pTargetPeriod | ' | Role=' | pRole);
+
+sView = 'TI_PeriodCloseCat_' | TimSt(NOW, '\Y\m\d\h\i\s') | '_' | pRole;
+IF(ViewExists('Merch Forecast', sView) = 1);
+    ViewDestroy('Merch Forecast', sView);
+ENDIF;
+sMDX = 'SELECT {[Merch Forecast Measure].[Merch Forecast Measure].[Forecast vs Actual BD]} ON COLUMNS, '
+     | 'NON EMPTY {DESCENDANTS([Merch SKU].[Roles].[' | pRole | '],,LEAVES)} ON ROWS '
+     | 'FROM [Merch Forecast] '
+     | 'WHERE ([Merch Version].[Merch Version].[' | pVersion | '], [Merch Time Period].[Merch Time Period].[' | pTargetPeriod | '])';
+ViewCreateByMDX('Merch Forecast', sView, sMDX, 1);
+ViewExtractSkipZeroesSet('Merch Forecast', sView, 1);
+
+DatasourceType = 'VIEW';
+DatasourceNameForServer = 'Merch Forecast';
+DatasourceCubeview = sView;
+
+nWrites = 0;
+
+#endregion
+#region Metadata
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+
+#endregion
+#region Data
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+nVal = CellGetN('Merch Forecast', pVersion, pTargetPeriod, vSKU, 'Forecast vs Actual BD');
+IF(nVal = 0);
+    ItemSkip;
+ENDIF;
+IF(CellIsUpdateable('Merch Forecast', pVersion, pTargetPeriod, vSKU, 'Build/Debuild') = 0);
+    ItemSkip;
+ENDIF;
+CellPutN(nVal, 'Merch Forecast', pVersion, pTargetPeriod, vSKU, 'Build/Debuild');
+nWrites = nWrites + 1;
+
+#endregion
+#region Epilog
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+IF(ViewExists('Merch Forecast', sView) = 1);
+    ViewDestroy('Merch Forecast', sView);
+ENDIF;
+LogOutput('INFO', 'TIMING END: ' | cProcessName | ' | Role=' | pRole | ' | Writes=' | TRIM(STR(nWrites, 10, 0)) | ' | Elapsed=' | TRIM(STR((NOW - nStart) * 86400, 12, 1)) | 's');
+
+#endregion
