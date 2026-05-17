@@ -1,32 +1,26 @@
 {
 	"@type":"Process",
-	"Name":"Merch.Version.Copy.5Dim",
+	"Name":"Merch.Placeholder.BuildPicklistIndex.Subsets.Worker",
 	"HasSecurityAccess":false,
-	"Code@Code.link":"Merch.Version.Copy.5Dim.ti",
+	"Code@Code.link":"Merch.Placeholder.BuildPicklistIndex.Subsets.Worker.ti",
 	"DataSource":
 	{
 		"Type":"TM1CubeView",
-		"dataSourceNameForServer":"Merch Channel Split",
-		"dataSourceNameForClient":"Merch Channel Split",
-		"view":"TI_Copy5Dim_placeholder"
+		"dataSourceNameForServer":"}Merch Placeholder Picklist Index",
+		"dataSourceNameForClient":"}Merch Placeholder Picklist Index",
+		"view":"PLI_Placeholder"
 	},
 	"Parameters":
 	[
 		{
-			"Name":"pCubeName",
-			"Prompt":"Cube name",
+			"Name":"pCategory",
+			"Prompt":"Merch Category",
 			"Value":"",
 			"Type":"String"
 		},
 		{
-			"Name":"pSourceVersion",
-			"Prompt":"Source version",
-			"Value":"",
-			"Type":"String"
-		},
-		{
-			"Name":"pTargetVersion",
-			"Prompt":"Target version",
+			"Name":"pRunId",
+			"Prompt":"Run identifier",
 			"Value":"",
 			"Type":"String"
 		}
@@ -34,35 +28,35 @@
 	"Variables":
 	[
 		{
-			"Name":"vMeasure",
+			"Name":"vMerch_Category",
 			"Type":"String",
 			"Position":1,
 			"StartByte":0,
 			"EndByte":0
 		},
 		{
-			"Name":"vDim2",
+			"Name":"vL4",
 			"Type":"String",
 			"Position":2,
 			"StartByte":0,
 			"EndByte":0
 		},
 		{
-			"Name":"vDim3",
+			"Name":"vVendor",
 			"Type":"String",
 			"Position":3,
 			"StartByte":0,
 			"EndByte":0
 		},
 		{
-			"Name":"vDim4",
+			"Name":"vFranchise",
 			"Type":"String",
 			"Position":4,
 			"StartByte":0,
 			"EndByte":0
 		},
 		{
-			"Name":"vVersion",
+			"Name":"vSKU",
 			"Type":"String",
 			"Position":5,
 			"StartByte":0,
@@ -70,13 +64,13 @@
 		},
 		{
 			"Name":"Value",
-			"Type":"String",
+			"Type":"Numeric",
 			"Position":6,
 			"StartByte":0,
 			"EndByte":0
 		}
 	],
-	"UID": "1775092792000",
+	"UID": "1777567987000",
 	"UIData": "CubeAction=1511\fDataAction=1503\fCubeLogChanges=0\f",
 	"VariablesUIData": [
 		"VarType=32\fColType=827\f",
@@ -84,6 +78,6 @@
 		"VarType=32\fColType=827\f",
 		"VarType=32\fColType=827\f",
 		"VarType=32\fColType=827\f",
-		"VarType=32\fColType=827\f"
+		"VarType=33\fColType=827\f"
 	]
 }

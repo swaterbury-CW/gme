@@ -1,0 +1,22 @@
+{
+	"@type":"Process",
+	"Name":"Merch.Placeholder.BuildPicklists",
+	"HasSecurityAccess":false,
+	"Code@Code.link":"Merch.Placeholder.BuildPicklists.ti",
+	"DataSource":
+	{
+		"Type":"None"
+	},
+	"Parameters":
+	[
+		{
+			"Name":"pCategoryFilter",
+			"Prompt":"Optional Merch Category filter (empty = all categories)",
+			"Value":"",
+			"Type":"String"
+		}
+	],
+	"Variables":[],
+	"UIData": "CubeAction=1511\fDataAction=1503\fCubeLogChanges=0\f",
+	"VariablesUIData": []
+}
