@@ -1,5 +1,0 @@
-{
-	"@type":"Subset",
-	"Name":"SecurityLoadDimsAll",
-	"Expression":"{TM1FILTERBYLEVEL({TM1SUBSETALL([Merch SKU].[Merch SKU])},0)}"
-}

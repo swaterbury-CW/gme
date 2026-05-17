@@ -1,0 +1,116 @@
+#region Prolog
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+#Region : Process Header
+# DEVELOPER: Steve Waterbury
+# CREATED ON: 2026-04-01
+# LAST UPDATE: 2026-05-06
+# CHANGED BY: Steve Waterbury
+# CHANGE HISTORY:
+#   2026-04-01 | Steve Waterbury | Initial creation
+#   2026-04-02 | Steve Waterbury | ViewExtractSkipCalcsSet
+#   2026-04-26 | Steve Waterbury | TM1CubeView datasource, MDX-axis-order vars
+#   2026-04-26 | Steve Waterbury | Conditional ViewExtractSkipCalcsSet
+#   2026-04-27 | Steve Waterbury | Always-on TIMING logs
+#   2026-05-06 | Steve Waterbury | Fix MDX: explicit [Dim].[Dim] for multi-hierarchy compat
+#EndRegion
+
+cProcessName = GetProcessName();
+sLogLevel = CellGetS('ProcessControl', cProcessName, 'LoggingLevel');
+IF(sLogLevel @= '');
+  sLogLevel = 'OFF';
+ENDIF;
+bLogInfo = 0;
+IF(sLogLevel @= 'INFO' % sLogLevel @= 'DEBUG');
+  bLogInfo = 1;
+ENDIF;
+nCellsCopied = 0;
+
+IF(pCubeName @= '' % pSourceVersion @= '' % pTargetVersion @= '');
+  LogOutput('ERROR','Missing');
+  ProcessError;
+ENDIF;
+IF(CubeExists(pCubeName) = 0);
+  LogOutput('ERROR','Cube missing');
+  ProcessError;
+ENDIF;
+IF(DIMIX('Merch Version', pSourceVersion) = 0);
+  LogOutput('ERROR','Source missing');
+  ProcessError;
+ENDIF;
+
+sTargetVersionType = ATTRS('Merch Version', pTargetVersion, 'Version_Type');
+nSkipRuleCalcs = 1;
+IF(sTargetVersionType @= 'Static');
+  nSkipRuleCalcs = 0;
+ENDIF;
+
+IF(bLogInfo = 1);
+  LogOutput('INFO', 'START: ' | cProcessName | ' | Cube=' | pCubeName | ' | TargetType=' | sTargetVersionType | ' SkipCalcs=' | TRIM(STR(nSkipRuleCalcs, 1, 0)));
+ENDIF;
+
+nStart = NOW;
+LogOutput('INFO', 'TIMING START: ' | cProcessName | ' | Cube=' | pCubeName | ' | Src=' | pSourceVersion | ' | Tgt=' | pTargetVersion);
+
+cDimVer = TABDIM(pCubeName, 1);
+cDim2 = TABDIM(pCubeName, 2);
+cDim3 = TABDIM(pCubeName, 3);
+cDim4 = TABDIM(pCubeName, 4);
+cDimMeasure = TABDIM(pCubeName, 5);
+
+sView = 'TI_Copy5Dim_' | TRIM(STR(NOW, 15, 0));
+sMDX = 'SELECT NON EMPTY {TM1FILTERBYLEVEL({TM1SUBSETALL([' | cDimMeasure | '].[' | cDimMeasure | '])}, 0)} ON COLUMNS, NON EMPTY CROSSJOIN(CROSSJOIN({TM1FILTERBYLEVEL({TM1SUBSETALL([' | cDim2 | '].[' | cDim2 | '])}, 0)}, {TM1FILTERBYLEVEL({TM1SUBSETALL([' | cDim3 | '].[' | cDim3 | '])}, 0)}), {TM1FILTERBYLEVEL({TM1SUBSETALL([' | cDim4 | '].[' | cDim4 | '])}, 0)}) ON ROWS FROM [' | pCubeName | '] WHERE ([' | cDimVer | '].[' | cDimVer | '].[' | pSourceVersion | '])';
+ViewCreateByMDX(pCubeName, sView, sMDX, 1);
+ViewExtractSkipCalcsSet(pCubeName, sView, nSkipRuleCalcs);
+ViewExtractSkipZeroesSet(pCubeName, sView, 1);
+LogOutput('INFO', 'TIMING VIEW READY: ' | cProcessName | ' | Cube=' | pCubeName | ' | BuildSec=' | TRIM(STR((NOW - nStart) * 86400, 12, 1)));
+DatasourceType = 'VIEW';
+DatasourceNameForServer = pCubeName;
+DatasourceCubeview = sView;
+
+#endregion
+#region Metadata
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+
+#endregion
+#region Data
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+sMeasType = DTYPE(cDimMeasure, vMeasure);
+IF(sMeasType @<> 'N' & sMeasType @<> 'S' & sMeasType @<> 'C');
+    ItemReject('Bad data: unknown measure type ' | sMeasType);
+ENDIF;
+
+IF(sMeasType @= 'S');
+    IF(Value @= '');
+        ItemSkip;
+    ENDIF;
+    IF(CellIsUpdateable(pCubeName, pTargetVersion, vDim2, vDim3, vDim4, vMeasure) = 0);
+        ItemSkip;
+    ENDIF;
+    CellPutS(Value, pCubeName, pTargetVersion, vDim2, vDim3, vDim4, vMeasure);
+    nCellsCopied = nCellsCopied + 1;
+    ItemSkip;
+ENDIF;
+
+nVal = NUMBR(Value);
+IF(nVal = 0);
+    ItemSkip;
+ENDIF;
+IF(CellIsUpdateable(pCubeName, pTargetVersion, vDim2, vDim3, vDim4, vMeasure) = 0);
+    ItemSkip;
+ENDIF;
+CellPutN(nVal, pCubeName, pTargetVersion, vDim2, vDim3, vDim4, vMeasure);
+nCellsCopied = nCellsCopied + 1;
+
+#endregion
+#region Epilog
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+IF(ViewExists(pCubeName, sView) = 1);
+  ViewDestroy(pCubeName, sView);
+ENDIF;
+LogOutput('INFO', 'TIMING END: ' | cProcessName | ' | Cube=' | pCubeName | ' | Src=' | pSourceVersion | ' | Tgt=' | pTargetVersion | ' | Elapsed=' | TRIM(STR((NOW - nStart) * 86400, 12, 1)) | 's | Cells=' | TRIM(STR(nCellsCopied, 12, 0)));
+
+#endregion

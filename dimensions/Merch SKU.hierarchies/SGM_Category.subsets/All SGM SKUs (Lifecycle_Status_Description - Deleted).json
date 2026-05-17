@@ -1,5 +1,0 @@
-{
-	"@type":"Subset",
-	"Name":"All SGM SKUs (Lifecycle_Status_Description - Deleted)",
-	"Expression":"{FILTER(TM1FILTERBYLEVEL(DISTINCT(DESCENDANTS([Merch SKU].[SGM_Category].[All SGM_Category])) , 0)       , ([Merch SKU].[SGM_Category].CURRENTMEMBER.PROPERTIES(\"Lifecycle_Status_Description\") = \"Deleted\"))}"
-}

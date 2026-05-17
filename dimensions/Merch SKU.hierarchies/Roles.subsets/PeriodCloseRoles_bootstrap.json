@@ -1,5 +1,0 @@
-{
-	"@type":"Subset",
-	"Name":"PeriodCloseRoles_bootstrap",
-	"Expression":"{HEAD({DESCENDANTS([Merch SKU].[Roles].[Director])}, 1)}"
-}

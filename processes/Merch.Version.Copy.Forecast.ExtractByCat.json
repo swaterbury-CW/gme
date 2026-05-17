@@ -14,37 +14,37 @@
 	[
 		{
 			"Name":"pSourceVersion",
-			"Prompt":"pSourceVersion",
+			"Prompt":"Source version",
 			"Value":"",
 			"Type":"String"
 		},
 		{
 			"Name":"pLY",
-			"Prompt":"pLY",
+			"Prompt":"Last fiscal year",
 			"Value":"",
 			"Type":"String"
 		},
 		{
 			"Name":"pCY",
-			"Prompt":"pCY",
+			"Prompt":"Current fiscal year",
 			"Value":"",
 			"Type":"String"
 		},
 		{
 			"Name":"pNY",
-			"Prompt":"pNY",
+			"Prompt":"Next fiscal year",
 			"Value":"",
 			"Type":"String"
 		},
 		{
 			"Name":"pBatchTag",
-			"Prompt":"pBatchTag",
+			"Prompt":"Batch tag",
 			"Value":"",
 			"Type":"String"
 		},
 		{
 			"Name":"pCategoryFilter",
-			"Prompt":"pCategoryFilter",
+			"Prompt":"Optional Merch Category filter",
 			"Value":"",
 			"Type":"String"
 		}

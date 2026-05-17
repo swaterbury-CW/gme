@@ -1,5 +1,0 @@
-{
-	"@type":"Subset",
-	"Name":"PeriodCloseRoles_run_20260514205508",
-	"Expression":"{FILTER({DESCENDANTS([Merch SKU].[Roles].[Director])}, [Merch SKU].[Roles].CurrentMember.LEVEL.ORDINAL = 4)}"
-}

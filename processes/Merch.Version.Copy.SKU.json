@@ -1,0 +1,73 @@
+{
+	"@type":"Process",
+	"Name":"Merch.Version.Copy.SKU",
+	"HasSecurityAccess":false,
+	"Code@Code.link":"Merch.Version.Copy.SKU.ti",
+	"DataSource":
+	{
+		"Type":"TM1CubeView",
+		"dataSourceNameForServer":"Merch Curve Assignment",
+		"dataSourceNameForClient":"Merch Curve Assignment",
+		"view":"TI_CopySKU_placeholder"
+	},
+	"Parameters":
+	[
+		{
+			"Name":"pCubeName",
+			"Prompt":"Cube name",
+			"Value":"",
+			"Type":"String"
+		},
+		{
+			"Name":"pSourceVersion",
+			"Prompt":"Source version",
+			"Value":"",
+			"Type":"String"
+		},
+		{
+			"Name":"pTargetVersion",
+			"Prompt":"Target version",
+			"Value":"",
+			"Type":"String"
+		}
+	],
+	"Variables":
+	[
+		{
+			"Name":"vMeasure",
+			"Type":"String",
+			"Position":1,
+			"StartByte":0,
+			"EndByte":0
+		},
+		{
+			"Name":"vSKU",
+			"Type":"String",
+			"Position":2,
+			"StartByte":0,
+			"EndByte":0
+		},
+		{
+			"Name":"vVersion",
+			"Type":"String",
+			"Position":3,
+			"StartByte":0,
+			"EndByte":0
+		},
+		{
+			"Name":"Value",
+			"Type":"String",
+			"Position":4,
+			"StartByte":0,
+			"EndByte":0
+		}
+	],
+	"UID": "1774276608000",
+	"UIData": "CubeAction=1511\fDataAction=1503\fCubeLogChanges=0\f",
+	"VariablesUIData": [
+		"VarType=32\fColType=827\f",
+		"VarType=32\fColType=827\f",
+		"VarType=32\fColType=827\f",
+		"VarType=32\fColType=827\f"
+	]
+}
