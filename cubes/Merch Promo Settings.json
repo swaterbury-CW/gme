@@ -1,0 +1,21 @@
+{
+	"@type":"Cube",
+	"Name":"Merch Promo Settings",
+	"Dimensions":
+	[
+		{
+			"@id":"Dimensions('Merch Version')"
+		},
+		{
+			"@id":"Dimensions('Merch SKU')"
+		},
+		{
+			"@id":"Dimensions('Merch Promo ID')"
+		},
+		{
+			"@id":"Dimensions('Merch Promo Settings Measure')"
+		}
+	],
+	"Rules@Code.link":"Merch Promo Settings.rules",
+	"Views@Code.links":[]
+}

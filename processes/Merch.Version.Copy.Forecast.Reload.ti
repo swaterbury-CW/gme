@@ -8,6 +8,7 @@
 # CHANGE HISTORY:
 #   2026-05-14 | Steve Waterbury | Initial: per-slice ASCII reload for Forecast version copy fan-out
 #   2026-05-14 | Steve Waterbury | EP18: AttrPutS Static on cross-version target inside child prolog
+#   2026-05-17 | Steve Waterbury | Guard against missing slice file: WildcardFileSearch + ProcessBreak. Empty Extract or extract/reload race no longer hard-errors Reload; it logs INFO and skips to Epilog cleanly.
 #EndRegion
 
 cProcessName = GetProcessName();
@@ -40,6 +41,12 @@ WHILE(nPos > 0);
 END;
 
 sFile = './version_copy/' | pBatchTag | '_' | pSourceVersion | '_' | sCatSafe | '_' | pFiscalYear | '.csv';
+
+# Guard: if the slice CSV does not exist, skip cleanly. Empty source extract (ASCIIOutput never fires) or extract/reload timing race land here. ProcessBreak skips Data tab and runs Epilog (still writes SubsetCount=0 for observability).
+IF(WildcardFileSearch(sFile, '') @= '');
+  LogOutput('INFO', cProcessName | ' | no extract file | ' | sFile);
+  ProcessBreak;
+ENDIF;
 
 DatasourceType = 'CHARACTERDELIMITED';
 DatasourceNameForServer = sFile;

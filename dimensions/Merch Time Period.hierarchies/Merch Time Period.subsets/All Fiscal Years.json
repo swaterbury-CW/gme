@@ -1,0 +1,6 @@
+{
+	"@type":"Subset",
+	"Name":"All Fiscal Years",
+	"Alias":"Caption",
+	"Expression":"TM1IGNORE_BADTUPLES {ORDER(TM1FILTERBYPATTERN([Merch Time Period].[Merch Time Period].LEVELS(0).MEMBERS , \"FY*\" , \"Caption\") , IIF([Merch Time Period].[Merch Time Period].CURRENTMEMBER.PROPERTIES(\"Caption\")=\"\", [Merch Time Period].[Merch Time Period].CURRENTMEMBER.PROPERTIES(\"MEMBER_CAPTION\"), [Merch Time Period].[Merch Time Period].CURRENTMEMBER.PROPERTIES(\"Caption\")) , BASC)}"
+}

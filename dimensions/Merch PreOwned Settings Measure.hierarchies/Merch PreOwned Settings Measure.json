@@ -1,0 +1,117 @@
+{
+	"@type":"Hierarchy",
+	"Name":"Merch PreOwned Settings Measure",
+	"Elements":
+	[
+		{
+			"Name":"Lookback Weeks",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Year Weight 1",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Year Weight 2",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Year Weight 3",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Exclude Year 1",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Exclude Year 2",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Applied Lookback Weeks",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Applied Year Weight 1",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Applied Year Weight 2",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Applied Year Weight 3",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Applied Exclude Year 1",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Applied Exclude Year 2",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Override Lookback Weeks",
+			"Type":"String"
+		},
+		{
+			"Name":"Override Year Weight 1",
+			"Type":"String"
+		},
+		{
+			"Name":"Override Year Weight 2",
+			"Type":"String"
+		},
+		{
+			"Name":"Override Year Weight 3",
+			"Type":"String"
+		},
+		{
+			"Name":"Override Exclude Year 1",
+			"Type":"String"
+		},
+		{
+			"Name":"Override Exclude Year 2",
+			"Type":"String"
+		},
+		{
+			"Name":"Override Mix Lookback Weeks",
+			"Type":"String"
+		},
+		{
+			"Name":"Applied Mix Lookback Weeks",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Override Skip Start Date",
+			"Type":"String"
+		},
+		{
+			"Name":"Override Skip End Date",
+			"Type":"String"
+		},
+		{
+			"Name":"Applied Skip Start Date",
+			"Type":"String"
+		},
+		{
+			"Name":"Applied Skip End Date",
+			"Type":"String"
+		},
+		{
+			"Name":"Applied Skip Start Week",
+			"Type":"String"
+		},
+		{
+			"Name":"Applied Skip End Week",
+			"Type":"String"
+		}
+	],
+	"Subsets@Code.links":
+	[
+		"Merch PreOwned Settings Measure.subsets/All Applied Measures.json",
+		"Merch PreOwned Settings Measure.subsets/All Measures.json",
+		"Merch PreOwned Settings Measure.subsets/All Override Measures.json"
+	]
+}

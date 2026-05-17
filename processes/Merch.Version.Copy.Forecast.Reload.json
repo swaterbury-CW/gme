@@ -31,19 +31,19 @@
 		},
 		{
 			"Name":"pCategory",
-			"Prompt":"Category",
+			"Prompt":"Merch Category leaf",
 			"Value":"",
 			"Type":"String"
 		},
 		{
 			"Name":"pFiscalYear",
-			"Prompt":"Fiscal Year",
+			"Prompt":"Fiscal year (e.g. FY2026)",
 			"Value":"",
 			"Type":"String"
 		},
 		{
 			"Name":"pBatchTag",
-			"Prompt":"Batch tag",
+			"Prompt":"Batch tag from parent orchestrator",
 			"Value":"",
 			"Type":"String"
 		}
@@ -86,6 +86,7 @@
 			"EndByte":0
 		}
 	],
+	"UID": "1778769805000",
 	"UIData": "CubeAction=1511\fDataAction=1503\fCubeLogChanges=0\f",
 	"VariablesUIData": [
 		"VarType=32\fColType=827\f",

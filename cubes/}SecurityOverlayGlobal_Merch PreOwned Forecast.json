@@ -1,0 +1,17 @@
+{
+	"@type":"Cube",
+	"Name":"}SecurityOverlayGlobal_Merch PreOwned Forecast",
+	"Dimensions":
+	[
+		{
+			"@id":"Dimensions('Merch Version')"
+		},
+		{
+			"@id":"Dimensions('Merch Time Period')"
+		},
+		{
+			"@id":"Dimensions('}SecurityOverlay')"
+		}
+	],
+	"Views@Code.links":[]
+}

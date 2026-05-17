@@ -1,0 +1,6 @@
+{
+	"@type":"Subset",
+	"Name":"Sellable",
+	"Alias":"Caption",
+	"Expression":"TM1IGNORE_BADTUPLES {FILTER(TM1SUBSETALL([Merch SKU].[Merch SKU]) , (INSTR(1 , [Merch SKU].[Merch SKU].CURRENTMEMBER.PROPERTIES(\"sellable_flag\") , \"Y\" , 1) >= 1))}"
+}

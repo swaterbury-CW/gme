@@ -1,0 +1,6 @@
+{
+	"@type":"Subset",
+	"Name":"Pre-Release Video Games",
+	"Alias":"Caption",
+	"Expression":"TM1IGNORE_BADTUPLES {FILTER({DRILLDOWNMEMBER({[Merch SKU].[SGM_Category].[Switch Software]} , {[Merch SKU].[SGM_Category].[Switch Software]} , RECURSIVE)}, ([Merch SKU].[SGM_Category].CURRENTMEMBER.PROPERTIES(\"Lifecycle_Status_Description\") = \"Pre-Release\") AND ([Merch SKU].[SGM_Category].CURRENTMEMBER.PROPERTIES(\"sellable_flag\") = \"Y\"))}"
+}

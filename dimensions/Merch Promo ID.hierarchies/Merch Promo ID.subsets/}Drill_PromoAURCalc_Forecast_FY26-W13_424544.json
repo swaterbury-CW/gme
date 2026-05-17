@@ -1,0 +1,5 @@
+{
+	"@type":"Subset",
+	"Name":"}Drill_PromoAURCalc_Forecast_FY26-W13_424544",
+	"Expression":"{ORDER({TM1SUBSETALL([Merch Promo ID])}, [Merch Promo ID].CurrentMember.Name, BASC)}"
+}

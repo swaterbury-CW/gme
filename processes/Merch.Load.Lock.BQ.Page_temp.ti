@@ -1,0 +1,208 @@
+#region Prolog
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+#Region : Process Header
+# DEVELOPER: Steve Waterbury
+# CREATED ON: 2026-05-17
+# LAST UPDATE: 2026-05-17
+# CHANGED BY: Steve Waterbury
+# COMMENTS:
+# One-off page worker for Lock 3/9/2026 BQ load into Merch Forecast.
+# Schema: 0=sku, 1=SGM_Category, 2=SGM_Category_Group, 3=fiscal_week_ending,
+# 4=sales_dollars, 5=sales_units, 6=sales_cogs, 7=sales_margin, 8=receipt_dollars,
+# 9=receipt_units, 10..17=other (unmapped, skipped).
+# Mappings (4 of 14 cols; same semantics as Merch.Load.BudgetToForecast):
+#   col 5 sales_units            -> Calc Units      (direct)
+#   col 9 receipt_units           -> Receipts        (direct)
+#   col 4 sales_dollars / col 5   -> Full Price AUR  (rate)
+#   col 6 sales_cogs   / col 5   -> Base AUC        (rate)
+# CHANGE HISTORY:
+#   2026-05-17 | Steve Waterbury | Initial one-off load
+#EndRegion
+
+#Region : Constants
+cProcessName = GetProcessName();
+cCube = 'Merch Forecast';
+cSKUDim = 'Merch SKU';
+cVerDim = 'Merch Version';
+cTimeDim = 'Merch Time Period';
+nRecordCount = 0;
+nCellsWritten = 0;
+nSKUSkipped = 0;
+nDateSkipped = 0;
+nRateSkip_NoUnits = 0;
+#EndRegion
+
+#Region : Logging
+sLogLevel = CellGetS('ProcessControl', cProcessName, 'LoggingLevel');
+IF(sLogLevel @= '');
+  sLogLevel = 'OFF';
+ENDIF;
+bLogInfo = 0;
+IF(sLogLevel @= 'INFO' % sLogLevel @= 'DEBUG');
+  bLogInfo = 1;
+ENDIF;
+bLogDebug = 0;
+IF(sLogLevel @= 'DEBUG');
+  bLogDebug = 1;
+ENDIF;
+#EndRegion
+
+#Region : Validate
+IF(pVersion @= '');
+  LogOutput('ERROR', cProcessName | ' | pVersion empty');
+  ProcessError;
+ENDIF;
+IF(pFile @= '');
+  LogOutput('ERROR', cProcessName | ' | pFile empty');
+  ProcessError;
+ENDIF;
+IF(DIMIX(cVerDim, pVersion) = 0);
+  LogOutput('ERROR', cProcessName | ' | Unknown Merch Version: ' | pVersion);
+  ProcessError;
+ENDIF;
+#EndRegion
+
+IF(bLogInfo = 1);
+  LogOutput('INFO', 'START: ' | cProcessName | ' | Version=' | pVersion | ' | File=' | pFile);
+ENDIF;
+
+sLastDate = '';
+sLastPeriod = '';
+
+#Region : Runtime DS Override (override page filename at runtime; vRow registered statically via set_process_datasource)
+DatasourceType = 'JSON';
+DatasourceNameForServer = pFile;
+DataSourceJsonRootPointer = '/rows';
+DataSourceJsonVariableMapping = JsonAdd('{}', 'vRow', StringToJson('/f'));
+#EndRegion
+#endregion
+#region Metadata
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+# No metadata-phase work; all dim members pre-existing (Merch Version elem added by orchestrator).
+#endregion
+#region Data
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+#Region : Per-Row Load
+# Parse sku (col 0)
+sSKU = JsonGet(vRow, '/0/v');
+IF(SUBST(sSKU, 1, 1) @= '"');
+  sSKU = SUBST(sSKU, 2, LONG(sSKU) - 2);
+ENDIF;
+IF(sSKU @= '' % sSKU @= 'null');
+  ItemSkip;
+ENDIF;
+IF(DIMIX(cSKUDim, sSKU) = 0);
+  nSKUSkipped = nSKUSkipped + 1;
+  ItemSkip;
+ENDIF;
+
+# Parse fiscal_week_ending (col 3)
+sDate = JsonGet(vRow, '/3/v');
+IF(SUBST(sDate, 1, 1) @= '"');
+  sDate = SUBST(sDate, 2, LONG(sDate) - 2);
+ENDIF;
+IF(sDate @= '' % sDate @= 'null');
+  nDateSkipped = nDateSkipped + 1;
+  ItemSkip;
+ENDIF;
+
+# Resolve time period via End_Date_Serial cache (avoid per-row iteration)
+IF(sDate @<> sLastDate);
+  nTargetDayNo = DAYNO(sDate);
+  sPeriodFound = '';
+  nTIdx = 1;
+  nTimeDimSize = DIMSIZ(cTimeDim);
+  WHILE(nTIdx <= nTimeDimSize & sPeriodFound @= '');
+    sElem = DIMNM(cTimeDim, nTIdx);
+    IF(DTYPE(cTimeDim, sElem) @= 'N');
+      IF(ATTRN(cTimeDim, sElem, 'End_Date_Serial') = nTargetDayNo);
+        sPeriodFound = sElem;
+      ENDIF;
+    ENDIF;
+    nTIdx = nTIdx + 1;
+  END;
+  sLastDate = sDate;
+  sLastPeriod = sPeriodFound;
+ENDIF;
+
+IF(sLastPeriod @= '');
+  nDateSkipped = nDateSkipped + 1;
+  ItemSkip;
+ENDIF;
+
+sPeriod = sLastPeriod;
+nRecordCount = nRecordCount + 1;
+
+# Parse sales_units (col 5) - direct + rate divisor
+sValUnits = JsonGet(vRow, '/5/v');
+IF(SUBST(sValUnits, 1, 1) @= '"');
+  sValUnits = SUBST(sValUnits, 2, LONG(sValUnits) - 2);
+ENDIF;
+nUnits = 0;
+IF(sValUnits @<> '' & sValUnits @<> 'null');
+  nUnits = StringToNumber(sValUnits);
+  # Direct: Calc Units
+  IF(CellIsUpdateable(cCube, pVersion, sPeriod, sSKU, 'Calc Units') = 1);
+    CellPutN(nUnits, cCube, pVersion, sPeriod, sSKU, 'Calc Units');
+    nCellsWritten = nCellsWritten + 1;
+  ENDIF;
+ENDIF;
+
+# Direct: Receipts (from receipt_units, col 9)
+sVal = JsonGet(vRow, '/9/v');
+IF(SUBST(sVal, 1, 1) @= '"');
+  sVal = SUBST(sVal, 2, LONG(sVal) - 2);
+ENDIF;
+IF(sVal @<> '' & sVal @<> 'null');
+  nVal = StringToNumber(sVal);
+  IF(CellIsUpdateable(cCube, pVersion, sPeriod, sSKU, 'Receipts') = 1);
+    CellPutN(nVal, cCube, pVersion, sPeriod, sSKU, 'Receipts');
+    nCellsWritten = nCellsWritten + 1;
+  ENDIF;
+ENDIF;
+
+# Rate: Full Price AUR = sales_dollars (col 4) / sales_units (col 5)
+IF(nUnits <> 0);
+  sVal = JsonGet(vRow, '/4/v');
+  IF(SUBST(sVal, 1, 1) @= '"');
+    sVal = SUBST(sVal, 2, LONG(sVal) - 2);
+  ENDIF;
+  IF(sVal @<> '' & sVal @<> 'null');
+    nDollars = StringToNumber(sVal);
+    nRate = nDollars \ nUnits;
+    IF(CellIsUpdateable(cCube, pVersion, sPeriod, sSKU, 'Full Price AUR') = 1);
+      CellPutN(nRate, cCube, pVersion, sPeriod, sSKU, 'Full Price AUR');
+      nCellsWritten = nCellsWritten + 1;
+    ENDIF;
+  ENDIF;
+ELSE;
+  nRateSkip_NoUnits = nRateSkip_NoUnits + 1;
+ENDIF;
+
+# Rate: Base AUC = sales_cogs (col 6) / sales_units (col 5)
+IF(nUnits <> 0);
+  sVal = JsonGet(vRow, '/6/v');
+  IF(SUBST(sVal, 1, 1) @= '"');
+    sVal = SUBST(sVal, 2, LONG(sVal) - 2);
+  ENDIF;
+  IF(sVal @<> '' & sVal @<> 'null');
+    nCogs = StringToNumber(sVal);
+    nRate = nCogs \ nUnits;
+    IF(CellIsUpdateable(cCube, pVersion, sPeriod, sSKU, 'Base AUC') = 1);
+      CellPutN(nRate, cCube, pVersion, sPeriod, sSKU, 'Base AUC');
+      nCellsWritten = nCellsWritten + 1;
+    ENDIF;
+  ENDIF;
+ENDIF;
+#EndRegion
+#endregion
+#region Epilog
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+IF(bLogInfo = 1);
+  LogOutput('INFO', 'END: ' | cProcessName | ' | File=' | pFile | ' | Records=' | TRIM(STR(nRecordCount, 10, 0)) | ' | Cells=' | TRIM(STR(nCellsWritten, 10, 0)) | ' | SKUSkipped=' | TRIM(STR(nSKUSkipped, 10, 0)) | ' | DateSkipped=' | TRIM(STR(nDateSkipped, 10, 0)) | ' | RateSkip_NoUnits=' | TRIM(STR(nRateSkip_NoUnits, 10, 0)));
+ENDIF;
+#endregion

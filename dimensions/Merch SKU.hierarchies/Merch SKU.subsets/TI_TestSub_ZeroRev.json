@@ -1,0 +1,5 @@
+{
+	"@type":"Subset",
+	"Name":"TI_TestSub_ZeroRev",
+	"Expression":"{FILTER({TM1FILTERBYLEVEL({TM1SUBSETALL([Merch SKU].[Merch SKU])}, 0)}, [Merch SKU].[Merch SKU].CurrentMember.Properties(\"SGM_Category\")=\"Zero Rev\")}"
+}

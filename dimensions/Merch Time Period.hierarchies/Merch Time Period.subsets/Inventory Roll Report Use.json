@@ -1,0 +1,6 @@
+{
+	"@type":"Subset",
+	"Name":"Inventory Roll Report Use",
+	"Alias":"MEMBER_NAME",
+	"Expression":"TM1IGNORE_BADTUPLES {{{{{TOPCOUNT(FILTER(TM1DRILLDOWNMEMBER(TM1DRILLDOWNMEMBER(TM1DRILLDOWNMEMBER({[Merch Time Period].[Merch Time Period].[FY2026]} , ALL) , ALL) , ALL) , ([Merch Time Period].[Merch Time Period].CURRENTMEMBER.PROPERTIES(\"LEVEL_NUMBER\" , TYPED) = 3)) , 6),{{{TM1TOGGLEEXPANDMODE(TM1DRILLDOWNMEMBER(TOPCOUNT(EXCEPT(TM1DRILLDOWNMEMBER({[Merch Time Period].[Merch Time Period].[FY2026]} , ALL) , {[Merch Time Period].[Merch Time Period].[FY2026]} , ALL) , 1),ALL), EXPAND_ABOVE)}}},TAIL(FILTER(TM1DRILLDOWNMEMBER(TM1DRILLDOWNMEMBER(TM1DRILLDOWNMEMBER({[Merch Time Period].[Merch Time Period].[FY2026]} , ALL) , ALL) , ALL) , ([Merch Time Period].[Merch Time Period].CURRENTMEMBER.PROPERTIES(\"LEVEL_NUMBER\" , TYPED) = 3)) , 6)},{{{TM1TOGGLEEXPANDMODE(TM1DRILLDOWNMEMBER(TAIL(EXCEPT(TM1DRILLDOWNMEMBER({[Merch Time Period].[Merch Time Period].[FY2026]} , ALL) , {[Merch Time Period].[Merch Time Period].[FY2026]} , ALL) , 1),ALL), EXPAND_ABOVE)}}}}},{[Merch Time Period].[Merch Time Period].[FY2026]}}}"
+}

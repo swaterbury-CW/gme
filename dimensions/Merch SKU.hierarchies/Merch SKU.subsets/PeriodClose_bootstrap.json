@@ -1,0 +1,5 @@
+{
+	"@type":"Subset",
+	"Name":"PeriodClose_bootstrap",
+	"Expression":"{HEAD({TM1FILTERBYLEVEL({TM1SUBSETALL([Merch SKU].[Merch SKU])}, 0)}, 1)}"
+}

@@ -1,0 +1,6 @@
+{
+	"@type":"Subset",
+	"Name":"All PreOwned Other",
+	"Alias":"Caption",
+	"Expression":"TM1IGNORE_BADTUPLES {DRILLDOWNMEMBER({[Merch PreOwned Category].[Merch PreOwned Category].[PreOwned Other]} , {[Merch PreOwned Category].[Merch PreOwned Category].[PreOwned Other]} , RECURSIVE)}"
+}

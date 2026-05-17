@@ -1,0 +1,6 @@
+{
+	"@type":"Subset",
+	"Name":"Default",
+	"Alias":"Caption",
+	"Expression":"TM1IGNORE_BADTUPLES {DRILLDOWNMEMBER([Merch SKU].[Merch SKU].LEVELS(0).MEMBERS , {[Merch SKU].[Merch SKU].[All SKUs]} , RECURSIVE)}"
+}

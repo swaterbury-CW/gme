@@ -1,0 +1,42 @@
+{
+	"@type":"Process",
+	"Name":"Merch.Load.Lock.BQ.Page_temp",
+	"HasSecurityAccess":false,
+	"Code@Code.link":"Merch.Load.Lock.BQ.Page_temp.ti",
+	"DataSource":
+	{
+		"Type":"JSON",
+		"dataSourceNameForServer":"lock_3_9_2026_bq_page_1.json",
+		"jsonRootPointer":"/rows",
+		"jsonVariableMapping":""
+	},
+	"Parameters":
+	[
+		{
+			"Name":"pVersion",
+			"Prompt":"Merch Version target element",
+			"Value":"Last Lock - 03-09-2026",
+			"Type":"String"
+		},
+		{
+			"Name":"pFile",
+			"Prompt":"Page JSON file",
+			"Value":"lock_3_9_2026_bq_page_1.json",
+			"Type":"String"
+		}
+	],
+	"Variables":
+	[
+		{
+			"Name":"vRow",
+			"Type":"String",
+			"Position":1,
+			"StartByte":0,
+			"EndByte":0
+		}
+	],
+	"UIData": "CubeAction=1511\fDataAction=1503\fCubeLogChanges=0\f",
+	"VariablesUIData": [
+		"VarType=32\fColType=827\f"
+	]
+}

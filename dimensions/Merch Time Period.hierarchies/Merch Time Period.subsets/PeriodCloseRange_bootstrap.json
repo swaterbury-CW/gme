@@ -1,0 +1,5 @@
+{
+	"@type":"Subset",
+	"Name":"PeriodCloseRange_bootstrap",
+	"Expression":"{HEAD(TM1FILTERBYLEVEL({TM1SUBSETALL([Merch Time Period])}, 0), 1)}"
+}

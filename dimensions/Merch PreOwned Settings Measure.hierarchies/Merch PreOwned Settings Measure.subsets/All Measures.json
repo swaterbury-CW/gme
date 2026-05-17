@@ -1,0 +1,6 @@
+{
+	"@type":"Subset",
+	"Name":"All Measures",
+	"Alias":"MEMBER_NAME",
+	"Expression":"TM1IGNORE_BADTUPLES {TM1FILTERBYLEVEL(TM1SUBSETALL([Merch PreOwned Settings Measure].[Merch PreOwned Settings Measure]) , 0)}"
+}

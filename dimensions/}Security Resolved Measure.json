@@ -1,0 +1,12 @@
+{
+	"@type":"Dimension",
+	"Name":"}Security Resolved Measure",
+	"Hierarchies@Code.links":
+	[
+		"}Security Resolved Measure.hierarchies/}Security Resolved Measure.json"
+	],
+	"DefaultHierarchy":
+	{
+		"@id":"Dimensions('}Security Resolved Measure')/Hierarchies('}Security Resolved Measure')"
+	}
+}
