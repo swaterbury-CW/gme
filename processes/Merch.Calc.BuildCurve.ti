@@ -1,0 +1,311 @@
+#region Prolog
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+
+#Region : Process Header
+# DEVELOPER : Steve Waterbury
+# CREATED ON : 2026-03-22
+# LAST UPDATE: 2026-05-11
+# CHANGED BY : Steve Waterbury
+# COMMENTS: Builds a named curve in Merch Curve from source forecast data.
+# CHANGE HISTORY:
+#   2026-03-22 | Steve Waterbury | Initial creation
+#   2026-04-15 | Steve Waterbury | Full implementation with VIEW datasource
+#   2026-05-11 | Steve Waterbury | Qualified Merch Version hierarchy in WHERE MDX (multi-hier ambiguity fix)
+#EndRegion
+
+sProcess = GetProcessName();
+sLogLevel = CellGetS( 'ProcessControl', sProcess, 'LoggingLevel' );
+IF( sLogLevel @= '' );
+    sLogLevel = 'OFF';
+ENDIF;
+bLogInfo = 0;
+IF( sLogLevel @= 'INFO' % sLogLevel @= 'DEBUG' );
+    bLogInfo = 1;
+ENDIF;
+
+sCubeForecast = 'Merch Forecast';
+sCubeCurve = 'Merch Curve';
+sDimVersion = 'Merch Version';
+sDimTP = 'Merch Time Period';
+sDimSKU = 'Merch SKU';
+sDimCurveName = 'Merch Curve Name';
+sDimCurveWeek = 'Merch Curve Week';
+sDateFmt = '\Y-\m-\d';
+sDateFmtCompact = '\Y\m\d';
+
+IF( pCurveName @= '' );
+    pCurveName = TM1User() | '_' | pSourceElement | '_' | pFiscalYear | '_' | TIMST(NOW(), sDateFmtCompact);
+ENDIF;
+
+bAbort = 0;
+IF( pFiscalYear @= '' );
+    LogOutput( 'ERROR', sProcess | ' | pFiscalYear required' );
+    bAbort = 1;
+ENDIF;
+IF( pSourceVersion @= '' );
+    pSourceVersion = 'Actual';
+ENDIF;
+IF( bAbort = 0 );
+    IF( DIMIX( sDimVersion, pSourceVersion ) = 0 );
+        LogOutput( 'ERROR', sProcess | ' | bad version' );
+        bAbort = 1;
+    ENDIF;
+ENDIF;
+IF( pSourceElement @= '' );
+    LogOutput( 'ERROR', sProcess | ' | pSourceElement required' );
+    bAbort = 1;
+ELSE;
+    IF( HierarchyElementExists('Merch Sku','Roles',pSourceElement)= 0 );
+        LogOutput( 'ERROR', sProcess | ' | bad SKU' );
+        bAbort = 1;
+    ENDIF;
+ENDIF;
+
+nWeekCount = 52;
+nSrcUnits = 0;
+nTotalUnits = 0;
+nVelWrites = 0;
+nSeaWrites = 0;
+nRegWrites = 0;
+nMDWrites = 0;
+nLvlWrites = 0;
+sFirstWeek = '';
+sLastWeek = '';
+sFYElement = '';
+sView = '';
+
+IF( bAbort = 0 );
+    IF( DIMIX( sDimCurveName, pCurveName ) = 0 );
+        DimensionElementInsertDirect( sDimCurveName, '', pCurveName, 'N' );
+        DimensionElementComponentAddDirect( sDimCurveName, 'All Curves', pCurveName, 1 );
+    ENDIF;
+ENDIF;
+
+IF( DIMIX( sDimTP, pFiscalYear | '-W53' ) > 0 );
+    nWeekCount = 53;
+ENDIF;
+
+sView = 'TI_BuildCurve_' | TRIM(STR(NOW, 15, 0));
+sMDX = 'SELECT {[Merch Forecast Measure].[Units]} ON COLUMNS, '
+     | '{TM1FILTERBYLEVEL({DESCENDANTS([Merch Time Period].[' | pFiscalYear | '])}, 0)} ON ROWS '
+     | 'FROM [Merch Forecast] '
+     | 'WHERE ([Merch Version].[Merch Version].[' | pSourceVersion | '], [Merch SKU].[Roles].[' | pSourceElement | '])';
+
+LogOutput( 'INFO', sMDX );
+
+IF( ViewExists( sCubeForecast, sView ) = 1 );
+    ViewDestroy( sCubeForecast, sView );
+ENDIF;
+ViewCreateByMDX( sCubeForecast, sView, sMDX, 1 );
+ViewExtractSkipCalcsSet( sCubeForecast, sView, 0 );
+
+DatasourceType = 'VIEW';
+DatasourceNameForServer = sCubeForecast;
+DatasourceCubeview = sView;
+
+#endregion
+#region Metadata
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+
+#endregion
+#region Data
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+IF( bAbort = 1 );
+    ItemSkip;
+ENDIF;
+sTP = vMerch_Time_Period;
+IF( DTYPE( sDimTP, sTP ) @<> 'N' );
+    ItemSkip;
+ENDIF;
+nWN = ATTRN( sDimTP, sTP, 'Week Number' );
+IF( nWN < 1 % nWN > 53 );
+    ItemReject( 'Invalid week number for ' | sTP );
+ENDIF;
+sCW = 'Week ' | TRIM( STR( nWN, 2, 0 ) );
+IF( DIMIX( sDimCurveWeek, sCW ) = 0 );
+    ItemReject( 'Curve week not found: ' | sCW );
+ENDIF;
+IF( sFirstWeek @= '' );
+    sFirstWeek = sTP;
+ENDIF;
+sLastWeek = sTP;
+
+nUnits = CellGetN( sCubeForecast, pSourceVersion, sTP, 'Roles:'|pSourceElement, 'Units' );
+nAUR = CellGetN( sCubeForecast, pSourceVersion, sTP, 'Roles:'|pSourceElement, 'Applied/Effective AUR' );
+nFPAUR = CellGetN( sCubeForecast, pSourceVersion, sTP, 'Roles:'|pSourceElement, 'Full Price AUR' );
+nCost = CellGetN( sCubeForecast, pSourceVersion, sTP, 'Roles:'|pSourceElement, 'Base AUC' );
+
+IF( CellIsUpdateable( sCubeCurve, pCurveName, sCW, 'Source Units' ) = 1 );
+    CellPutN( nUnits, sCubeCurve, pCurveName, sCW, 'Source Units' );
+    nSrcUnits = nSrcUnits + 1;
+    nTotalUnits = nTotalUnits + nUnits;
+ELSE;
+    ItemReject( 'Source Units not updateable' );
+ENDIF;
+IF( CellIsUpdateable( sCubeCurve, pCurveName, sCW, 'Source AUR' ) = 1 );
+    CellPutN( nAUR, sCubeCurve, pCurveName, sCW, 'Source AUR' );
+ELSE;
+    ItemReject( 'Source AUR not updateable' );
+ENDIF;
+IF( CellIsUpdateable( sCubeCurve, pCurveName, sCW, 'Source FP AUR' ) = 1 );
+    CellPutN( nFPAUR, sCubeCurve, pCurveName, sCW, 'Source FP AUR' );
+ELSE;
+    ItemReject( 'Source FP AUR not updateable' );
+ENDIF;
+IF( CellIsUpdateable( sCubeCurve, pCurveName, sCW, 'Source Cost' ) = 1 );
+    CellPutN( nCost, sCubeCurve, pCurveName, sCW, 'Source Cost' );
+ELSE;
+    ItemReject( 'Source Cost not updateable' );
+ENDIF;
+
+#endregion
+#region Epilog
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+IF( sView @<> '' );
+    IF( ViewExists( sCubeForecast, sView ) = 1 );
+        ViewDestroy( sCubeForecast, sView );
+    ENDIF;
+ENDIF;
+IF( bAbort = 1 % nSrcUnits = 0 );
+    IF( nSrcUnits = 0 & bAbort = 0 );
+        LogOutput( 'ERROR', sProcess | ' | No source data' );
+    ENDIF;
+ELSE;
+    IF( CellIsUpdateable( sCubeCurve, pCurveName, 'Week 1', 'Source Version' ) = 1 );
+        CellPutS( pSourceVersion, sCubeCurve, pCurveName, 'Week 1', 'Source Version' );
+    ENDIF;
+    IF( CellIsUpdateable( sCubeCurve, pCurveName, 'Week 1', 'Description' ) = 1 );
+        CellPutS( TM1User() | ' built ' | TIMST(NOW(), sDateFmt) | ' from ' | pSourceElement, sCubeCurve, pCurveName, 'Week 1', 'Description' );
+    ENDIF;
+    IF( CellIsUpdateable( sCubeCurve, pCurveName, 'Week 1', 'Created Date' ) = 1 );
+        CellPutN( NOW(), sCubeCurve, pCurveName, 'Week 1', 'Created Date' );
+    ENDIF;
+    nWk = 1;
+    WHILE( nWk <= nWeekCount );
+        sCWk = 'Week ' | TRIM( STR( nWk, 2, 0 ) );
+        nUnits = CellGetN( sCubeCurve, pCurveName, sCWk, 'Source Units' );
+        nAUR = CellGetN( sCubeCurve, pCurveName, sCWk, 'Source AUR' );
+        nFP = CellGetN( sCubeCurve, pCurveName, sCWk, 'Source FP AUR' );
+        IF( pBuildVelocity = 1 );
+            nPrevWk = nWk - 1;
+            IF( nPrevWk >= 1 );
+                sPrevCW = 'Week ' | TRIM( STR( nPrevWk, 2, 0 ) );
+                nPrevUnits = CellGetN( sCubeCurve, pCurveName, sPrevCW, 'Source Units' );
+                IF( nPrevUnits <> 0 );
+                    IF( CellIsUpdateable( sCubeCurve, pCurveName, sCWk, 'Velocity' ) = 1 );
+                        CellPutN( nUnits \ nPrevUnits, sCubeCurve, pCurveName, sCWk, 'Velocity' );
+                        nVelWrites = nVelWrites + 1;
+                    ENDIF;
+                ENDIF;
+            ENDIF;
+        ENDIF;
+        IF( pBuildSeasonality = 1 & nTotalUnits <> 0 );
+            IF( CellIsUpdateable( sCubeCurve, pCurveName, sCWk, 'Seasonality' ) = 1 );
+                CellPutN( ( nUnits \ nTotalUnits ) * nWeekCount, sCubeCurve, pCurveName, sCWk, 'Seasonality' );
+                nSeaWrites = nSeaWrites + 1;
+            ENDIF;
+        ENDIF;
+        IF( pBuildRegime = 1 & nFP <> 0 );
+            IF( CellIsUpdateable( sCubeCurve, pCurveName, sCWk, 'Regime' ) = 1 );
+                CellPutN( 1 - ( nAUR \ nFP ), sCubeCurve, pCurveName, sCWk, 'Regime' );
+                nRegWrites = nRegWrites + 1;
+            ENDIF;
+        ENDIF;
+        IF( pBuildLevel = 1 & nWeekCount > 0 );
+            IF( CellIsUpdateable( sCubeCurve, pCurveName, sCWk, 'Level' ) = 1 );
+                CellPutN( nTotalUnits \ nWeekCount, sCubeCurve, pCurveName, sCWk, 'Level' );
+                nLvlWrites = nLvlWrites + 1;
+            ENDIF;
+        ENDIF;
+        nWk = nWk + 1;
+    END;
+    IF( pBuildMarkdown = 1 );
+        nMDWk = 1;
+        WHILE( nMDWk <= nWeekCount );
+            sMDWeekNum = TRIM( STR( nMDWk, 2, 0 ) );
+            IF( nMDWk < 10 );
+                sMDWeekNum = '0' | sMDWeekNum;
+            ENDIF;
+            sMDTP = pFiscalYear | '-W' | sMDWeekNum;
+            IF( DIMIX( sDimTP, sMDTP ) > 0 );
+                bInRange = 1;
+                IF( pStartDate > 0 );
+                    nTPStart = ATTRN( sDimTP, sMDTP, 'Start_Date' );
+                    IF( nTPStart < pStartDate );
+                        bInRange = 0;
+                    ENDIF;
+                ENDIF;
+                IF( pEndDate > 0 );
+                    nTPEnd = ATTRN( sDimTP, sMDTP, 'End_Date' );
+                    IF( nTPEnd > pEndDate );
+                        bInRange = 0;
+                    ENDIF;
+                ENDIF; 
+                IF( bInRange = 1 );
+                    sMDCW = 'Week ' | TRIM( STR( nMDWk, 2, 0 ) );
+                    nMDA = CellGetN( sCubeCurve, pCurveName, sMDCW, 'Source AUR' );
+                    nMDF = CellGetN( sCubeCurve, pCurveName, sMDCW, 'Source FP AUR' );
+                    IF( nMDF <> 0 );
+                        IF( CellIsUpdateable( sCubeCurve, pCurveName, sMDCW, 'Markdown %' ) = 1 );
+                            CellPutN( 1 - ( nMDA \ nMDF ), sCubeCurve, pCurveName, sMDCW, 'Markdown %' );
+                            nMDWrites = nMDWrites + 1;
+                        ENDIF;
+                    ENDIF;
+                ENDIF;
+            ENDIF;
+            nMDWk = nMDWk + 1;
+        END;
+    ENDIF;
+    sCurveType = '';
+    IF( pBuildLevel = 1 );
+        sCurveType = 'Level';
+    ENDIF;
+    IF( pBuildRegime = 1 );
+        sCurveType = 'Regime';
+    ENDIF;
+    IF( pBuildMarkdown = 1 );
+        sCurveType = 'Markdown';
+    ENDIF;
+    IF( pBuildVelocity = 1 );
+        sCurveType = 'Velocity';
+    ENDIF;
+    IF( pBuildSeasonality = 1 );
+        sCurveType = 'Seasonality';
+    ENDIF;
+    AttrPutS( sCurveType, sDimCurveName, pCurveName, 'Curve Type' );
+    AttrPutN( pBuildVelocity, sDimCurveName, pCurveName, 'Has_Velocity' );
+    AttrPutN( pBuildSeasonality, sDimCurveName, pCurveName, 'Has_Seasonality' );
+    AttrPutN( pBuildRegime, sDimCurveName, pCurveName, 'Has_Regime' );
+    AttrPutN( pBuildMarkdown, sDimCurveName, pCurveName, 'Has_Markdown' );
+    AttrPutN( pBuildLevel, sDimCurveName, pCurveName, 'Has_Level' );
+    IF( DTYPE( sDimSKU, pSourceElement ) @= 'N' );
+        AttrPutS( pSourceElement, sDimCurveName, pCurveName, 'Source SKU' );
+    ELSE;
+        AttrPutS( pSourceElement, sDimCurveName, pCurveName, 'Source Category' );
+    ENDIF;
+    AttrPutS( pSourceVersion, sDimCurveName, pCurveName, 'Source Version' );
+    AttrPutS( sFirstWeek, sDimCurveName, pCurveName, 'Source Start Period' );
+    AttrPutS( sLastWeek, sDimCurveName, pCurveName, 'Source End Period' );
+    IF( sFirstWeek @<> '' );
+        AttrPutN( ATTRN( sDimTP, sFirstWeek, 'Start_Date_Serial' ), sDimCurveName, pCurveName, 'Source_Start_Period_Serial' );
+    ENDIF;
+    IF( sLastWeek @<> '' );
+        AttrPutN( ATTRN( sDimTP, sLastWeek, 'End_Date_Serial' ), sDimCurveName, pCurveName, 'Source_End_Period_Serial' );
+    ENDIF;
+    AttrPutS( TIMST(NOW(), sDateFmt), sDimCurveName, pCurveName, 'Created Date' );
+    AttrPutN( NOW(), sDimCurveName, pCurveName, 'Created_Date_Serial' );
+    AttrPutS( TM1User(), sDimCurveName, pCurveName, 'Created By' );
+    IF( bLogInfo = 1 );
+        LogOutput( 'INFO', sProcess | ' | END | Curve=' | pCurveName | ' | Weeks=' | TRIM(STR(nSrcUnits, 5, 0)) | ' | Type=' | sCurveType );
+    ENDIF;
+ENDIF;
+nRC = ExecuteProcess('Merch.Dim.RefreshCurveSubsets');
+IF( nRC <> 0 );
+    LogOutput( 'ERROR', sProcess | ' | RefreshCurveSubsets failed' );
+ENDIF;
+
+#endregion
