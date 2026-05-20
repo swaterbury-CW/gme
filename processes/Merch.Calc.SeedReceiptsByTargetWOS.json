@@ -1,0 +1,71 @@
+{
+	"@type":"Process",
+	"Name":"Merch.Calc.SeedReceiptsByTargetWOS",
+	"HasSecurityAccess":false,
+	"Code@Code.link":"Merch.Calc.SeedReceiptsByTargetWOS.ti",
+	"DataSource":
+	{
+		"Type":"TM1CubeView",
+		"dataSourceNameForServer":"Merch Version SKU Attributes",
+		"dataSourceNameForClient":"Merch Version SKU Attributes",
+		"view":"TI_SeedReceiptsByTargetWOS"
+	},
+	"Parameters":
+	[
+		{
+			"Name":"pVersion",
+			"Prompt":"Merch Version (required)",
+			"Value":"",
+			"Type":"String"
+		},
+		{
+			"Name":"pSKU",
+			"Prompt":"Merch SKU in Roles hier (optional)",
+			"Value":"",
+			"Type":"String"
+		},
+		{
+			"Name":"pCategory",
+			"Prompt":"SGM Category filter (optional)",
+			"Value":"",
+			"Type":"String"
+		},
+		{
+			"Name":"pOverwrite",
+			"Prompt":"Clear existing Receipts first (Y/N)",
+			"Value":"",
+			"Type":"String"
+		}
+	],
+	"Variables":
+	[
+		{
+			"Name":"vMerch_Version_SKU_Attribute_Measure",
+			"Type":"String",
+			"Position":1,
+			"StartByte":0,
+			"EndByte":0
+		},
+		{
+			"Name":"vMerch_SKU",
+			"Type":"String",
+			"Position":2,
+			"StartByte":0,
+			"EndByte":0
+		},
+		{
+			"Name":"vMerch_Version",
+			"Type":"String",
+			"Position":3,
+			"StartByte":0,
+			"EndByte":0
+		}
+	],
+	"UID": "17769934830001",
+	"UIData": "CubeAction=1511\fDataAction=1503\fCubeLogChanges=0\f",
+	"VariablesUIData": [
+		"VarType=32\fColType=827\f",
+		"VarType=32\fColType=827\f",
+		"VarType=32\fColType=827\f"
+	]
+}
