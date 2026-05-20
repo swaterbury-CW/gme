@@ -1,0 +1,123 @@
+#region Prolog
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+#Region : Process Header
+# DEVELOPER: Steve Waterbury
+# CREATED ON: 2026-05-20
+# LAST UPDATE: 2026-05-20
+# CHANGED BY: Steve Waterbury
+# COMMENTS: Worker. Submits Merch PreOwned Warranty -> Merch Plan Reporting. Source carries Merch Channel natively; passthrough (no split path).
+# CHANGE HISTORY:
+#   2026-05-20 | Steve Waterbury | Creation. Design plan a7121185a407.
+#EndRegion
+
+cProcessName = GetProcessName();
+sLogLevel = CellGetS('ProcessControl', cProcessName, 'LoggingLevel');
+IF(sLogLevel @= '');
+  sLogLevel = 'OFF';
+ENDIF;
+bLogInfo = 0;
+IF(sLogLevel @= 'INFO' % sLogLevel @= 'DEBUG');
+  bLogInfo = 1;
+ENDIF;
+IF(bLogInfo = 1);
+  LogOutput('INFO', 'START ' | cProcessName | ' V=' | pVersion | ' Cat=' | pPreOwnedCategory);
+ENDIF;
+
+IF(DIMIX('Merch Version', pVersion) = 0);
+  LogOutput('ERROR', cProcessName | ' | Invalid pVersion: ' | pVersion);
+  ProcessError;
+ENDIF;
+IF(pPreOwnedCategory @= '' % DIMIX('Merch PreOwned Category', pPreOwnedCategory) = 0);
+  LogOutput('ERROR', cProcessName | ' | Invalid pPreOwnedCategory: ' | pPreOwnedCategory);
+  ProcessError;
+ENDIF;
+
+sSrcCube = 'Merch PreOwned Warranty';
+sDstCube = 'Merch Plan Reporting';
+sViewName = 'temp_PreOwnedSubmit_Warranty';
+
+sMDX = 'SELECT NON EMPTY {TM1FILTERBYLEVEL({TM1SUBSETALL([Merch PreOwned Warranty Measure].[Merch PreOwned Warranty Measure])},0)} ON COLUMNS, NON EMPTY {TM1FILTERBYLEVEL({TM1SUBSETALL([Merch Time Period].[Merch Time Period])},0)} * {Descendants([Merch PreOwned Category].[Merch PreOwned Category].[' | pPreOwnedCategory | '],99,SELF_AND_BEFORE)} * {TM1FILTERBYLEVEL({TM1SUBSETALL([Merch Channel].[Merch Channel])},0)} ON ROWS FROM [Merch PreOwned Warranty] WHERE ([Merch Version].[Merch Version].[' | pVersion | '])';
+
+IF(ViewExists(sSrcCube, sViewName) = 1);
+  ViewDestroy(sSrcCube, sViewName);
+ENDIF;
+ViewCreateByMDX(sSrcCube, sViewName, sMDX);
+DatasourceType = 'VIEW';
+DatasourceNameForServer = sSrcCube;
+DatasourceCubeview = sViewName;
+nWritten = 0;
+nSkipped = 0;
+
+#endregion
+#region Metadata
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+
+#endregion
+#region Data
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+IF(Value = 0);
+  ItemSkip;
+ENDIF;
+
+sTargetMeasure = ATTRS('Merch PreOwned Warranty Measure', vMerch_PreOwned_Warranty_Measure, 'Plan Reporting Measure');
+IF(Trim(sTargetMeasure) @= '');
+  nSkipped = nSkipped + 1;
+  ItemSkip;
+ENDIF;
+IF(DIMIX('Merch Plan Reporting Measure', sTargetMeasure) = 0);
+  LogOutput('ERROR', cProcessName | ' | Unmapped measure ' | vMerch_PreOwned_Warranty_Measure | ' -> ' | sTargetMeasure);
+  nSkipped = nSkipped + 1;
+  ItemSkip;
+ENDIF;
+
+sTargetSKU = vMerch_PreOwned_Category;
+nGuard = 0;
+WHILE(DIMIX('Merch SKU', sTargetSKU) > 0
+      & DTYPE('Merch SKU', sTargetSKU) @= 'C'
+      & nGuard < 20);
+  sTargetSKU = ELCOMP('Merch SKU', sTargetSKU, 1);
+  nGuard = nGuard + 1;
+END;
+IF(DIMIX('Merch SKU', sTargetSKU) = 0);
+  LogOutput('ERROR', cProcessName | ' | No Merch SKU match for ' | vMerch_PreOwned_Category);
+  nSkipped = nSkipped + 1;
+  ItemSkip;
+ENDIF;
+
+sLifecycle = ATTRS('Merch SKU', sTargetSKU, 'Lifecycle_Status_Description');
+IF(Trim(sLifecycle) @= '' % DIMIX('Merch Lifecycle', sLifecycle) = 0);
+  sLifecycle = 'Active';
+ENDIF;
+
+sCh = vMerch_Channel;
+IF(DIMIX('Merch Channel', sCh) = 0);
+  nSkipped = nSkipped + 1;
+  ItemSkip;
+ENDIF;
+IF(ELLEV('Merch Channel', sCh) <> 0);
+  nSkipped = nSkipped + 1;
+  ItemSkip;
+ENDIF;
+
+IF(CellIsUpdateable(sDstCube, pVersion, vMerch_Time_Period, sTargetSKU, sCh, sLifecycle, sTargetMeasure) = 1);
+  CellPutN(Value, sDstCube, pVersion, vMerch_Time_Period, sTargetSKU, sCh, sLifecycle, sTargetMeasure);
+  nWritten = nWritten + 1;
+ELSE;
+  LogOutput('ERROR', cProcessName | ' | Not updateable: ' | sTargetSKU | '/' | sCh | '/' | sTargetMeasure);
+ENDIF;
+
+#endregion
+#region Epilog
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+IF(ViewExists(sSrcCube, sViewName) = 1);
+  ViewDestroy(sSrcCube, sViewName);
+ENDIF;
+IF(bLogInfo = 1);
+  LogOutput('INFO', 'END ' | cProcessName | ' Written=' | TRIM(STR(nWritten, 10, 0)) | ' Skipped=' | TRIM(STR(nSkipped, 10, 0)));
+ENDIF;
+
+#endregion

@@ -1,6 +1,0 @@
-{
-	"@type":"Subset",
-	"Name":"CustomWeeks",
-	"Alias":"Caption",
-	"Expression":"TM1IGNORE_BADTUPLES {EXCEPT(DISTINCT({{[Merch Time Period].[Merch Time Period].[FY2026]},DESCENDANTS([Merch Time Period].[Merch Time Period].[FY2026] , 99 , LEAVES)}) , {[Merch Time Period].[Merch Time Period].[FY2026]})}"
-}

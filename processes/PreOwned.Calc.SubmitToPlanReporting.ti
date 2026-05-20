@@ -1,0 +1,60 @@
+#region Prolog
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+#Region : Process Header
+# DEVELOPER: Steve Waterbury
+# CREATED ON: 2026-05-08
+# LAST UPDATE: 2026-05-20
+# CHANGED BY: Steve Waterbury
+# COMMENTS: Orchestrator. Submits Merch PreOwned Forecast + Inventory + Warranty to Merch Plan Reporting. pPreOwnedCategory='' iterates all PreOwned Category leaves in Epilog.
+# CHANGE HISTORY:
+#   2026-05-08 | Steve Waterbury | Creation. Design plan e6010c9bdb78.
+#   2026-05-20 | Steve Waterbury | Finalize: add Warranty dispatch, add all-categories Epilog loop. Design plan a7121185a407.
+#EndRegion
+
+cProcessName = GetProcessName();
+LogOutput('INFO', 'START ' | cProcessName | ' V=' | pVersion | ' Cat=' | pPreOwnedCategory);
+
+IF(DIMIX('Merch Version', pVersion) = 0);
+  LogOutput('ERROR', cProcessName | ' | Invalid pVersion: ' | pVersion);
+  ProcessError;
+ENDIF;
+IF(pPreOwnedCategory @<> '' & DIMIX('Merch PreOwned Category', pPreOwnedCategory) = 0);
+  LogOutput('ERROR', cProcessName | ' | Invalid pPreOwnedCategory: ' | pPreOwnedCategory);
+  ProcessError;
+ENDIF;
+
+#endregion
+#region Metadata
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+
+#endregion
+#region Data
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+
+#endregion
+#region Epilog
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+IF(pPreOwnedCategory @<> '');
+  ExecuteProcess('PreOwned.Calc.SubmitToPlanReporting.Forecast', 'pVersion', pVersion, 'pPreOwnedCategory', pPreOwnedCategory);
+  ExecuteProcess('PreOwned.Calc.SubmitToPlanReporting.Inventory', 'pVersion', pVersion, 'pPreOwnedCategory', pPreOwnedCategory);
+  ExecuteProcess('PreOwned.Calc.SubmitToPlanReporting.Warranty', 'pVersion', pVersion, 'pPreOwnedCategory', pPreOwnedCategory);
+ELSE;
+  nDimSize = DIMSIZ('Merch PreOwned Category');
+  i = 1;
+  WHILE(i <= nDimSize);
+    sCat = DIMNM('Merch PreOwned Category', i);
+    IF(ELLEV('Merch PreOwned Category', sCat) = 0);
+      ExecuteProcess('PreOwned.Calc.SubmitToPlanReporting.Forecast', 'pVersion', pVersion, 'pPreOwnedCategory', sCat);
+      ExecuteProcess('PreOwned.Calc.SubmitToPlanReporting.Inventory', 'pVersion', pVersion, 'pPreOwnedCategory', sCat);
+      ExecuteProcess('PreOwned.Calc.SubmitToPlanReporting.Warranty', 'pVersion', pVersion, 'pPreOwnedCategory', sCat);
+    ENDIF;
+    i = i + 1;
+  END;
+ENDIF;
+LogOutput('INFO', 'END ' | cProcessName);
+
+#endregion
