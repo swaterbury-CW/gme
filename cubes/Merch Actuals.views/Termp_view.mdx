@@ -1,1 +1,0 @@
-SELECT NON EMPTY {TM1FILTERBYLEVEL(TM1SUBSETALL([Merch Actuals Measure]) , 0)} ON 0, NON EMPTY {TM1FILTERBYLEVEL(DESCENDANTS([Merch Time Period].[fy2025]) , 0)}*{TM1FILTERBYLEVEL(TM1SUBSETALL([Merch SKU].[Merch SKU]) , 0)} DIMENSION PROPERTIES [Merch Time Period].[Merch Time Period].[Caption] ON 1 FROM [Merch Actuals] WHERE ([Merch Channel].[Merch Channel].[All Channels])

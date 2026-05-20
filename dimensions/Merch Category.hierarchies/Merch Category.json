@@ -789,6 +789,8 @@
 	[
 		"Merch Category.subsets/All Categories.json",
 		"Merch Category.subsets/All Categories Excluding Pre-Owned.json",
-		"Merch Category.subsets/All Pre-Owned Categories.json"
+		"Merch Category.subsets/All Pre-Owned Categories.json",
+		"Merch Category.subsets/Default.json",
+		"Merch Category.subsets/ForecastVerCopyCat_bootstrap.json"
 	]
 }

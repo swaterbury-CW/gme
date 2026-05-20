@@ -1,5 +1,0 @@
-{
-	"@type":"Subset",
-	"Name":"TI_LASB_SKU_Leaves",
-	"Expression":"{TM1FILTERBYLEVEL({TM1SUBSETALL([Merch SKU].[Merch SKU])}, 0)}"
-}

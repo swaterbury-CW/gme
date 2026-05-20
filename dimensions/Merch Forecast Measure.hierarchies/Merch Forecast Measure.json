@@ -178,6 +178,34 @@
 		{
 			"Name":"Expected Calc Sales",
 			"Type":"Numeric"
+		},
+		{
+			"Name":"Sales AUC",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Receipt AUC",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Inventory AUC",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Receipt Dollars",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"BOP Dollars",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"EOP Dollars",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Inv Adjustment Dollars",
+			"Type":"Numeric"
 		}
 	],
 	"Edges":
