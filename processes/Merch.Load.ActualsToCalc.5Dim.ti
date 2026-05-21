@@ -1,0 +1,134 @@
+#region Prolog
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+#Region : Process Header
+# DEVELOPER : Steve Waterbury
+# CREATED ON : 2026-04-03
+# LAST UPDATE: 2026-05-20
+# CHANGED BY : Steve Waterbury
+# COMMENTS: 5-dim variant of ActualsToCalc.
+# CHANGE HISTORY:
+#   2026-04-03 | Steve Waterbury | Initial creation
+#   2026-05-11 | Steve Waterbury | Qualified TM1SUBSETALL hierarchies on cDim3/cDim4 and WHERE on cDimVersion (multi-hier ambiguity fix)
+#   2026-05-20 | Steve Waterbury | Bypass LCP attr on Merch Actuals Measure lets forward-looking actuals flow past LCP
+#EndRegion
+
+cProcessName = GetProcessName();
+sLogLevel = CellGetS('ProcessControl', cProcessName, 'LoggingLevel');
+IF(sLogLevel @= '');
+  sLogLevel = 'OFF';
+ENDIF;
+bLogInfo = 0;
+IF(sLogLevel @= 'INFO' % sLogLevel @= 'DEBUG');
+  bLogInfo = 1;
+ENDIF;
+bLogDebug = 0;
+IF(sLogLevel @= 'DEBUG');
+  bLogDebug = 1;
+ENDIF;
+IF(bLogInfo = 1);
+  LogOutput('INFO', 'START: ' | cProcessName | ' | Cube=' | pCubeName | ' | Target=' | pTargetVersion);
+ENDIF;
+
+IF(pCubeName @= '');
+  LogOutput('ERROR', cProcessName | ' | pCubeName is required');
+  ProcessError;
+ENDIF;
+IF(CubeExists(pCubeName) = 0);
+  LogOutput('ERROR', cProcessName | ' | Cube not found: ' | pCubeName);
+  ProcessError;
+ENDIF;
+IF(pTargetVersion @= '');
+  LogOutput('ERROR', cProcessName | ' | pTargetVersion is required');
+  ProcessError;
+ENDIF;
+IF(DIMIX('Merch Version', pTargetVersion) = 0);
+  LogOutput('ERROR', cProcessName | ' | Version not found');
+  ProcessError;
+ENDIF;
+IF(ATTRS('Merch Version', pTargetVersion, 'Version_Type') @<> 'Calculated');
+  LogOutput('ERROR', cProcessName | ' | Not Calculated');
+  ProcessError;
+ENDIF;
+
+nLastClosedSerial = ATTRN('Merch Version', pTargetVersion, 'Last_Closed_Period');
+IF(nLastClosedSerial = 0);
+  IF(bLogInfo = 1);
+    LogOutput('INFO', cProcessName | ' | No closed periods.');
+  ENDIF;
+  ProcessQuit;
+ENDIF;
+
+# Bypass-set: dest measures whose source Merch Actuals Measure has Bypass LCP = 1.
+sBypassMeasures = ';';
+nActMeasSize = DIMSIZ('Merch Actuals Measure');
+nBPx = 1;
+WHILE(nBPx <= nActMeasSize);
+  sActMeas = DIMNM('Merch Actuals Measure', nBPx);
+  IF(ATTRN('Merch Actuals Measure', sActMeas, 'Bypass LCP') = 1);
+    sDstMeas = ATTRS('Merch Actuals Measure', sActMeas, 'Forecast Measure Map');
+    IF(sDstMeas @<> '');
+      sBypassMeasures = sBypassMeasures | sDstMeas | ';';
+    ENDIF;
+  ENDIF;
+  nBPx = nBPx + 1;
+END;
+IF(bLogInfo = 1); LogOutput('INFO', cProcessName | ' | BypassSet=' | sBypassMeasures); ENDIF;
+
+cDimVersion = TABDIM(pCubeName, 1);
+cDimTimePeriod = TABDIM(pCubeName, 2);
+cDim3 = TABDIM(pCubeName, 3);
+cDim4 = TABDIM(pCubeName, 4);
+cDimMeasure = TABDIM(pCubeName, 5);
+
+sViewName = 'TI_ActToCalc5_' | TRIM(STR(NOW, 15, 0));
+sMdxQuery = 'SELECT {TM1FILTERBYLEVEL({TM1SUBSETALL([' | cDimMeasure | '])}, 0)} ON COLUMNS, '
+  | 'NON EMPTY CROSSJOIN('
+  | 'TM1FILTERBYLEVEL({TM1SUBSETALL([' | cDimTimePeriod | '])}, 0), '
+  | 'CROSSJOIN('
+  | 'TM1FILTERBYLEVEL({TM1SUBSETALL([' | cDim3 | '].[' | cDim3 | '])}, 0), '
+  | 'TM1FILTERBYLEVEL({TM1SUBSETALL([' | cDim4 | '].[' | cDim4 | '])}, 0)'
+  | ')) ON ROWS '
+  | 'FROM [' | pCubeName | '] WHERE ([' | cDimVersion | '].[' | cDimVersion | '].[Actual])';
+
+ViewCreateByMDX(pCubeName, sViewName, sMdxQuery, 1);
+ViewExtractSkipCalcsSet(pCubeName, sViewName, 0);
+ViewSuppressZeroesSet(pCubeName, sViewName, 1);
+nCellsCopied = 0;
+nCellsSkipped = 0;
+DatasourceType = 'VIEW';
+DatasourceNameForServer = pCubeName;
+DatasourceCubeview = sViewName;
+
+#endregion
+#region Metadata
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+
+#endregion
+#region Data
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+bBypass = 0;
+IF(SCAN(';' | vMeasure | ';', sBypassMeasures) > 0); bBypass = 1; ENDIF;
+IF(bBypass = 0 & ATTRN(cDimTimePeriod, vTimePeriod, 'Start_Date') > nLastClosedSerial);
+  nCellsSkipped = nCellsSkipped + 1;
+  ItemSkip;
+ENDIF;
+IF(Value <> 0);
+  IF(CellIsUpdateable(pCubeName, pTargetVersion, vTimePeriod, vDim3, vDim4, vMeasure) = 1);
+    CellPutN(Value, pCubeName, pTargetVersion, vTimePeriod, vDim3, vDim4, vMeasure);
+    nCellsCopied = nCellsCopied + 1;
+  ENDIF;
+ENDIF;
+
+#endregion
+#region Epilog
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+ViewDestroy(pCubeName, sViewName);
+IF(bLogInfo = 1);
+  LogOutput('INFO', 'END: ' | cProcessName | ' | Copied=' | TRIM(STR(nCellsCopied, 10, 0)) | ' | Skipped=' | TRIM(STR(nCellsSkipped, 10, 0)));
+ENDIF;
+
+#endregion

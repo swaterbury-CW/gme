@@ -1,26 +1,32 @@
 {
 	"@type":"Process",
-	"Name":"Merch.Placeholder.BuildPicklistIndex.Subsets.Worker",
+	"Name":"Merch.Load.ActualsToCalc",
 	"HasSecurityAccess":false,
-	"Code@Code.link":"Merch.Placeholder.BuildPicklistIndex.Subsets.Worker.ti",
+	"Code@Code.link":"Merch.Load.ActualsToCalc.ti",
 	"DataSource":
 	{
 		"Type":"TM1CubeView",
-		"dataSourceNameForServer":"}Merch Placeholder Picklist Index",
-		"dataSourceNameForClient":"}Merch Placeholder Picklist Index",
-		"view":"PLI_Placeholder"
+		"dataSourceNameForServer":"Merch Forecast",
+		"dataSourceNameForClient":"Merch Forecast",
+		"view":"TI_CopyTPSKU_placeholder"
 	},
 	"Parameters":
 	[
 		{
-			"Name":"pCategory",
-			"Prompt":"Merch Category",
+			"Name":"pCubeName",
+			"Prompt":"cube",
 			"Value":"",
 			"Type":"String"
 		},
 		{
-			"Name":"pRunId",
-			"Prompt":"Run identifier",
+			"Name":"pTargetVersion",
+			"Prompt":"version",
+			"Value":"",
+			"Type":"String"
+		},
+		{
+			"Name":"pTimePeriod",
+			"Prompt":"Time period",
 			"Value":"",
 			"Type":"String"
 		}
@@ -28,52 +34,44 @@
 	"Variables":
 	[
 		{
-			"Name":"vMerch_Category",
+			"Name":"vMerch_Version",
 			"Type":"String",
 			"Position":1,
 			"StartByte":0,
 			"EndByte":0
 		},
 		{
-			"Name":"vL4",
+			"Name":"vMerch_Time_Period",
 			"Type":"String",
 			"Position":2,
 			"StartByte":0,
 			"EndByte":0
 		},
 		{
-			"Name":"vVendor",
+			"Name":"vMerch_SKU",
 			"Type":"String",
 			"Position":3,
 			"StartByte":0,
 			"EndByte":0
 		},
 		{
-			"Name":"vFranchise",
+			"Name":"vMerch_Forecast_Measure",
 			"Type":"String",
 			"Position":4,
 			"StartByte":0,
 			"EndByte":0
 		},
 		{
-			"Name":"vSKU",
-			"Type":"String",
-			"Position":5,
-			"StartByte":0,
-			"EndByte":0
-		},
-		{
 			"Name":"Value",
 			"Type":"Numeric",
-			"Position":6,
+			"Position":5,
 			"StartByte":0,
 			"EndByte":0
 		}
 	],
-	"UID": "1777567987000",
+	"UID": "1775226332000",
 	"UIData": "CubeAction=1511\fDataAction=1503\fCubeLogChanges=0\f",
 	"VariablesUIData": [
-		"VarType=32\fColType=827\f",
 		"VarType=32\fColType=827\f",
 		"VarType=32\fColType=827\f",
 		"VarType=32\fColType=827\f",
