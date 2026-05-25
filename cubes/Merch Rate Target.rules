@@ -1,0 +1,96 @@
+SKIPCHECK;
+FEEDSTRINGS;
+#Region : Rule Header
+# CUBE: Merch Rate Target
+# DEVELOPER: Steve Waterbury
+# CREATED ON: 2026-05-22
+# CHANGE HISTORY:
+#   2026-05-22 | Steve Waterbury | Initial — Roles cascade per 10 base measures.
+#   2026-05-25 | Steve Waterbury | Cascade fix: Applied + Expected unqualified (no =N:/=C:); mirrors Merch Curve Assignment.
+#EndRegion
+
+#Region : Non-Calculated Gate
+[] = N: IF(ATTRS('Merch Version',!Merch Version,'Version_Type')@<>'Calculated',0,CONTINUE);
+#EndRegion
+
+#Region : Build/Debuild
+['Build/Debuild Current']=N:DB('Merch Forecast',!Merch Version,!Merch Time Period,!Merch SKU,'Build/Debuild');
+['Build/Debuild Current']=C:DB('Merch Forecast',!Merch Version,!Merch Time Period,!Merch SKU,'Build/Debuild');
+['Build/Debuild Applied']=IF(DB('Merch Rate Target',!Merch Version,!Merch Time Period,!Merch SKU,'Build/Debuild Override')@<>'',NUMBR(DB('Merch Rate Target',!Merch Version,!Merch Time Period,!Merch SKU,'Build/Debuild Override')),IF(ElementParent('Merch SKU','Roles',!Merch SKU,1)@='',['Build/Debuild Current'],CellValueN('Merch Rate Target','Merch Version':!Merch Version,'Merch Time Period':!Merch Time Period,'Merch SKU':'Roles':ElementParent('Merch SKU','Roles',!Merch SKU,1),'Merch Rate Target Measure':!Merch Rate Target Measure)));
+['Build/Debuild Expected']=IF(DB('Merch Rate Target',!Merch Version,!Merch Time Period,!Merch SKU,'Build/Debuild Override')@<>'',NUMBR(DB('Merch Rate Target',!Merch Version,!Merch Time Period,!Merch SKU,'Build/Debuild Override')),IF(ElementParent('Merch SKU','Roles',!Merch SKU,1)@='',['Build/Debuild Current'],['Build/Debuild Current']*(CellValueN('Merch Rate Target','Merch Version':!Merch Version,'Merch Time Period':!Merch Time Period,'Merch SKU':'Roles':ElementParent('Merch SKU','Roles',!Merch SKU,1),'Merch Rate Target Measure':!Merch Rate Target Measure)\DB('Merch Rate Target',!Merch Version,!Merch Time Period,ElementParent('Merch SKU','Roles',!Merch SKU,1),'Build/Debuild Current'))));
+#EndRegion
+
+#Region : Category Build
+['Category Build Current']=N:DB('Merch Forecast',!Merch Version,!Merch Time Period,!Merch SKU,'Category Build');
+['Category Build Current']=C:DB('Merch Forecast',!Merch Version,!Merch Time Period,!Merch SKU,'Category Build');
+['Category Build Applied']=IF(DB('Merch Rate Target',!Merch Version,!Merch Time Period,!Merch SKU,'Category Build Override')@<>'',NUMBR(DB('Merch Rate Target',!Merch Version,!Merch Time Period,!Merch SKU,'Category Build Override')),IF(ElementParent('Merch SKU','Roles',!Merch SKU,1)@='',['Category Build Current'],CellValueN('Merch Rate Target','Merch Version':!Merch Version,'Merch Time Period':!Merch Time Period,'Merch SKU':'Roles':ElementParent('Merch SKU','Roles',!Merch SKU,1),'Merch Rate Target Measure':!Merch Rate Target Measure)));
+['Category Build Expected']=IF(DB('Merch Rate Target',!Merch Version,!Merch Time Period,!Merch SKU,'Category Build Override')@<>'',NUMBR(DB('Merch Rate Target',!Merch Version,!Merch Time Period,!Merch SKU,'Category Build Override')),IF(ElementParent('Merch SKU','Roles',!Merch SKU,1)@='',['Category Build Current'],['Category Build Current']*(CellValueN('Merch Rate Target','Merch Version':!Merch Version,'Merch Time Period':!Merch Time Period,'Merch SKU':'Roles':ElementParent('Merch SKU','Roles',!Merch SKU,1),'Merch Rate Target Measure':!Merch Rate Target Measure)\DB('Merch Rate Target',!Merch Version,!Merch Time Period,ElementParent('Merch SKU','Roles',!Merch SKU,1),'Category Build Current'))));
+#EndRegion
+
+#Region : Promo Build
+['Promo Build Current']=N:DB('Merch Forecast',!Merch Version,!Merch Time Period,!Merch SKU,'Promo Build');
+['Promo Build Current']=C:DB('Merch Forecast',!Merch Version,!Merch Time Period,!Merch SKU,'Promo Build');
+['Promo Build Applied']=IF(DB('Merch Rate Target',!Merch Version,!Merch Time Period,!Merch SKU,'Promo Build Override')@<>'',NUMBR(DB('Merch Rate Target',!Merch Version,!Merch Time Period,!Merch SKU,'Promo Build Override')),IF(ElementParent('Merch SKU','Roles',!Merch SKU,1)@='',['Promo Build Current'],CellValueN('Merch Rate Target','Merch Version':!Merch Version,'Merch Time Period':!Merch Time Period,'Merch SKU':'Roles':ElementParent('Merch SKU','Roles',!Merch SKU,1),'Merch Rate Target Measure':!Merch Rate Target Measure)));
+['Promo Build Expected']=IF(DB('Merch Rate Target',!Merch Version,!Merch Time Period,!Merch SKU,'Promo Build Override')@<>'',NUMBR(DB('Merch Rate Target',!Merch Version,!Merch Time Period,!Merch SKU,'Promo Build Override')),IF(ElementParent('Merch SKU','Roles',!Merch SKU,1)@='',['Promo Build Current'],['Promo Build Current']*(CellValueN('Merch Rate Target','Merch Version':!Merch Version,'Merch Time Period':!Merch Time Period,'Merch SKU':'Roles':ElementParent('Merch SKU','Roles',!Merch SKU,1),'Merch Rate Target Measure':!Merch Rate Target Measure)\DB('Merch Rate Target',!Merch Version,!Merch Time Period,ElementParent('Merch SKU','Roles',!Merch SKU,1),'Promo Build Current'))));
+#EndRegion
+
+#Region : Seasonality
+['Seasonality Current']=N:DB('Merch Forecast',!Merch Version,!Merch Time Period,!Merch SKU,'Seasonality');
+['Seasonality Current']=C:DB('Merch Forecast',!Merch Version,!Merch Time Period,!Merch SKU,'Seasonality');
+['Seasonality Applied']=IF(DB('Merch Rate Target',!Merch Version,!Merch Time Period,!Merch SKU,'Seasonality Override')@<>'',NUMBR(DB('Merch Rate Target',!Merch Version,!Merch Time Period,!Merch SKU,'Seasonality Override')),IF(ElementParent('Merch SKU','Roles',!Merch SKU,1)@='',['Seasonality Current'],CellValueN('Merch Rate Target','Merch Version':!Merch Version,'Merch Time Period':!Merch Time Period,'Merch SKU':'Roles':ElementParent('Merch SKU','Roles',!Merch SKU,1),'Merch Rate Target Measure':!Merch Rate Target Measure)));
+['Seasonality Expected']=IF(DB('Merch Rate Target',!Merch Version,!Merch Time Period,!Merch SKU,'Seasonality Override')@<>'',NUMBR(DB('Merch Rate Target',!Merch Version,!Merch Time Period,!Merch SKU,'Seasonality Override')),IF(ElementParent('Merch SKU','Roles',!Merch SKU,1)@='',['Seasonality Current'],['Seasonality Current']*(CellValueN('Merch Rate Target','Merch Version':!Merch Version,'Merch Time Period':!Merch Time Period,'Merch SKU':'Roles':ElementParent('Merch SKU','Roles',!Merch SKU,1),'Merch Rate Target Measure':!Merch Rate Target Measure)\DB('Merch Rate Target',!Merch Version,!Merch Time Period,ElementParent('Merch SKU','Roles',!Merch SKU,1),'Seasonality Current'))));
+#EndRegion
+
+#Region : Regime
+['Regime Current']=N:DB('Merch Forecast',!Merch Version,!Merch Time Period,!Merch SKU,'Regime');
+['Regime Current']=C:DB('Merch Forecast',!Merch Version,!Merch Time Period,!Merch SKU,'Regime');
+['Regime Applied']=IF(DB('Merch Rate Target',!Merch Version,!Merch Time Period,!Merch SKU,'Regime Override')@<>'',NUMBR(DB('Merch Rate Target',!Merch Version,!Merch Time Period,!Merch SKU,'Regime Override')),IF(ElementParent('Merch SKU','Roles',!Merch SKU,1)@='',['Regime Current'],CellValueN('Merch Rate Target','Merch Version':!Merch Version,'Merch Time Period':!Merch Time Period,'Merch SKU':'Roles':ElementParent('Merch SKU','Roles',!Merch SKU,1),'Merch Rate Target Measure':!Merch Rate Target Measure)));
+['Regime Expected']=IF(DB('Merch Rate Target',!Merch Version,!Merch Time Period,!Merch SKU,'Regime Override')@<>'',NUMBR(DB('Merch Rate Target',!Merch Version,!Merch Time Period,!Merch SKU,'Regime Override')),IF(ElementParent('Merch SKU','Roles',!Merch SKU,1)@='',['Regime Current'],['Regime Current']*(CellValueN('Merch Rate Target','Merch Version':!Merch Version,'Merch Time Period':!Merch Time Period,'Merch SKU':'Roles':ElementParent('Merch SKU','Roles',!Merch SKU,1),'Merch Rate Target Measure':!Merch Rate Target Measure)\DB('Merch Rate Target',!Merch Version,!Merch Time Period,ElementParent('Merch SKU','Roles',!Merch SKU,1),'Regime Current'))));
+#EndRegion
+
+#Region : Markdown %
+['Markdown % Current']=N:DB('Merch Forecast',!Merch Version,!Merch Time Period,!Merch SKU,'Markdown %');
+['Markdown % Current']=C:DB('Merch Forecast',!Merch Version,!Merch Time Period,!Merch SKU,'Markdown %');
+['Markdown % Applied']=IF(DB('Merch Rate Target',!Merch Version,!Merch Time Period,!Merch SKU,'Markdown % Override')@<>'',NUMBR(DB('Merch Rate Target',!Merch Version,!Merch Time Period,!Merch SKU,'Markdown % Override')),IF(ElementParent('Merch SKU','Roles',!Merch SKU,1)@='',['Markdown % Current'],CellValueN('Merch Rate Target','Merch Version':!Merch Version,'Merch Time Period':!Merch Time Period,'Merch SKU':'Roles':ElementParent('Merch SKU','Roles',!Merch SKU,1),'Merch Rate Target Measure':!Merch Rate Target Measure)));
+['Markdown % Expected']=IF(DB('Merch Rate Target',!Merch Version,!Merch Time Period,!Merch SKU,'Markdown % Override')@<>'',NUMBR(DB('Merch Rate Target',!Merch Version,!Merch Time Period,!Merch SKU,'Markdown % Override')),IF(ElementParent('Merch SKU','Roles',!Merch SKU,1)@='',['Markdown % Current'],['Markdown % Current']*(CellValueN('Merch Rate Target','Merch Version':!Merch Version,'Merch Time Period':!Merch Time Period,'Merch SKU':'Roles':ElementParent('Merch SKU','Roles',!Merch SKU,1),'Merch Rate Target Measure':!Merch Rate Target Measure)\DB('Merch Rate Target',!Merch Version,!Merch Time Period,ElementParent('Merch SKU','Roles',!Merch SKU,1),'Markdown % Current'))));
+#EndRegion
+
+#Region : Rate Adjustment
+['Rate Adjustment Current']=N:DB('Merch Forecast',!Merch Version,!Merch Time Period,!Merch SKU,'Rate Adjustment');
+['Rate Adjustment Current']=C:DB('Merch Forecast',!Merch Version,!Merch Time Period,!Merch SKU,'Rate Adjustment');
+['Rate Adjustment Applied']=IF(DB('Merch Rate Target',!Merch Version,!Merch Time Period,!Merch SKU,'Rate Adjustment Override')@<>'',NUMBR(DB('Merch Rate Target',!Merch Version,!Merch Time Period,!Merch SKU,'Rate Adjustment Override')),IF(ElementParent('Merch SKU','Roles',!Merch SKU,1)@='',['Rate Adjustment Current'],CellValueN('Merch Rate Target','Merch Version':!Merch Version,'Merch Time Period':!Merch Time Period,'Merch SKU':'Roles':ElementParent('Merch SKU','Roles',!Merch SKU,1),'Merch Rate Target Measure':!Merch Rate Target Measure)));
+['Rate Adjustment Expected']=IF(DB('Merch Rate Target',!Merch Version,!Merch Time Period,!Merch SKU,'Rate Adjustment Override')@<>'',NUMBR(DB('Merch Rate Target',!Merch Version,!Merch Time Period,!Merch SKU,'Rate Adjustment Override')),IF(ElementParent('Merch SKU','Roles',!Merch SKU,1)@='',['Rate Adjustment Current'],['Rate Adjustment Current']*(CellValueN('Merch Rate Target','Merch Version':!Merch Version,'Merch Time Period':!Merch Time Period,'Merch SKU':'Roles':ElementParent('Merch SKU','Roles',!Merch SKU,1),'Merch Rate Target Measure':!Merch Rate Target Measure)\DB('Merch Rate Target',!Merch Version,!Merch Time Period,ElementParent('Merch SKU','Roles',!Merch SKU,1),'Rate Adjustment Current'))));
+#EndRegion
+
+#Region : Price Adjustment
+['Price Adjustment Current']=N:DB('Merch Forecast',!Merch Version,!Merch Time Period,!Merch SKU,'Price Adjustment');
+['Price Adjustment Current']=C:DB('Merch Forecast',!Merch Version,!Merch Time Period,!Merch SKU,'Price Adjustment');
+['Price Adjustment Applied']=IF(DB('Merch Rate Target',!Merch Version,!Merch Time Period,!Merch SKU,'Price Adjustment Override')@<>'',NUMBR(DB('Merch Rate Target',!Merch Version,!Merch Time Period,!Merch SKU,'Price Adjustment Override')),IF(ElementParent('Merch SKU','Roles',!Merch SKU,1)@='',['Price Adjustment Current'],CellValueN('Merch Rate Target','Merch Version':!Merch Version,'Merch Time Period':!Merch Time Period,'Merch SKU':'Roles':ElementParent('Merch SKU','Roles',!Merch SKU,1),'Merch Rate Target Measure':!Merch Rate Target Measure)));
+['Price Adjustment Expected']=IF(DB('Merch Rate Target',!Merch Version,!Merch Time Period,!Merch SKU,'Price Adjustment Override')@<>'',NUMBR(DB('Merch Rate Target',!Merch Version,!Merch Time Period,!Merch SKU,'Price Adjustment Override')),IF(ElementParent('Merch SKU','Roles',!Merch SKU,1)@='',['Price Adjustment Current'],['Price Adjustment Current']*(CellValueN('Merch Rate Target','Merch Version':!Merch Version,'Merch Time Period':!Merch Time Period,'Merch SKU':'Roles':ElementParent('Merch SKU','Roles',!Merch SKU,1),'Merch Rate Target Measure':!Merch Rate Target Measure)\DB('Merch Rate Target',!Merch Version,!Merch Time Period,ElementParent('Merch SKU','Roles',!Merch SKU,1),'Price Adjustment Current'))));
+#EndRegion
+
+#Region : Backend Adjustment
+['Backend Adjustment Current']=N:DB('Merch Forecast',!Merch Version,!Merch Time Period,!Merch SKU,'Backend Adjustment');
+['Backend Adjustment Current']=C:DB('Merch Forecast',!Merch Version,!Merch Time Period,!Merch SKU,'Backend Adjustment');
+['Backend Adjustment Applied']=IF(DB('Merch Rate Target',!Merch Version,!Merch Time Period,!Merch SKU,'Backend Adjustment Override')@<>'',NUMBR(DB('Merch Rate Target',!Merch Version,!Merch Time Period,!Merch SKU,'Backend Adjustment Override')),IF(ElementParent('Merch SKU','Roles',!Merch SKU,1)@='',['Backend Adjustment Current'],CellValueN('Merch Rate Target','Merch Version':!Merch Version,'Merch Time Period':!Merch Time Period,'Merch SKU':'Roles':ElementParent('Merch SKU','Roles',!Merch SKU,1),'Merch Rate Target Measure':!Merch Rate Target Measure)));
+['Backend Adjustment Expected']=IF(DB('Merch Rate Target',!Merch Version,!Merch Time Period,!Merch SKU,'Backend Adjustment Override')@<>'',NUMBR(DB('Merch Rate Target',!Merch Version,!Merch Time Period,!Merch SKU,'Backend Adjustment Override')),IF(ElementParent('Merch SKU','Roles',!Merch SKU,1)@='',['Backend Adjustment Current'],['Backend Adjustment Current']*(CellValueN('Merch Rate Target','Merch Version':!Merch Version,'Merch Time Period':!Merch Time Period,'Merch SKU':'Roles':ElementParent('Merch SKU','Roles',!Merch SKU,1),'Merch Rate Target Measure':!Merch Rate Target Measure)\DB('Merch Rate Target',!Merch Version,!Merch Time Period,ElementParent('Merch SKU','Roles',!Merch SKU,1),'Backend Adjustment Current'))));
+#EndRegion
+
+#Region : Other AUC Adjustment
+['Other AUC Adjustment Current']=N:DB('Merch Forecast',!Merch Version,!Merch Time Period,!Merch SKU,'Other AUC Adjustment');
+['Other AUC Adjustment Current']=C:DB('Merch Forecast',!Merch Version,!Merch Time Period,!Merch SKU,'Other AUC Adjustment');
+['Other AUC Adjustment Applied']=IF(DB('Merch Rate Target',!Merch Version,!Merch Time Period,!Merch SKU,'Other AUC Adjustment Override')@<>'',NUMBR(DB('Merch Rate Target',!Merch Version,!Merch Time Period,!Merch SKU,'Other AUC Adjustment Override')),IF(ElementParent('Merch SKU','Roles',!Merch SKU,1)@='',['Other AUC Adjustment Current'],CellValueN('Merch Rate Target','Merch Version':!Merch Version,'Merch Time Period':!Merch Time Period,'Merch SKU':'Roles':ElementParent('Merch SKU','Roles',!Merch SKU,1),'Merch Rate Target Measure':!Merch Rate Target Measure)));
+['Other AUC Adjustment Expected']=IF(DB('Merch Rate Target',!Merch Version,!Merch Time Period,!Merch SKU,'Other AUC Adjustment Override')@<>'',NUMBR(DB('Merch Rate Target',!Merch Version,!Merch Time Period,!Merch SKU,'Other AUC Adjustment Override')),IF(ElementParent('Merch SKU','Roles',!Merch SKU,1)@='',['Other AUC Adjustment Current'],['Other AUC Adjustment Current']*(CellValueN('Merch Rate Target','Merch Version':!Merch Version,'Merch Time Period':!Merch Time Period,'Merch SKU':'Roles':ElementParent('Merch SKU','Roles',!Merch SKU,1),'Merch Rate Target Measure':!Merch Rate Target Measure)\DB('Merch Rate Target',!Merch Version,!Merch Time Period,ElementParent('Merch SKU','Roles',!Merch SKU,1),'Other AUC Adjustment Current'))));
+#EndRegion
+
+FEEDERS;
+['Build/Debuild Override']=>['Build/Debuild Applied'],['Build/Debuild Expected'];
+['Category Build Override']=>['Category Build Applied'],['Category Build Expected'];
+['Promo Build Override']=>['Promo Build Applied'],['Promo Build Expected'];
+['Seasonality Override']=>['Seasonality Applied'],['Seasonality Expected'];
+['Regime Override']=>['Regime Applied'],['Regime Expected'];
+['Markdown % Override']=>['Markdown % Applied'],['Markdown % Expected'];
+['Rate Adjustment Override']=>['Rate Adjustment Applied'],['Rate Adjustment Expected'];
+['Price Adjustment Override']=>['Price Adjustment Applied'],['Price Adjustment Expected'];
+['Backend Adjustment Override']=>['Backend Adjustment Applied'],['Backend Adjustment Expected'];
+['Other AUC Adjustment Override']=>['Other AUC Adjustment Applied'],['Other AUC Adjustment Expected'];

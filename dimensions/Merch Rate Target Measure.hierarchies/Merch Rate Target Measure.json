@@ -1,0 +1,168 @@
+{
+	"@type":"Hierarchy",
+	"Name":"Merch Rate Target Measure",
+	"Elements":
+	[
+		{
+			"Name":"Build/Debuild Override",
+			"Type":"String"
+		},
+		{
+			"Name":"Build/Debuild Current",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Build/Debuild Applied",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Build/Debuild Expected",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Category Build Override",
+			"Type":"String"
+		},
+		{
+			"Name":"Category Build Current",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Category Build Applied",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Category Build Expected",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Promo Build Override",
+			"Type":"String"
+		},
+		{
+			"Name":"Promo Build Current",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Promo Build Applied",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Promo Build Expected",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Seasonality Override",
+			"Type":"String"
+		},
+		{
+			"Name":"Seasonality Current",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Seasonality Applied",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Seasonality Expected",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Regime Override",
+			"Type":"String"
+		},
+		{
+			"Name":"Regime Current",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Regime Applied",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Regime Expected",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Markdown % Override",
+			"Type":"String"
+		},
+		{
+			"Name":"Markdown % Current",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Markdown % Applied",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Markdown % Expected",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Rate Adjustment Override",
+			"Type":"String"
+		},
+		{
+			"Name":"Rate Adjustment Current",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Rate Adjustment Applied",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Rate Adjustment Expected",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Price Adjustment Override",
+			"Type":"String"
+		},
+		{
+			"Name":"Price Adjustment Current",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Price Adjustment Applied",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Price Adjustment Expected",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Backend Adjustment Override",
+			"Type":"String"
+		},
+		{
+			"Name":"Backend Adjustment Current",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Backend Adjustment Applied",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Backend Adjustment Expected",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Other AUC Adjustment Override",
+			"Type":"String"
+		},
+		{
+			"Name":"Other AUC Adjustment Current",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Other AUC Adjustment Applied",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Other AUC Adjustment Expected",
+			"Type":"Numeric"
+		}
+	],
+	"Subsets@Code.links":[]
+}

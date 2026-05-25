@@ -1,0 +1,21 @@
+{
+	"@type":"Cube",
+	"Name":"Merch Rate Target",
+	"Dimensions":
+	[
+		{
+			"@id":"Dimensions('Merch Version')"
+		},
+		{
+			"@id":"Dimensions('Merch Time Period')"
+		},
+		{
+			"@id":"Dimensions('Merch SKU')"
+		},
+		{
+			"@id":"Dimensions('Merch Rate Target Measure')"
+		}
+	],
+	"Rules@Code.link":"Merch Rate Target.rules",
+	"Views@Code.links":[]
+}

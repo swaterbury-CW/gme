@@ -1,0 +1,87 @@
+#region Prolog
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+#Region : Process Header
+# DEVELOPER : Steve Waterbury
+# CREATED ON : 2026-05-22
+# CHANGED BY : Steve Waterbury
+# COMMENTS:
+# Rate Target Apply orchestrator. Validates params, then Epilog dispatches
+# 10 .Rate workers via RunProcess; joins on WaitForInternalJobs.
+#### CHANGE HISTORY:
+### 2026-05-22  Steve Waterbury  Initial creation
+#EndRegion
+
+cProcessName = GetProcessName();
+sLogLevel = CellGetS('ProcessControl', cProcessName, 'LoggingLevel');
+IF(sLogLevel @= '');
+  sLogLevel = 'OFF';
+ENDIF;
+bLogInfo = 0;
+IF(sLogLevel @= 'INFO' % sLogLevel @= 'DEBUG');
+  bLogInfo = 1;
+ENDIF;
+IF(bLogInfo = 1);
+  LogOutput('INFO', 'START: ' | cProcessName | ' | V=' | pVersion | ' | T=' | pTimePeriod | ' | Role=' | pRoleElement);
+ENDIF;
+
+IF(pVersion @= '');
+  LogOutput('ERROR', cProcessName | ' | pVersion required');
+  ProcessError;
+ENDIF;
+IF(pTimePeriod @= '');
+  LogOutput('ERROR', cProcessName | ' | pTimePeriod required');
+  ProcessError;
+ENDIF;
+IF(pRoleElement @= '');
+  LogOutput('ERROR', cProcessName | ' | pRoleElement required');
+  ProcessError;
+ENDIF;
+IF(DIMIX('Merch Version', pVersion) = 0);
+  LogOutput('ERROR', cProcessName | ' | Version missing');
+  ProcessError;
+ENDIF;
+IF(DIMIX('Merch Time Period', pTimePeriod) = 0);
+  LogOutput('ERROR', cProcessName | ' | TimePeriod missing');
+  ProcessError;
+ENDIF;
+IF(HierarchyElementExists('Merch SKU', 'Roles', pRoleElement) = 0);
+  LogOutput('ERROR', cProcessName | ' | Role not in Roles hier');
+  ProcessError;
+ENDIF;
+IF(ATTRS('Merch Version', pVersion, 'Version_Type') @<> 'Calculated');
+  LogOutput('ERROR', cProcessName | ' | Version not Calculated');
+  ProcessError;
+ENDIF;
+
+#endregion
+#region Metadata
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+
+#endregion
+#region Data
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+
+#endregion
+#region Epilog
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+sWorker = 'Merch.RateTarget.Apply.Rate';
+RunProcess(sWorker, 'pVersion', pVersion, 'pTimePeriod', pTimePeriod, 'pRoleElement', pRoleElement, 'pMeasure', 'Build/Debuild');
+RunProcess(sWorker, 'pVersion', pVersion, 'pTimePeriod', pTimePeriod, 'pRoleElement', pRoleElement, 'pMeasure', 'Category Build');
+RunProcess(sWorker, 'pVersion', pVersion, 'pTimePeriod', pTimePeriod, 'pRoleElement', pRoleElement, 'pMeasure', 'Promo Build');
+RunProcess(sWorker, 'pVersion', pVersion, 'pTimePeriod', pTimePeriod, 'pRoleElement', pRoleElement, 'pMeasure', 'Seasonality');
+RunProcess(sWorker, 'pVersion', pVersion, 'pTimePeriod', pTimePeriod, 'pRoleElement', pRoleElement, 'pMeasure', 'Regime');
+RunProcess(sWorker, 'pVersion', pVersion, 'pTimePeriod', pTimePeriod, 'pRoleElement', pRoleElement, 'pMeasure', 'Markdown %');
+RunProcess(sWorker, 'pVersion', pVersion, 'pTimePeriod', pTimePeriod, 'pRoleElement', pRoleElement, 'pMeasure', 'Rate Adjustment');
+RunProcess(sWorker, 'pVersion', pVersion, 'pTimePeriod', pTimePeriod, 'pRoleElement', pRoleElement, 'pMeasure', 'Price Adjustment');
+RunProcess(sWorker, 'pVersion', pVersion, 'pTimePeriod', pTimePeriod, 'pRoleElement', pRoleElement, 'pMeasure', 'Backend Adjustment');
+RunProcess(sWorker, 'pVersion', pVersion, 'pTimePeriod', pTimePeriod, 'pRoleElement', pRoleElement, 'pMeasure', 'Other AUC Adjustment');
+WaitForInternalJobs;
+IF(bLogInfo = 1);
+  LogOutput('INFO', 'END: ' | cProcessName | ' | Dispatched=10');
+ENDIF;
+
+#endregion

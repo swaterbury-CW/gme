@@ -1,0 +1,130 @@
+#region Prolog
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+#Region : Process Header
+# DEVELOPER : Steve Waterbury
+# CREATED ON : 2026-05-22
+# CHANGED BY : Steve Waterbury
+# COMMENTS:
+# Per-measure rate-target applier. Reads Override at pRoleElement; if empty
+# short-circuits. Else factor = NUMBR(Override) / Current at Role; scales
+# every Roles-leaf x Time-leaf Merch Forecast cell. LCP + CellIsUpdateable.
+#### CHANGE HISTORY:
+### 2026-05-22  Steve Waterbury  Initial creation (CellGetN in Prolog; DB is rules-only)
+#EndRegion
+
+cProcessName = GetProcessName();
+sLogLevel = CellGetS('ProcessControl', cProcessName, 'LoggingLevel');
+IF(sLogLevel @= '');
+  sLogLevel = 'OFF';
+ENDIF;
+bLogInfo = 0;
+IF(sLogLevel @= 'INFO' % sLogLevel @= 'DEBUG');
+  bLogInfo = 1;
+ENDIF;
+IF(bLogInfo = 1);
+  LogOutput('INFO', 'START: ' | cProcessName | ' | V=' | pVersion | ' | T=' | pTimePeriod | ' | Role=' | pRoleElement | ' | M=' | pMeasure);
+ENDIF;
+
+IF(pVersion @= '');
+  LogOutput('ERROR', cProcessName | ' | pVersion required');
+  ProcessError;
+ENDIF;
+IF(pTimePeriod @= '');
+  LogOutput('ERROR', cProcessName | ' | pTimePeriod required');
+  ProcessError;
+ENDIF;
+IF(pRoleElement @= '');
+  LogOutput('ERROR', cProcessName | ' | pRoleElement required');
+  ProcessError;
+ENDIF;
+IF(pMeasure @= '');
+  LogOutput('ERROR', cProcessName | ' | pMeasure required');
+  ProcessError;
+ENDIF;
+IF(DIMIX('Merch Version', pVersion) = 0);
+  LogOutput('ERROR', cProcessName | ' | Version missing');
+  ProcessError;
+ENDIF;
+IF(DIMIX('Merch Time Period', pTimePeriod) = 0);
+  LogOutput('ERROR', cProcessName | ' | TimePeriod missing');
+  ProcessError;
+ENDIF;
+IF(HierarchyElementExists('Merch SKU', 'Roles', pRoleElement) = 0);
+  LogOutput('ERROR', cProcessName | ' | Role not in Roles hier');
+  ProcessError;
+ENDIF;
+IF(ATTRS('Merch Version', pVersion, 'Version_Type') @<> 'Calculated');
+  LogOutput('ERROR', cProcessName | ' | Version not Calculated');
+  ProcessError;
+ENDIF;
+
+sOverride = CellGetS('Merch Rate Target', pVersion, pTimePeriod, pRoleElement, pMeasure | ' Override');
+IF(sOverride @= '');
+  IF(bLogInfo = 1);
+    LogOutput('INFO', cProcessName | ' | No Override - skip');
+  ENDIF;
+  ProcessBreak;
+ENDIF;
+nTarget = NUMBR(sOverride);
+
+nCurrent = CellGetN('Merch Forecast', pVersion, pTimePeriod, pRoleElement, pMeasure);
+IF(nCurrent = 0);
+  LogOutput('WARN', cProcessName | ' | Current=0 - cannot scale');
+  ProcessBreak;
+ENDIF;
+nFactor = nTarget \ nCurrent;
+
+nLCP = ATTRN('Merch Version', pVersion, 'Last_Closed_Period');
+nCellsScaled = 0;
+nSkipped = 0;
+nRecordCount = 0;
+
+sViewName = 'TI_RateTargetApply_' | TRIM(STR(NOW, 15, 0));
+sMdxQuery = 'SELECT NON EMPTY {[Merch Forecast Measure].[Merch Forecast Measure].[' | pMeasure | ']} ON COLUMNS, NON EMPTY CROSSJOIN({TM1FILTERBYLEVEL({DESCENDANTS([Merch Time Period].[Merch Time Period].[' | pTimePeriod | '])}, 0)}, {TM1FILTERBYLEVEL({DESCENDANTS([Merch SKU].[Roles].[' | pRoleElement | '])}, 0)}) ON ROWS FROM [Merch Forecast] WHERE ([Merch Version].[Merch Version].[' | pVersion | '])';
+ViewCreateByMDX('Merch Forecast', sViewName, sMdxQuery, 1);
+ViewExtractSkipCalcsSet('Merch Forecast', sViewName, 0);
+ViewExtractSkipZeroesSet('Merch Forecast', sViewName, 1);
+ViewSuppressZeroesSet('Merch Forecast', sViewName, 1);
+DatasourceType = 'VIEW';
+DatasourceNameForServer = 'Merch Forecast';
+DatasourceCubeview = sViewName;
+
+#endregion
+#region Metadata
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+
+#endregion
+#region Data
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+nRecordCount = nRecordCount + 1;
+nVal = Value;
+IF(nVal = 0);
+  ItemSkip;
+ENDIF;
+nEndDate = ATTRN('Merch Time Period', vMerch_Time_Period, 'End_Date');
+IF(nEndDate <= nLCP);
+  nSkipped = nSkipped + 1;
+  ItemSkip;
+ENDIF;
+IF(CellIsUpdateable('Merch Forecast', pVersion, vMerch_Time_Period, vMerch_SKU, pMeasure) = 0);
+  nSkipped = nSkipped + 1;
+  ItemSkip;
+ENDIF;
+CellPutN(nVal * nFactor, 'Merch Forecast', pVersion, vMerch_Time_Period, vMerch_SKU, pMeasure);
+nCellsScaled = nCellsScaled + 1;
+
+#endregion
+#region Epilog
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+IF(ViewExists('Merch Forecast', sViewName) = 1);
+  ViewDestroy('Merch Forecast', sViewName);
+ENDIF;
+IF(bLogInfo = 1);
+  LogOutput('INFO', 'END: ' | cProcessName | ' | Factor=' | TRIM(STR(nFactor, 20, 6)) | ' | Records=' | TRIM(STR(nRecordCount, 10, 0)) | ' | Scaled=' | TRIM(STR(nCellsScaled, 10, 0)) | ' | Skipped=' | TRIM(STR(nSkipped, 10, 0)));
+ENDIF;
+
+#endregion

@@ -1,0 +1,34 @@
+{
+	"@type":"Process",
+	"Name":"Merch.RateTarget.Apply",
+	"HasSecurityAccess":false,
+	"Code@Code.link":"Merch.RateTarget.Apply.ti",
+	"DataSource":
+	{
+		"Type":"None"
+	},
+	"Parameters":
+	[
+		{
+			"Name":"pVersion",
+			"Prompt":"Merch Version (Calculated)",
+			"Value":"Forecast",
+			"Type":"String"
+		},
+		{
+			"Name":"pTimePeriod",
+			"Prompt":"Merch Time Period scope",
+			"Value":"FY2026",
+			"Type":"String"
+		},
+		{
+			"Name":"pRoleElement",
+			"Prompt":"Merch SKU Roles element",
+			"Value":"",
+			"Type":"String"
+		}
+	],
+	"Variables":[],
+	"UIData": "CubeAction=1511\fDataAction=1503\fCubeLogChanges=0\f",
+	"VariablesUIData": []
+}

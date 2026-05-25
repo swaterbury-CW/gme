@@ -1,32 +1,38 @@
 {
 	"@type":"Process",
-	"Name":"Merch.Load.ActualsToCalc",
+	"Name":"Merch.RateTarget.Apply.Rate",
 	"HasSecurityAccess":false,
-	"Code@Code.link":"Merch.Load.ActualsToCalc.ti",
+	"Code@Code.link":"Merch.RateTarget.Apply.Rate.ti",
 	"DataSource":
 	{
 		"Type":"TM1CubeView",
 		"dataSourceNameForServer":"Merch Forecast",
 		"dataSourceNameForClient":"Merch Forecast",
-		"view":"TI_CopyTPSKU_placeholder"
+		"view":"TI_RateTargetApply_placeholder"
 	},
 	"Parameters":
 	[
 		{
-			"Name":"pCubeName",
-			"Prompt":"cube",
-			"Value":"",
-			"Type":"String"
-		},
-		{
-			"Name":"pTargetVersion",
-			"Prompt":"version",
-			"Value":"",
+			"Name":"pVersion",
+			"Prompt":"Merch Version (Calculated)",
+			"Value":"Forecast",
 			"Type":"String"
 		},
 		{
 			"Name":"pTimePeriod",
-			"Prompt":"Time period",
+			"Prompt":"Merch Time Period scope",
+			"Value":"FY2026",
+			"Type":"String"
+		},
+		{
+			"Name":"pRoleElement",
+			"Prompt":"Merch SKU Roles element",
+			"Value":"",
+			"Type":"String"
+		},
+		{
+			"Name":"pMeasure",
+			"Prompt":"Base rate measure name",
 			"Value":"",
 			"Type":"String"
 		}
@@ -69,7 +75,6 @@
 			"EndByte":0
 		}
 	],
-	"UID": "1775226332000",
 	"UIData": "CubeAction=1511\fDataAction=1503\fCubeLogChanges=0\f",
 	"VariablesUIData": [
 		"VarType=32\fColType=827\f",

@@ -1,0 +1,56 @@
+#region Prolog
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+#Region : Header
+# DEVELOPER : Steve Waterbury
+# CREATED ON : 2026-05-22
+# CHANGED BY : Steve Waterbury
+# COMMENTS:
+# Drill: Merch Forecast rate measure -> Merch Rate Target view (4 sibling measures).
+#### CHANGE HISTORY:
+### 2026-05-22  Steve Waterbury  Initial creation
+#EndRegion
+
+cProcessName = GetProcessName();
+sLogLevel = CellGetS('ProcessControl', cProcessName, 'LoggingLevel');
+IF(sLogLevel @= '');
+  sLogLevel = 'OFF';
+ENDIF;
+bLogInfo = 0;
+IF(sLogLevel @= 'INFO' % sLogLevel @= 'DEBUG');
+  bLogInfo = 1;
+ENDIF;
+IF(bLogInfo = 1);
+  LogOutput('INFO', cProcessName | ' | V=' | pVersion | ' T=' | pTimePeriod | ' SKU=' | pSKU | ' M=' | pMeasure);
+ENDIF;
+
+sDestCube = 'Merch Rate Target';
+nMeasureIdx = DIMIX('Merch Forecast Measure', pMeasure);
+sView = '}Drill_RT_' | pVersion | '_' | pSKU | '_M' | TRIM(STR(nMeasureIdx, 10, 0));
+sMDX = 'SELECT {[Merch Rate Target Measure].[Merch Rate Target Measure].[' | pMeasure | ' Current], [Merch Rate Target Measure].[Merch Rate Target Measure].[' | pMeasure | ' Override], [Merch Rate Target Measure].[Merch Rate Target Measure].[' | pMeasure | ' Applied], [Merch Rate Target Measure].[Merch Rate Target Measure].[' | pMeasure | ' Expected]} ON COLUMNS, {[Merch SKU].[Merch SKU].[' | pSKU | ']} ON ROWS FROM [Merch Rate Target] WHERE ([Merch Version].[Merch Version].[' | pVersion | '], [Merch Time Period].[Merch Time Period].[' | pTimePeriod | '])';
+
+IF(ViewExists(sDestCube, sView) = 1);
+  ViewDestroy(sDestCube, sView);
+ENDIF;
+ViewCreateByMDX(sDestCube, sView, sMDX, 1);
+
+#endregion
+#region Metadata
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+
+#endregion
+#region Data
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+
+#endregion
+#region Epilog
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+ReturnViewHandle(sDestCube, sView);
+IF(bLogInfo = 1);
+  LogOutput('INFO', cProcessName | ' | View=' | sView);
+ENDIF;
+
+#endregion

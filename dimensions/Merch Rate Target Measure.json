@@ -1,0 +1,12 @@
+{
+	"@type":"Dimension",
+	"Name":"Merch Rate Target Measure",
+	"Hierarchies@Code.links":
+	[
+		"Merch Rate Target Measure.hierarchies/Merch Rate Target Measure.json"
+	],
+	"DefaultHierarchy":
+	{
+		"@id":"Dimensions('Merch Rate Target Measure')/Hierarchies('Merch Rate Target Measure')"
+	}
+}
