@@ -1,0 +1,37 @@
+{
+	"@type":"Process",
+	"Name":"Merch.Dim.LoadSKUHierarchy.BQ",
+	"HasSecurityAccess":false,
+	"Code@Code.link":"Merch.Dim.LoadSKUHierarchy.BQ.ti",
+	"DataSource":
+	{
+		"Type":"JSON",
+		"dataSourceNameForServer":"SKU_hierarchy_bq.json",
+		"jsonRootPointer":"",
+		"jsonVariableMapping":""
+	},
+	"Parameters":
+	[
+		{
+			"Name":"pKeepFiles",
+			"Prompt":"Keep page files (1=yes)",
+			"Value":0,
+			"Type":"Numeric"
+		}
+	],
+	"Variables":
+	[
+		{
+			"Name":"vRow",
+			"Type":"String",
+			"Position":1,
+			"StartByte":0,
+			"EndByte":0
+		}
+	],
+	"UID": "1774555638000",
+	"UIData": "CubeAction=1511\fDataAction=1503\fCubeLogChanges=0\f",
+	"VariablesUIData": [
+		"VarType=32\fColType=827\f"
+	]
+}

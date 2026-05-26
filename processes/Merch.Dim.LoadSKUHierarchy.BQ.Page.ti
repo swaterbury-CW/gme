@@ -1,0 +1,177 @@
+#region Prolog
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+#Region : Process Header
+# DEVELOPER: Steve Waterbury
+# CREATED ON: 2026-03-27
+# LAST UPDATE: 2026-05-26
+# CHANGED BY: Steve Waterbury
+# CHANGE HISTORY:
+#   2026-03-27 | Steve Waterbury | Initial page helper
+#   2026-04-01 | Steve Waterbury | Guardrails header template
+#   2026-04-03 | Steve Waterbury | Default hierarchy: SGM_Category with no-orphan
+#   2026-05-26 | Steve Waterbury | V4 diff-and-move (parent change only); never delete SKUs
+# DIRECT-FN RATIONALE (PAT-017): worker invoked from orchestrator Epilog WHILE loop and must see new SKU/SGM_Category elements committed mid-run.
+#EndRegion
+
+cProcessName = GetProcessName();
+cDim = 'Merch SKU';
+nRecordCount = 0;
+sLogLevel = CellGetS('ProcessControl', 'Merch.Dim.LoadSKUHierarchy.BQ', 'LoggingLevel');
+IF(sLogLevel @= '');
+  sLogLevel = 'OFF';
+ENDIF;
+bLogInfo  = 0;
+IF(sLogLevel @= 'INFO' % sLogLevel @= 'DEBUG');
+  bLogInfo  = 1;
+ENDIF;
+bLogDebug = 0;
+IF(sLogLevel @= 'DEBUG');
+  bLogDebug = 1;
+ENDIF;
+nPos_SKU = StringToNumber(pPosSKU);
+nPos_SGMCategory = StringToNumber(pPosSGMCategory);
+nPos_ItemDesc = StringToNumber(pPosItemDesc);
+cAttrConfig = pAttrConfig;
+cAttrPositions = pAttrPositions;
+IF(bLogInfo = 1);
+  LogOutput('INFO', cProcessName | ' | Loading page: ' | pPageFile);
+ENDIF;
+DataSourceType = 'JSON';
+DatasourceNameForServer = pPageFile;
+DataSourceJsonRootPointer = '/rows';
+DataSourceJsonVariableMapping = JsonAdd('{}', 'vRow', StringToJson('/f'));
+
+#endregion
+#region Metadata
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+cDim = 'Merch SKU';
+sPathSKU = '/' | TRIM(STR(nPos_SKU, 5, 0)) | '/v';
+sSKU = JsonGet(vRow, sPathSKU);
+IF(SUBST(sSKU, 1, 1) @= '"');
+  sSKU = SUBST(sSKU, 2, LONG(sSKU) - 2);
+ENDIF;
+IF(sSKU @= '' % sSKU @= 'null');
+  ItemSkip;
+ENDIF;
+
+sSGMCategory = '';
+IF(nPos_SGMCategory >= 0);
+    sPathSGM = '/' | TRIM(STR(nPos_SGMCategory, 5, 0)) | '/v';
+    sSGMCategory = JsonGet(vRow, sPathSGM);
+    IF(SUBST(sSGMCategory, 1, 1) @= '"');
+      sSGMCategory = SUBST(sSGMCategory, 2, LONG(sSGMCategory) - 2);
+    ENDIF;
+ENDIF;
+
+IF(sSGMCategory @= '' % sSGMCategory @= 'null');
+  sTargetParent = 'No SGM_Category';
+ELSE;
+  sTargetParent = sSGMCategory;
+ENDIF;
+
+nRecordCount = nRecordCount + 1;
+
+IF(DIMIX(cDim, sSKU) = 0);
+  DimensionElementInsertDirect(cDim, '', sSKU, 'N');
+ENDIF;
+
+IF(DIMIX(cDim, sTargetParent) = 0);
+  DimensionElementInsertDirect(cDim, '', sTargetParent, 'C');
+ENDIF;
+IF(ELISCOMP(cDim, 'All SKUs', sTargetParent) = 0);
+  DimensionElementComponentAddDirect(cDim, 'All SKUs', sTargetParent, 1);
+ENDIF;
+
+IF(ELISCOMP(cDim, sTargetParent, sSKU) = 0);
+  nP = ELPARN(cDim, sSKU);
+  nPi = 1;
+  WHILE(nPi <= nP);
+    sOldParent = ELPAR(cDim, sSKU, nPi);
+    IF(sOldParent @<> sTargetParent
+       & (ELISCOMP(cDim, 'All SKUs', sOldParent) = 1 % sOldParent @= 'No SGM_Category'));
+      DimensionElementComponentDeleteDirect(cDim, sOldParent, sSKU);
+      nP = ELPARN(cDim, sSKU);
+      nPi = 1;
+    ELSE;
+      nPi = nPi + 1;
+    ENDIF;
+  END;
+  DimensionElementComponentAddDirect(cDim, sTargetParent, sSKU, 1);
+ENDIF;
+
+#endregion
+#region Data
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+cDim = 'Merch SKU';
+sPathSKU = '/' | TRIM(STR(nPos_SKU, 5, 0)) | '/v';
+sSKU = JsonGet(vRow, sPathSKU);
+IF(SUBST(sSKU, 1, 1) @= '"');
+  sSKU = SUBST(sSKU, 2, LONG(sSKU) - 2);
+ENDIF;
+IF(sSKU @= '' % sSKU @= 'null');
+  ItemSkip;
+ENDIF;
+
+# Caption = SKU - Item_Desc
+sItemDesc = '';
+IF(nPos_ItemDesc >= 0);
+    sPathID = '/' | TRIM(STR(nPos_ItemDesc, 5, 0)) | '/v';
+    sItemDesc = JsonGet(vRow, sPathID);
+    IF(SUBST(sItemDesc, 1, 1) @= '"');
+      sItemDesc = SUBST(sItemDesc, 2, LONG(sItemDesc) - 2);
+    ENDIF;
+ENDIF;
+IF(sItemDesc @<> 'null' & sItemDesc @<> '');
+    AttrPutS(sSKU | ' - ' | sItemDesc, cDim, sSKU, 'Caption');
+ELSE;
+    AttrPutS(sSKU, cDim, sSKU, 'Caption');
+ENDIF;
+
+sRemainCfg = cAttrConfig;
+sRemainPos = cAttrPositions;
+WHILE(LONG(sRemainCfg) > 0);
+    nPipeCfg = SCAN('|', sRemainCfg);
+    IF(nPipeCfg > 0);
+        sEntry = SUBST(sRemainCfg, 1, nPipeCfg - 1);
+        sRemainCfg = SUBST(sRemainCfg, nPipeCfg + 1, LONG(sRemainCfg) - nPipeCfg);
+    ELSE;
+        sEntry = sRemainCfg;
+        sRemainCfg = '';
+    ENDIF;
+    nPipePos = SCAN('|', sRemainPos);
+    IF(nPipePos > 0);
+        sPosStr = SUBST(sRemainPos, 1, nPipePos - 1);
+        sRemainPos = SUBST(sRemainPos, nPipePos + 1, LONG(sRemainPos) - nPipePos);
+    ELSE;
+        sPosStr = sRemainPos;
+        sRemainPos = '';
+    ENDIF;
+    nColon = SCAN(':', sEntry);
+    sAttrName = SUBST(sEntry, 1, nColon - 1);
+    sType = SUBST(sEntry, nColon + 1, LONG(sEntry) - nColon);
+    sJsonPath = '/' | sPosStr | '/v';
+    sVal = JsonGet(vRow, sJsonPath);
+    IF(SUBST(sVal, 1, 1) @= '"');
+      sVal = SUBST(sVal, 2, LONG(sVal) - 2);
+    ENDIF;
+    IF(sVal @<> 'null' & sVal @<> '');
+        IF(sType @= 'S' );
+            AttrPutS(sVal, cDim, sSKU, sAttrName);
+        ELSEIF(sType @= 'N');
+            AttrPutN(StringToNumber(sVal), cDim, sSKU, sAttrName);
+        ELSEIF(sType @= 'DATE');
+            AttrPutN(DAYNO(sVal), cDim, sSKU, sAttrName);
+        ENDIF;
+    ENDIF;
+END;
+
+#endregion
+#region Epilog
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+IF(bLogInfo = 1); LogOutput('INFO', cProcessName | ' | Page records=' | TRIM(STR(nRecordCount, 10, 0))); ENDIF;
+
+#endregion
