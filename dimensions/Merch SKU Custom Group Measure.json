@@ -1,0 +1,12 @@
+{
+	"@type":"Dimension",
+	"Name":"Merch SKU Custom Group Measure",
+	"Hierarchies@Code.links":
+	[
+		"Merch SKU Custom Group Measure.hierarchies/Merch SKU Custom Group Measure.json"
+	],
+	"DefaultHierarchy":
+	{
+		"@id":"Dimensions('Merch SKU Custom Group Measure')/Hierarchies('Merch SKU Custom Group Measure')"
+	}
+}

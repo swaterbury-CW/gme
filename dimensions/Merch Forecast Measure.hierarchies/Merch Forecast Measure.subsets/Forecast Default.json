@@ -1,6 +1,0 @@
-{
-	"@type":"Subset",
-	"Name":"Forecast Default",
-	"Alias":"MEMBER_NAME",
-	"Expression":"TM1IGNORE_BADTUPLES {EXCEPT(DRILLUPMEMBER([Merch Forecast Measure].[Merch Forecast Measure].MEMBERS , {[Merch Forecast Measure].[Merch Forecast Measure].[AUC],[Merch Forecast Measure].[Merch Forecast Measure].[Margin],[Merch Forecast Measure].[Merch Forecast Measure].[Ending Inventory]}) , {[Merch Forecast Measure].[Merch Forecast Measure].[Level],[Merch Forecast Measure].[Merch Forecast Measure].[Seasonality],[Merch Forecast Measure].[Merch Forecast Measure].[Velocity],[Merch Forecast Measure].[Merch Forecast Measure].[Regime],[Merch Forecast Measure].[Merch Forecast Measure].[Promo Build],[Merch Forecast Measure].[Merch Forecast Measure].[Forecast vs Actual BD]})}"
-}

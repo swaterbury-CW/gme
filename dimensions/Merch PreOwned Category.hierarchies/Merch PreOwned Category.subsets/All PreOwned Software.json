@@ -1,6 +1,0 @@
-{
-	"@type":"Subset",
-	"Name":"All PreOwned Software",
-	"Alias":"Caption",
-	"Expression":"TM1IGNORE_BADTUPLES {DRILLDOWNMEMBER({[Merch PreOwned Category].[Merch PreOwned Category].[PreOwned Software]} , {[Merch PreOwned Category].[Merch PreOwned Category].[PreOwned Software]} , RECURSIVE)}"
-}

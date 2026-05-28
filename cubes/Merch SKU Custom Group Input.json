@@ -1,0 +1,14 @@
+{
+	"@type":"Cube",
+	"Name":"Merch SKU Custom Group Input",
+	"Dimensions":
+	[
+		{
+			"@id":"Dimensions('Merch SKU')"
+		},
+		{
+			"@id":"Dimensions('Merch SKU Custom Group Measure')"
+		}
+	],
+	"Views@Code.links":[]
+}

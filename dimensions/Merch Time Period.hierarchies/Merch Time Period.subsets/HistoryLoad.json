@@ -1,6 +1,0 @@
-{
-	"@type":"Subset",
-	"Name":"HistoryLoad",
-	"Alias":"Caption",
-	"Expression":"TM1IGNORE_BADTUPLES {ORDER(TM1FILTERBYLEVEL(TM1SUBSETALL([Merch Time Period].[Merch Time Period]) , 0) , [Merch Time Period].[Merch Time Period].CURRENTMEMBER.PROPERTIES(\"End_Date_Serial\", TYPED) , BASC)}"
-}

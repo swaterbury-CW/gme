@@ -1,6 +1,0 @@
-{
-	"@type":"Subset",
-	"Name":"All Override Measures",
-	"Alias":"MEMBER_NAME",
-	"Expression":"TM1IGNORE_BADTUPLES {TM1FILTERBYPATTERN(TM1SubsetAll([Merch Promo Settings Measure].[Merch Promo Settings Measure]),\"*Override*\",\"MEMBER_NAME\")}"
-}

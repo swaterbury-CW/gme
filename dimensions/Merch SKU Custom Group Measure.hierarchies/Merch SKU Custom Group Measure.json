@@ -1,0 +1,12 @@
+{
+	"@type":"Hierarchy",
+	"Name":"Merch SKU Custom Group Measure",
+	"Elements":
+	[
+		{
+			"Name":"Custom Group Name",
+			"Type":"String"
+		}
+	],
+	"Subsets@Code.links":[]
+}
