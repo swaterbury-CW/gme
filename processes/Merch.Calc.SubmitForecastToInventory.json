@@ -1,14 +1,14 @@
 {
 	"@type":"Process",
-	"Name":"Merch.Calc.ApplyPromosToForecast.Finalize",
+	"Name":"Merch.Calc.SubmitForecastToInventory",
 	"HasSecurityAccess":false,
-	"Code@Code.link":"Merch.Calc.ApplyPromosToForecast.Finalize.ti",
+	"Code@Code.link":"Merch.Calc.SubmitForecastToInventory.ti",
 	"DataSource":
 	{
 		"Type":"TM1CubeView",
-		"dataSourceNameForServer":"Merch Promo Winner Scratch",
-		"dataSourceNameForClient":"Merch Promo Winner Scratch",
-		"view":""
+		"dataSourceNameForServer":"Merch Forecast",
+		"dataSourceNameForClient":"Merch Forecast",
+		"view":"temp_SubmitForecast"
 	},
 	"Parameters":
 	[
@@ -17,26 +17,32 @@
 			"Prompt":"Version",
 			"Value":"Forecast",
 			"Type":"String"
+		},
+		{
+			"Name":"pSKUElement",
+			"Prompt":"SKU or Category",
+			"Value":"",
+			"Type":"String"
 		}
 	],
 	"Variables":
 	[
 		{
-			"Name":"vMerch_Promo_Winner_Measure",
+			"Name":"vMerch_Forecast_Measure",
 			"Type":"String",
 			"Position":1,
 			"StartByte":0,
 			"EndByte":0
 		},
 		{
-			"Name":"vMerch_Time_Period",
+			"Name":"vMerch_SKU",
 			"Type":"String",
 			"Position":2,
 			"StartByte":0,
 			"EndByte":0
 		},
 		{
-			"Name":"vMerch_SKU",
+			"Name":"vMerch_Time_Period",
 			"Type":"String",
 			"Position":3,
 			"StartByte":0,
@@ -57,7 +63,7 @@
 			"EndByte":0
 		}
 	],
-	"UID": "17767202490001",
+	"UID": "1774874686000",
 	"UIData": "CubeAction=1511\fDataAction=1503\fCubeLogChanges=0\f",
 	"VariablesUIData": [
 		"VarType=32\fColType=827\f",
