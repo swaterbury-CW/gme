@@ -14,6 +14,7 @@
 #   Director -> Manager -> Planner -> '<Planner> - <SGM>' -> [<bucket> - <Custom Group>] -> SKU
 # Inactive carve-out (ANY-MATCH): sellable<>'Y' OR Level_1='Used' OR
 # (no sales last 3 FYs AND no on-order curFY+nextFY AND no inventory at LCP week).
+# OVERRIDE: SKUs starting with '978' always treated as active (books/ISBN), bypass Inactive.
 # Inactive subtree: 'Inactive' -> 'Inactive - <Planner>' -> 'Inactive - <Planner> - <SGM>' -> SKU.
 # Activity reads via CellGetN on Merch Actuals.
 #
@@ -24,6 +25,7 @@
 #   2026-05-27 | Steve Waterbury  | Used + sellable floating roots
 #   2026-05-28 | Steve Waterbury  | Non-destructive rebuild
 #   2026-05-29 | Steve Waterbury  | Inactive carve-out (CellGetN); RecordCount marker
+#   2026-05-29 | Steve Waterbury  | 978-prefix active override
 #EndRegion
 
 sLogLevel = CellGetS('ProcessControl', GetProcessName(), 'LoggingLevel');
@@ -330,6 +332,11 @@ IF(bInactive = 0);
   IF(nSales3yr = 0 & nOnOrder = 0 & nInv = 0);
     bInactive = 1;
   ENDIF;
+ENDIF;
+
+# 978-prefix active override (books/ISBN): always active regardless of other conditions.
+IF(SUBST(sSku, 1, 3) @= '978');
+  bInactive = 0;
 ENDIF;
 
 IF(bInactive = 1);
