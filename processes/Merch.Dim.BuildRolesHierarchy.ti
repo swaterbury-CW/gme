@@ -7,30 +7,26 @@
 ##############################################
 # DEVELOPER  : Rose Morgan
 # CREATED ON : 2026-05-08
-# LAST UPDATE: 2026-05-28
+# LAST UPDATE: 2026-06-03
 # CHANGED BY : Steve Waterbury
 # COMMENTS:
-# Rebuilds the 'Roles' alt hierarchy on Merch SKU. Director -> Manager ->
-# Planner -> '<Planner> - <SGM_Category>' bucket -> SKU, with optional
-# '<bucket> - <Custom Group>' sub-bucket. SKUs with sellable_flag<>'Y' are
-# skipped entirely. SKUs with Level_1='Used' route to a 'Used' root that
-# floats outside the Director rollup (same pattern as 'Unassigned Planner').
-#
-# NON-DESTRUCTIVE: the hierarchy is NOT destroyed each run. Prolog strips
-# only the parent edges that the classification rebuild will recreate -- SKU
-# leaf parents, and user-defined bucket parents (name contains ' - ').
-# Static Director/Manager/Planner scaffold elements + edges remain. This
-# keeps external references (subsets, views, security overlays via
-# ElementIsAncestor) intact across rebuilds.
+# Rebuilds 'Roles' alt hierarchy on Merch SKU. Active path:
+#   Director -> Manager -> Planner -> '<Planner> - <SGM>' -> [<bucket> - <Custom Group>] -> SKU
+# Inactive carve-out (ANY-MATCH): sellable<>'Y' OR Level_1='Used' OR
+# (no sales last 4 FYs AND no on-order curFY+nextFY AND no inventory at LCP week).
+# OVERRIDE: SKUs starting with '978' always treated as active (books/ISBN), bypass Inactive.
+# Inactive subtree: 'Inactive' -> 'Inactive - <Planner>' -> 'Inactive - <Planner> - <SGM>' -> SKU.
+# Activity reads via CellGetN on Merch Actuals.
 #
 # CHANGE HISTORY:
 #   2026-05-08 | Rose Morgan      | Creation
-#   2026-05-08 | Rose Morgan      | Move structural writes Data->Metadata tab
-#   2026-05-08 | Rose Morgan      | Add Director/Manager rollup scaffold
-#   2026-05-12 | Steve Waterbury  | Insert SGM_Category bucket between Planner and SKU
-#   2026-05-22 | Steve Waterbury  | Add custom-group reroute via Merch SKU Custom Group Input
-#   2026-05-27 | Steve Waterbury  | Skip sellable_flag<>'Y'; route Level_1='Used' to floating root
-#   2026-05-28 | Steve Waterbury  | Non-destructive rebuild: strip SKU + user-bucket edges instead of HierarchyDestroy
+#   2026-05-12 | Steve Waterbury  | SGM_Category bucket layer
+#   2026-05-22 | Steve Waterbury  | Custom-group reroute
+#   2026-05-27 | Steve Waterbury  | Used + sellable floating roots
+#   2026-05-28 | Steve Waterbury  | Non-destructive rebuild
+#   2026-05-29 | Steve Waterbury  | Inactive carve-out (CellGetN); RecordCount marker
+#   2026-05-29 | Steve Waterbury  | 978-prefix active override
+#   2026-06-03 | Steve Waterbury  | Sales window: 3-FY -> 4-FY (add curFY); fixes new-SKU false-Inactive
 #EndRegion
 
 sLogLevel = CellGetS('ProcessControl', GetProcessName(), 'LoggingLevel');
@@ -60,12 +56,11 @@ nUnassigned = 0;
 nGroupsCreated = 0;
 nSgmNodes = 0;
 nCustomNodes = 0;
-nUsed = 0;
-nNotSellable = 0;
+nInactive = 0;
+nInactivePlannersCreated = 0;
+nInactiveSgmCreated = 0;
 nEdgesStripped = 0;
 
-# Non-destructive: create hier if missing, otherwise strip only the parent
-# edges the rebuild will recreate. Preserve all elements + scaffold edges.
 IF(HierarchyExists(sDim, sHier) = 0);
   HierarchyCreate(sDim, sHier);
 ELSE;
@@ -98,8 +93,6 @@ ELSE;
   HierarchySubsetDestroy(sDim, sHier, sStripSub);
 ENDIF;
 
-# Director/Manager/Planner scaffold -- idempotent: Insert is no-op if the
-# element exists; ComponentAdd updates weight on an existing edge in v12.
 HierarchyElementInsert(sDim, sHier, '', 'Director', 'C');
 HierarchyElementInsert(sDim, sHier, '', 'T&C Director', 'C');
 HierarchyElementInsert(sDim, sHier, '', 'VG Director', 'C');
@@ -202,6 +195,43 @@ HierarchyElementComponentAdd(sDim, sHier, 'Pre-Owned Digital Manager', 'Pre-Owne
 HierarchyElementComponentAdd(sDim, sHier, 'Pre-Owned Other Manager', 'Pre-Owned Other planner', 1);
 HierarchyElementComponentAdd(sDim, sHier, 'Loyalty Manager', 'Loyalty planner', 1);
 
+HierarchyElementInsert(sDim, sHier, '', 'Inactive', 'C');
+
+nCurYear = CellGetN('Merch Settings', 'Current Year', 'Value_Numeric');
+sCurFY  = 'FY' | TRIM(STR(nCurYear,     4, 0));
+sNextFY = 'FY' | TRIM(STR(nCurYear + 1, 4, 0));
+sFYm1   = 'FY' | TRIM(STR(nCurYear - 1, 4, 0));
+sFYm2   = 'FY' | TRIM(STR(nCurYear - 2, 4, 0));
+sFYm3   = 'FY' | TRIM(STR(nCurYear - 3, 4, 0));
+sAllCh  = 'All Channels';
+sActualCube = 'Merch Actuals';
+
+nLcpSerial = ATTRN('Merch Version', 'Forecast', 'Last_Closed_Period');
+sLcpWeek = '';
+sLcpSub = 'TI_BuildRolesHier_LCPLookup';
+IF(SubsetExists('Merch Time Period', sLcpSub) = 1);
+  SubsetDestroy('Merch Time Period', sLcpSub);
+ENDIF;
+SubsetCreateByMDX(sLcpSub, '{TM1FILTERBYLEVEL({TM1SUBSETALL([Merch Time Period])}, 0)}');
+nTP = SubsetGetSize('Merch Time Period', sLcpSub);
+i = 1;
+WHILE(i <= nTP);
+  sWk = SubsetGetElementName('Merch Time Period', sLcpSub, i);
+  IF(ATTRN('Merch Time Period', sWk, 'End_Date') = nLcpSerial);
+    sLcpWeek = sWk;
+    i = nTP;
+  ENDIF;
+  i = i + 1;
+END;
+SubsetDestroy('Merch Time Period', sLcpSub);
+IF(sLcpWeek @= '');
+  LogOutput('ERROR', cProcessName | ' | could not resolve LCP week for serial ' | TRIM(STR(nLcpSerial, 12, 0)));
+  ProcessError;
+ENDIF;
+IF(bLogInfo = 1);
+  LogOutput('INFO', cProcessName | ' | LCP week=' | sLcpWeek | ' | sales FYs=' | sCurFY | '+' | sFYm1 | '+' | sFYm2 | '+' | sFYm3 | ' | on-order FYs=' | sCurFY | '+' | sNextFY);
+ENDIF;
+
 IF(SubsetExists(sDim, sSubset) = 1);
   SubsetDestroy(sDim, sSubset);
 ENDIF;
@@ -221,12 +251,7 @@ IF(V1 @= '');
 ENDIF;
 sSku = V1;
 
-sSellable = ATTRS(sDim, sSku, 'sellable_flag');
-IF(sSellable @<> 'Y');
-  nNotSellable = nNotSellable + 1;
-  ItemSkip;
-ENDIF;
-
+sSellable  = ATTRS(sDim, sSku, 'sellable_flag');
 sGroup     = ATTRS(sDim, sSku, 'SGM_Category_Group');
 sCategory  = ATTRS(sDim, sSku, 'SGM_Category');
 sVendor    = ATTRS(sDim, sSku, 'Vendor_Name');
@@ -287,49 +312,82 @@ ELSEIF(sGroup @= 'Pre-Owned Hardware' % sGroup @= 'Pre-Owned Software' % sGroup 
   sPlanner = 'Pre-Owned Planner';
 ENDIF;
 
-IF(sLevel1 @= 'Used');
-  sPlanner = 'Used';
-  nUsed = nUsed + 1;
-ENDIF;
-
-IF(HierarchyElementExists(sDim, sHier, sPlanner) = 0);
-  HierarchyElementInsert(sDim, sHier, '', sPlanner, 'C');
-  nGroupsCreated = nGroupsCreated + 1;
-ENDIF;
-
 sSgm = sCategory;
 IF(sSgm @= '');
   sSgm = 'Unassigned';
 ENDIF;
-sCat = sPlanner | ' - ' | sSgm;
 
-IF(HierarchyElementExists(sDim, sHier, sCat) = 0);
-  HierarchyElementInsert(sDim, sHier, '', sCat, 'C');
-  nSgmNodes = nSgmNodes + 1;
+bInactive = 0;
+IF(sSellable @<> 'Y');   bInactive = 1; ENDIF;
+IF(sLevel1   @= 'Used'); bInactive = 1; ENDIF;
+
+IF(bInactive = 0);
+  nS0 = CellGetN(sActualCube, sSku, sCurFY, sAllCh, 'location_sales_amount');
+  nS1 = CellGetN(sActualCube, sSku, sFYm1,  sAllCh, 'location_sales_amount');
+  nS2 = CellGetN(sActualCube, sSku, sFYm2,  sAllCh, 'location_sales_amount');
+  nS3 = CellGetN(sActualCube, sSku, sFYm3,  sAllCh, 'location_sales_amount');
+  nSales4yr = nS0 + nS1 + nS2 + nS3;
+  nO1 = CellGetN(sActualCube, sSku, sCurFY,  sAllCh, 'location_on_order_amount');
+  nO2 = CellGetN(sActualCube, sSku, sNextFY, sAllCh, 'location_on_order_amount');
+  nOnOrder = nO1 + nO2;
+  nInv = CellGetN(sActualCube, sSku, sLcpWeek, sAllCh, 'location_inventory_quantity_ending');
+  IF(nSales4yr = 0 & nOnOrder = 0 & nInv = 0);
+    bInactive = 1;
+  ENDIF;
 ENDIF;
-HierarchyElementComponentAdd(sDim, sHier, sPlanner, sCat, 1);
 
-HierarchyElementComponentAdd(sDim, sHier, sCat, sSku, 1);
+# 978-prefix active override (books/ISBN): always active regardless of other conditions.
+IF(SUBST(sSku, 1, 3) @= '978');
+  bInactive = 0;
+ENDIF;
+
+IF(bInactive = 1);
+  sInPl  = 'Inactive - ' | sPlanner;
+  sInCat = 'Inactive - ' | sPlanner | ' - ' | sSgm;
+  IF(HierarchyElementExists(sDim, sHier, sInPl) = 0);
+    HierarchyElementInsert(sDim, sHier, '', sInPl, 'C');
+    nInactivePlannersCreated = nInactivePlannersCreated + 1;
+  ENDIF;
+  HierarchyElementComponentAdd(sDim, sHier, 'Inactive', sInPl, 1);
+  IF(HierarchyElementExists(sDim, sHier, sInCat) = 0);
+    HierarchyElementInsert(sDim, sHier, '', sInCat, 'C');
+    nInactiveSgmCreated = nInactiveSgmCreated + 1;
+  ENDIF;
+  HierarchyElementComponentAdd(sDim, sHier, sInPl, sInCat, 1);
+  HierarchyElementComponentAdd(sDim, sHier, sInCat, sSku, 1);
+  nInactive = nInactive + 1;
+ELSE;
+  IF(HierarchyElementExists(sDim, sHier, sPlanner) = 0);
+    HierarchyElementInsert(sDim, sHier, '', sPlanner, 'C');
+    nGroupsCreated = nGroupsCreated + 1;
+  ENDIF;
+  sCat = sPlanner | ' - ' | sSgm;
+  IF(HierarchyElementExists(sDim, sHier, sCat) = 0);
+    HierarchyElementInsert(sDim, sHier, '', sCat, 'C');
+    nSgmNodes = nSgmNodes + 1;
+  ENDIF;
+  HierarchyElementComponentAdd(sDim, sHier, sPlanner, sCat, 1);
+  HierarchyElementComponentAdd(sDim, sHier, sCat, sSku, 1);
+  sCustom = CellGetS('Merch SKU Custom Group Input', sSku, 'Custom Group Name');
+  IF(sCustom @<> '');
+    sBucket = sCat | ' - ' | sCustom;
+    IF(HierarchyElementExists(sDim, sHier, sBucket) = 0);
+      HierarchyElementInsert(sDim, sHier, '', sBucket, 'C');
+      nCustomNodes = nCustomNodes + 1;
+    ENDIF;
+    HierarchyElementComponentAdd(sDim, sHier, sCat, sBucket, 1);
+    HierarchyElementComponentDelete(sDim, sHier, sCat, sSku);
+    HierarchyElementComponentAdd(sDim, sHier, sBucket, sSku, 1);
+  ENDIF;
+  IF(sPlanner @= 'Unassigned Planner');
+    nUnassigned = nUnassigned + 1;
+    IF(bLogDebug = 1);
+      LogOutput('WARN', cProcessName | ' | Unassigned SKU=' | sSku | ' | SGM_Category_Group=' | sGroup | ' | SGM_Category=' | sCategory);
+    ENDIF;
+  ENDIF;
+ENDIF;
+
 nLeafCount = nLeafCount + 1;
-
-sCustom = CellGetS('Merch SKU Custom Group Input', sSku, 'Custom Group Name');
-IF(sCustom @<> '');
-  sBucket = sCat | ' - ' | sCustom;
-  IF(HierarchyElementExists(sDim, sHier, sBucket) = 0);
-    HierarchyElementInsert(sDim, sHier, '', sBucket, 'C');
-    nCustomNodes = nCustomNodes + 1;
-  ENDIF;
-  HierarchyElementComponentAdd(sDim, sHier, sCat, sBucket, 1);
-  HierarchyElementComponentDelete(sDim, sHier, sCat, sSku);
-  HierarchyElementComponentAdd(sDim, sHier, sBucket, sSku, 1);
-ENDIF;
-
-IF(sPlanner @= 'Unassigned Planner');
-  nUnassigned = nUnassigned + 1;
-  IF(bLogDebug = 1);
-    LogOutput('WARN', cProcessName | ' | Unassigned SKU=' | sSku | ' | SGM_Category_Group=' | sGroup | ' | SGM_Category=' | sCategory);
-  ENDIF;
-ENDIF;
 
 #endregion
 #region Data
@@ -350,9 +408,20 @@ ENDIF;
 IF(CellIsUpdateable('ProcessControl', cProcessName, 'SubsetCount') = 1);
   CellPutN(nLeafCount, 'ProcessControl', cProcessName, 'SubsetCount');
 ENDIF;
+IF(CellIsUpdateable('ProcessControl', cProcessName, 'RecordCount') = 1);
+  CellPutN(nInactive, 'ProcessControl', cProcessName, 'RecordCount');
+ENDIF;
 
 IF(bLogInfo = 1);
-  LogOutput('INFO', cProcessName | ' | Planners=' | TRIM(STR(nGroupsCreated, 10, 0)) | ' | SgmNodes=' | TRIM(STR(nSgmNodes, 10, 0)) | ' | Leaves=' | TRIM(STR(nLeafCount, 10, 0)) | ' | EdgesStripped=' | TRIM(STR(nEdgesStripped, 10, 0)) | ' | Used=' | TRIM(STR(nUsed, 10, 0)) | ' | NotSellable=' | TRIM(STR(nNotSellable, 10, 0)) | ' | Unassigned=' | TRIM(STR(nUnassigned, 10, 0)));
+  LogOutput('INFO', cProcessName |
+    ' | Planners=' | TRIM(STR(nGroupsCreated, 10, 0)) |
+    ' | SgmNodes=' | TRIM(STR(nSgmNodes, 10, 0)) |
+    ' | Inactive=' | TRIM(STR(nInactive, 10, 0)) |
+    ' | InactivePlanners=' | TRIM(STR(nInactivePlannersCreated, 10, 0)) |
+    ' | InactiveCats=' | TRIM(STR(nInactiveSgmCreated, 10, 0)) |
+    ' | Leaves=' | TRIM(STR(nLeafCount, 10, 0)) |
+    ' | EdgesStripped=' | TRIM(STR(nEdgesStripped, 10, 0)) |
+    ' | Unassigned=' | TRIM(STR(nUnassigned, 10, 0)));
   LogOutput('INFO', 'END: ' | GetProcessName());
 ENDIF;
 

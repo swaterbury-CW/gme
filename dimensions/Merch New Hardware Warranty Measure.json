@@ -1,0 +1,12 @@
+{
+	"@type":"Dimension",
+	"Name":"Merch New Hardware Warranty Measure",
+	"Hierarchies@Code.links":
+	[
+		"Merch New Hardware Warranty Measure.hierarchies/Merch New Hardware Warranty Measure.json"
+	],
+	"DefaultHierarchy":
+	{
+		"@id":"Dimensions('Merch New Hardware Warranty Measure')/Hierarchies('Merch New Hardware Warranty Measure')"
+	}
+}
