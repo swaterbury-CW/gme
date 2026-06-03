@@ -1,0 +1,109 @@
+#region Prolog
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+#Region : Process Header
+# DEVELOPER : Steve Waterbury
+# CREATED ON : 2026-03-18
+# LAST UPDATE: 2026-06-02
+# CHANGED BY : Steve Waterbury
+# COMMENTS: Rebuilds public subsets on Merch Curve Name for picklist use.
+#### CHANGE HISTORY:
+### 2026-03-18  Steve Waterbury  Creation
+### 2026-04-03  Steve Waterbury  All curve types via Has_* attributes
+### 2026-05-27  Steve Waterbury  CB branch via Has_CategoryBuild (plan a139eb3e12de)
+### 2026-06-02  Steve Waterbury  Removed Level + Category Build curve types (plan c1cd290268f6)
+#EndRegion
+
+sLogLevel = CellGetS( 'ProcessControl', GetProcessName(), 'LoggingLevel' );
+IF( sLogLevel @= '' );
+  sLogLevel = 'OFF';
+ENDIF;
+bLogInfo = 0;
+bLogDebug = 0;
+IF( sLogLevel @= 'INFO' % sLogLevel @= 'DEBUG' );
+  bLogInfo = 1;
+ENDIF;
+IF( sLogLevel @= 'DEBUG' );
+  bLogDebug = 1;
+ENDIF;
+IF( bLogInfo = 1 );
+  LogOutput( 'INFO', 'START: ' | GetProcessName() );
+ENDIF;
+
+sDim = 'Merch Curve Name';
+sVel = 'Velocity Curves';
+sSea = 'Seasonality Curves';
+sReg = 'Regime Curves';
+sMD = 'Markdown Curves';
+
+IF(SubsetExists(sDim, sVel) = 1);
+  SubsetDestroy(sDim, sVel);
+ENDIF;
+IF(SubsetExists(sDim, sSea) = 1);
+  SubsetDestroy(sDim, sSea);
+ENDIF;
+IF(SubsetExists(sDim, sReg) = 1);
+  SubsetDestroy(sDim, sReg);
+ENDIF;
+IF(SubsetExists(sDim, sMD) = 1);
+  SubsetDestroy(sDim, sMD);
+ENDIF;
+IF(SubsetExists(sDim, 'Sell-Through Curves') = 1);
+  SubsetDestroy(sDim, 'Sell-Through Curves');
+ENDIF;
+
+SubsetCreate(sDim, sVel);
+SubsetCreate(sDim, sSea);
+SubsetCreate(sDim, sReg);
+SubsetCreate(sDim, sMD);
+
+nVelIdx = 0;
+nSeaIdx = 0;
+nRegIdx = 0;
+nMDIdx = 0;
+nCount = DIMSIZ(sDim);
+nIdx = 1;
+While(nIdx <= nCount);
+  sElem = DIMNM(sDim, nIdx);
+  IF(DTYPE(sDim, sElem) @= 'N');
+    IF(ATTRN(sDim, sElem, 'Has_Velocity') = 1);
+      nVelIdx = nVelIdx + 1;
+      SubsetElementInsert(sDim, sVel, sElem, nVelIdx);
+    ENDIF;
+    IF(ATTRN(sDim, sElem, 'Has_Seasonality') = 1);
+      nSeaIdx = nSeaIdx + 1;
+      SubsetElementInsert(sDim, sSea, sElem, nSeaIdx);
+    ENDIF;
+    IF(ATTRN(sDim, sElem, 'Has_Regime') = 1);
+      nRegIdx = nRegIdx + 1;
+      SubsetElementInsert(sDim, sReg, sElem, nRegIdx);
+    ENDIF;
+    IF(ATTRN(sDim, sElem, 'Has_Markdown') = 1);
+      nMDIdx = nMDIdx + 1;
+      SubsetElementInsert(sDim, sMD, sElem, nMDIdx);
+    ENDIF;
+  ENDIF;
+  nIdx = nIdx + 1;
+End;
+
+#endregion
+#region Metadata
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+
+#endregion
+#region Data
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+
+#endregion
+#region Epilog
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+#Region : Epilog Logging
+IF( bLogInfo = 1 );
+  LogOutput( 'INFO', 'END: ' | GetProcessName() | ' | Velocity=' | TRIM(STR(nVelIdx, 4, 0)) | ' | Seasonality=' | TRIM(STR(nSeaIdx, 4, 0)) | ' | Regime=' | TRIM(STR(nRegIdx, 4, 0)) | ' | Markdown=' | TRIM(STR(nMDIdx, 4, 0)) );
+ENDIF;
+#EndRegion
+
+#endregion

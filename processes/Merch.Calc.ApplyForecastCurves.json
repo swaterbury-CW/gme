@@ -1,26 +1,26 @@
 {
 	"@type":"Process",
-	"Name":"Merch.Calc.SubmitForecastToInventory",
+	"Name":"Merch.Calc.ApplyForecastCurves",
 	"HasSecurityAccess":false,
-	"Code@Code.link":"Merch.Calc.SubmitForecastToInventory.ti",
+	"Code@Code.link":"Merch.Calc.ApplyForecastCurves.ti",
 	"DataSource":
 	{
 		"Type":"TM1CubeView",
-		"dataSourceNameForServer":"Merch Forecast",
-		"dataSourceNameForClient":"Merch Forecast",
-		"view":"temp_SubmitForecast"
+		"dataSourceNameForServer":"Merch Curve Assignment",
+		"dataSourceNameForClient":"Merch Curve Assignment",
+		"view":"TI_ApplyCurves_placeholder"
 	},
 	"Parameters":
 	[
 		{
 			"Name":"pVersion",
-			"Prompt":"Version",
-			"Value":"Forecast",
+			"Prompt":"Version (Calculated type)",
+			"Value":"",
 			"Type":"String"
 		},
 		{
-			"Name":"pSKUElement",
-			"Prompt":"SKU or Category",
+			"Name":"pRole",
+			"Prompt":"Roles hier element",
 			"Value":"",
 			"Type":"String"
 		}
@@ -28,7 +28,7 @@
 	"Variables":
 	[
 		{
-			"Name":"vMerch_Forecast_Measure",
+			"Name":"vMerch_Curve_Assignment_Measure",
 			"Type":"String",
 			"Position":1,
 			"StartByte":0,
@@ -42,34 +42,26 @@
 			"EndByte":0
 		},
 		{
-			"Name":"vMerch_Time_Period",
+			"Name":"vMerch_Version",
 			"Type":"String",
 			"Position":3,
 			"StartByte":0,
 			"EndByte":0
 		},
 		{
-			"Name":"vMerch_Version",
+			"Name":"Value",
 			"Type":"String",
 			"Position":4,
 			"StartByte":0,
 			"EndByte":0
-		},
-		{
-			"Name":"Value",
-			"Type":"Numeric",
-			"Position":5,
-			"StartByte":0,
-			"EndByte":0
 		}
 	],
-	"UID": "1774874686000",
+	"UID": "17742126500002",
 	"UIData": "CubeAction=1511\fDataAction=1503\fCubeLogChanges=0\f",
 	"VariablesUIData": [
 		"VarType=32\fColType=827\f",
 		"VarType=32\fColType=827\f",
 		"VarType=32\fColType=827\f",
-		"VarType=32\fColType=827\f",
-		"VarType=33\fColType=827\f"
+		"VarType=32\fColType=827\f"
 	]
 }
