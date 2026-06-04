@@ -1,0 +1,34 @@
+SKIPCHECK;
+#Region : Rule Header
+# CUBE: Merch PreOwned Channel Split
+# DEVELOPER: Steve Waterbury
+# CREATED ON: 2026-06-03
+# STOR = remainder after all other channel splits subtracted from 1. Gate: Calculated version, open period. Mirrors Merch Channel Split keyed by PreOwned category.
+# CHANGE HISTORY:
+#   2026-06-03 | Steve Waterbury | Initial creation - STOR remainder rule (PreOwned)
+#EndRegion
+
+#Region : STOR Remainder
+['STOR', 'Split Pct'] = N:
+  IF(ATTRS('Merch Version', !Merch Version, 'Version_Type') @<> 'Calculated', STET,
+  IF(ATTRN('Merch Version', !Merch Version, 'Last_Closed_Period') <> 0
+     & ATTRN('Merch Time Period', !Merch Time Period, 'Start_Date')
+       <= ATTRN('Merch Version', !Merch Version, 'Last_Closed_Period'), STET,
+  1 - DB('Merch PreOwned Channel Split', !Merch Version, !Merch Time Period, !Merch PreOwned Category, 'Ecom', 'Split Pct')
+    - DB('Merch PreOwned Channel Split', !Merch Version, !Merch Time Period, !Merch PreOwned Category, 'Retail', 'Split Pct')
+    - DB('Merch PreOwned Channel Split', !Merch Version, !Merch Time Period, !Merch PreOwned Category, 'GEEK', 'Split Pct')
+    - DB('Merch PreOwned Channel Split', !Merch Version, !Merch Time Period, !Merch PreOwned Category, 'SPEC', 'Split Pct')
+    - DB('Merch PreOwned Channel Split', !Merch Version, !Merch Time Period, !Merch PreOwned Category, 'VIRT', 'Split Pct')
+    - DB('Merch PreOwned Channel Split', !Merch Version, !Merch Time Period, !Merch PreOwned Category, 'WHSE', 'Split Pct')
+  ));
+#EndRegion
+
+FEEDERS;
+#Region : Feeders
+['Ecom', 'Split Pct'] => DB('Merch PreOwned Channel Split', !Merch Version, !Merch Time Period, !Merch PreOwned Category, 'STOR', 'Split Pct');
+['Retail', 'Split Pct'] => DB('Merch PreOwned Channel Split', !Merch Version, !Merch Time Period, !Merch PreOwned Category, 'STOR', 'Split Pct');
+['GEEK', 'Split Pct'] => DB('Merch PreOwned Channel Split', !Merch Version, !Merch Time Period, !Merch PreOwned Category, 'STOR', 'Split Pct');
+['SPEC', 'Split Pct'] => DB('Merch PreOwned Channel Split', !Merch Version, !Merch Time Period, !Merch PreOwned Category, 'STOR', 'Split Pct');
+['VIRT', 'Split Pct'] => DB('Merch PreOwned Channel Split', !Merch Version, !Merch Time Period, !Merch PreOwned Category, 'STOR', 'Split Pct');
+['WHSE', 'Split Pct'] => DB('Merch PreOwned Channel Split', !Merch Version, !Merch Time Period, !Merch PreOwned Category, 'STOR', 'Split Pct');
+#EndRegion
