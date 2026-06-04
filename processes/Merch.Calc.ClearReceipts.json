@@ -1,20 +1,38 @@
 {
 	"@type":"Process",
-	"Name":"Merch.Load.ActualsToForecast",
+	"Name":"Merch.Calc.ClearReceipts",
 	"HasSecurityAccess":false,
-	"Code@Code.link":"Merch.Load.ActualsToForecast.ti",
+	"Code@Code.link":"Merch.Calc.ClearReceipts.ti",
 	"DataSource":
 	{
 		"Type":"TM1CubeView",
-		"dataSourceNameForServer":"Merch Actuals",
-		"dataSourceNameForClient":"Merch Actuals",
-		"view":"TI_ActualsToForecast_placeholder"
+		"dataSourceNameForServer":"Merch Forecast",
+		"dataSourceNameForClient":"Merch Forecast",
+		"view":"TI_ClearReceipts"
 	},
 	"Parameters":
 	[
 		{
-			"Name":"pTimePeriod",
-			"Prompt":"pTimePeriod",
+			"Name":"pVersion",
+			"Prompt":"Merch Version",
+			"Value":"",
+			"Type":"String"
+		},
+		{
+			"Name":"pNode",
+			"Prompt":"Optional Roles node (blank = all Roles leaves)",
+			"Value":"",
+			"Type":"String"
+		},
+		{
+			"Name":"pStartPeriod",
+			"Prompt":"Optional start period (blank = first open week)",
+			"Value":"",
+			"Type":"String"
+		},
+		{
+			"Name":"pEndPeriod",
+			"Prompt":"Optional end period (blank = no upper bound)",
 			"Value":"",
 			"Type":"String"
 		}
@@ -22,7 +40,7 @@
 	"Variables":
 	[
 		{
-			"Name":"vMerch_Actuals_Measure",
+			"Name":"vMerch_Forecast_Measure",
 			"Type":"String",
 			"Position":1,
 			"StartByte":0,
@@ -43,27 +61,18 @@
 			"EndByte":0
 		},
 		{
-			"Name":"vMerch_Channel",
+			"Name":"vMerch_Version",
 			"Type":"String",
 			"Position":4,
 			"StartByte":0,
 			"EndByte":0
-		},
-		{
-			"Name":"Value",
-			"Type":"Numeric",
-			"Position":5,
-			"StartByte":0,
-			"EndByte":0
 		}
 	],
-	"UID": "1775159017000",
 	"UIData": "CubeAction=1511\fDataAction=1503\fCubeLogChanges=0\f",
 	"VariablesUIData": [
 		"VarType=32\fColType=827\f",
 		"VarType=32\fColType=827\f",
 		"VarType=32\fColType=827\f",
-		"VarType=32\fColType=827\f",
-		"VarType=33\fColType=827\f"
+		"VarType=32\fColType=827\f"
 	]
 }
