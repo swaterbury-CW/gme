@@ -4,12 +4,13 @@
 #Region : Process Header
 # DEVELOPER: Steve Waterbury
 # CREATED ON: 2026-05-13
-# LAST UPDATE: 2026-06-02
+# LAST UPDATE: 2026-06-04
 # CHANGED BY: Steve Waterbury
-# COMMENTS: Per-Roles-parent worker for ApplyForecastCurves. Each curve writes ONLY its like-named Merch Forecast measure (Velocity->Velocity, Seasonality->Seasonality, Regime->Regime, Markdown->Markdown %). Build/Debuild is rule-derived (guarded product); Category Build / Promo Build are no longer curve-written.
+# COMMENTS: Per-Roles-parent worker for ApplyForecastCurves. Each curve writes ONLY its like-named Merch Forecast measure. First-week sell-through seed added 2026-06-04.
 # CHANGE HISTORY:
 #   2026-05-13 | Steve Waterbury | Initial creation; Category-parallel via Roles hier (design plan 46c8263071d6)
-#   2026-06-02 | Steve Waterbury | Curve realign: drop Build/Debuild + Category Build + Promo Build writes/clears + dead Category Build curve read/MDX col (plan c1cd290268f6)
+#   2026-06-02 | Steve Waterbury | Curve realign: drop Build/Debuild + Category Build + Promo Build writes/clears (plan c1cd290268f6)
+#   2026-06-04 | Steve Waterbury | First-week sell-through seed (plan a3be75e25c1e)
 #EndRegion
 
 sCube = 'Merch Forecast';
@@ -56,7 +57,7 @@ ENDIF;
 
 nWeeksPerYear = 52;
 nTPCount = DIMSIZ(sDimTP);
-nVelWrites = 0; nSeaWrites = 0; nRegWrites = 0; nMDWrites = 0; nSkipped = 0; nLocked = 0; nCleared = 0;
+nVelWrites = 0; nSeaWrites = 0; nRegWrites = 0; nMDWrites = 0; nSkipped = 0; nLocked = 0; nCleared = 0; nSeedWrites = 0;
 nLastClosedSerial = ATTRN('Merch Version', sVersion, 'Last_Closed_Period');
 
 nStart = NOW;
@@ -150,6 +151,10 @@ IF(nStartWeekSerial > 0);
   END;
 ENDIF;
 
+nFWSPct = CellGetN(sAssign, sVersion, sSKU, 'Applied First Week Sell %');
+nSeedTPStart = 0;
+sSeedTP = '';
+
 nTPIdx = 1;
 WHILE(nTPIdx <= nTPCount);
   sTP = DIMNM(sDimTP, nTPIdx);
@@ -222,6 +227,11 @@ WHILE(nTPIdx <= nTPCount);
       ENDIF;
 
       IF(bWriteThisWeek = 1);
+        IF(nSeedTPStart = 0 % nTPStartSerial < nSeedTPStart);
+          nSeedTPStart = nTPStartSerial;
+          sSeedTP = sTP;
+        ENDIF;
+
         sShiftedCurveWeek = 'Week ' | TRIM(STR(nShiftedWeek, 2, 0));
         sCurveWeek = 'Week ' | TRIM(STR(nRelWeek, 2, 0));
 
@@ -281,6 +291,25 @@ WHILE(nTPIdx <= nTPCount);
   nTPIdx = nTPIdx + 1;
 END;
 
+IF(nFWSPct > 0 & sSeedTP @<> '');
+  IF(CellIsUpdateable(sCube, sVersion, sSeedTP, sSKU, 'Adjustment Units') = 1);
+    CellPutN(0, sCube, sVersion, sSeedTP, sSKU, 'Adjustment Units');
+  ENDIF;
+  sPriorWk = ATTRS(sDimTP, sSeedTP, 'Previous Week');
+  nPriorSales = 0;
+  IF(sPriorWk @<> '');
+    nPriorSales = CellGetN(sCube, sVersion, sPriorWk, sSKU, 'Calc Units');
+  ENDIF;
+  IF(nPriorSales = 0);
+    nBaseInv = CellGetN(sCube, sVersion, sSeedTP, sSKU, 'Opening Inventory') + CellGetN(sCube, sVersion, sSeedTP, sSKU, 'Receipts') + CellGetN(sCube, sVersion, sSeedTP, sSKU, 'On-Order');
+    nSeed = ROUND(nBaseInv * nFWSPct / 100);
+    IF(CellIsUpdateable(sCube, sVersion, sSeedTP, sSKU, 'Adjustment Units') = 1);
+      CellPutN(nSeed, sCube, sVersion, sSeedTP, sSKU, 'Adjustment Units');
+      nSeedWrites = nSeedWrites + 1;
+    ENDIF;
+  ENDIF;
+ENDIF;
+
 CellPutS('Y', sAssign, sVersion, sSKU, 'Forecast Lock');
 nLocked = nLocked + 1;
 
@@ -291,6 +320,6 @@ nLocked = nLocked + 1;
 IF(ViewExists(sAssign, sView) = 1);
   ViewDestroy(sAssign, sView);
 ENDIF;
-LogOutput('INFO', 'TIMING END: ' | sProcess | ' | Role=' | pRole | ' | Elapsed=' | TRIM(STR((NOW - nStart) * 86400, 12, 1)) | 's | Vel=' | TRIM(STR(nVelWrites,10,0)) | ' Sea=' | TRIM(STR(nSeaWrites,10,0)) | ' Reg=' | TRIM(STR(nRegWrites,10,0)) | ' MD=' | TRIM(STR(nMDWrites,10,0)) | ' Locked=' | TRIM(STR(nLocked,10,0)) | ' Skip=' | TRIM(STR(nSkipped,10,0)));
+LogOutput('INFO', 'TIMING END: ' | sProcess | ' | Role=' | pRole | ' | Elapsed=' | TRIM(STR((NOW - nStart) * 86400, 12, 1)) | 's | Vel=' | TRIM(STR(nVelWrites,10,0)) | ' Sea=' | TRIM(STR(nSeaWrites,10,0)) | ' Reg=' | TRIM(STR(nRegWrites,10,0)) | ' MD=' | TRIM(STR(nMDWrites,10,0)) | ' Seed=' | TRIM(STR(nSeedWrites,10,0)) | ' Locked=' | TRIM(STR(nLocked,10,0)) | ' Skip=' | TRIM(STR(nSkipped,10,0)));
 
 #endregion

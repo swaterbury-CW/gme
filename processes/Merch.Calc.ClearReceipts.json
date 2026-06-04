@@ -1,0 +1,78 @@
+{
+	"@type":"Process",
+	"Name":"Merch.Calc.ClearReceipts",
+	"HasSecurityAccess":false,
+	"Code@Code.link":"Merch.Calc.ClearReceipts.ti",
+	"DataSource":
+	{
+		"Type":"TM1CubeView",
+		"dataSourceNameForServer":"Merch Forecast",
+		"dataSourceNameForClient":"Merch Forecast",
+		"view":"TI_ClearReceipts"
+	},
+	"Parameters":
+	[
+		{
+			"Name":"pVersion",
+			"Prompt":"Merch Version",
+			"Value":"",
+			"Type":"String"
+		},
+		{
+			"Name":"pNode",
+			"Prompt":"Optional Roles node (blank = all Roles leaves)",
+			"Value":"",
+			"Type":"String"
+		},
+		{
+			"Name":"pStartPeriod",
+			"Prompt":"Optional start period (blank = first open week)",
+			"Value":"",
+			"Type":"String"
+		},
+		{
+			"Name":"pEndPeriod",
+			"Prompt":"Optional end period (blank = no upper bound)",
+			"Value":"",
+			"Type":"String"
+		}
+	],
+	"Variables":
+	[
+		{
+			"Name":"vMerch_Forecast_Measure",
+			"Type":"String",
+			"Position":1,
+			"StartByte":0,
+			"EndByte":0
+		},
+		{
+			"Name":"vMerch_Time_Period",
+			"Type":"String",
+			"Position":2,
+			"StartByte":0,
+			"EndByte":0
+		},
+		{
+			"Name":"vMerch_SKU",
+			"Type":"String",
+			"Position":3,
+			"StartByte":0,
+			"EndByte":0
+		},
+		{
+			"Name":"vMerch_Version",
+			"Type":"String",
+			"Position":4,
+			"StartByte":0,
+			"EndByte":0
+		}
+	],
+	"UIData": "CubeAction=1511\fDataAction=1503\fCubeLogChanges=0\f",
+	"VariablesUIData": [
+		"VarType=32\fColType=827\f",
+		"VarType=32\fColType=827\f",
+		"VarType=32\fColType=827\f",
+		"VarType=32\fColType=827\f"
+	]
+}

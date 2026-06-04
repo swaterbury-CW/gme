@@ -3,12 +3,13 @@ SKIPCHECK;
 # CUBE: Merch Curve Assignment
 # DEVELOPER: Steve Waterbury
 # CREATED ON: 2026-03-16
-# LAST UPDATE: 2026-06-02
+# LAST UPDATE: 2026-06-04
 # COMMENTS: Hierarchical curve assignment. Each Applied field resolves by walking up Merch SKU hierarchy. First non-empty Override wins.
 # CHANGE HISTORY:
 #   2026-03-16 | Steve Waterbury | Creation
 #   2026-05-06 | Steve Waterbury | Date Overrides accept YYYYMMDD strings
 #   2026-06-02 | Steve Waterbury | Removed Applied Category Build Curve region (Category Build dropped as curve type, plan c1cd290268f6)
+#   2026-06-04 | Steve Waterbury | Added Applied First Week Sell % region (plan a3be75e25c1e EP2)
 #EndRegion
 
 #Region : Applied Markdown Curve
@@ -60,6 +61,26 @@ SKIPCHECK;
   IF(DB('Merch Curve Assignment', !Merch Version, !Merch SKU, 'Override Start Mode') @<> '',
     DB('Merch Curve Assignment', !Merch Version, !Merch SKU, 'Override Start Mode'),
     CellValueS('Merch Curve Assignment',
+               'Merch Version':!Merch Version,
+               'Merch SKU':'Roles':ElementParent('Merch SKU', 'Roles', !Merch SKU, 1),
+               'Merch Curve Assignment Measure':!Merch Curve Assignment Measure)
+  );
+#EndRegion
+
+#Region : Applied First Week Sell %
+['Applied First Week Sell %'] = N:
+  IF(DB('Merch Curve Assignment', !Merch Version, !Merch SKU, 'Override First Week Sell %') @<> '',
+    NUMBR(DB('Merch Curve Assignment', !Merch Version, !Merch SKU, 'Override First Week Sell %')),
+    CellValueN('Merch Curve Assignment',
+               'Merch Version':!Merch Version,
+               'Merch SKU':'Roles':ElementParent('Merch SKU', 'Roles', !Merch SKU, 1),
+               'Merch Curve Assignment Measure':!Merch Curve Assignment Measure)
+  );
+
+['Applied First Week Sell %'] = C:
+  IF(DB('Merch Curve Assignment', !Merch Version, !Merch SKU, 'Override First Week Sell %') @<> '',
+    NUMBR(DB('Merch Curve Assignment', !Merch Version, !Merch SKU, 'Override First Week Sell %')),
+    CellValueN('Merch Curve Assignment',
                'Merch Version':!Merch Version,
                'Merch SKU':'Roles':ElementParent('Merch SKU', 'Roles', !Merch SKU, 1),
                'Merch Curve Assignment Measure':!Merch Curve Assignment Measure)

@@ -1,0 +1,22 @@
+{
+	"@type":"Process",
+	"Name":"Merch.Period.Close.Finalize_temp",
+	"HasSecurityAccess":false,
+	"Code@Code.link":"Merch.Period.Close.Finalize_temp.ti",
+	"DataSource":
+	{
+		"Type":"None"
+	},
+	"Parameters":
+	[
+		{
+			"Name":"pVersion",
+			"Prompt":"Calculated Merch Version",
+			"Value":"Forecast",
+			"Type":"String"
+		}
+	],
+	"Variables":[],
+	"UIData": "CubeAction=1511\fDataAction=1503\fCubeLogChanges=0\f",
+	"VariablesUIData": []
+}
