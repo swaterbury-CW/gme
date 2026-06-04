@@ -1,5 +1,0 @@
-{
-	"@type":"Subset",
-	"Name":"}Drill_Promo_Forecast_FY26-W06_417304",
-	"Expression":"{TM1FILTERBYLEVEL({TM1SUBSETALL([Merch Promo ID])}, 0)}"
-}

@@ -1,0 +1,12 @@
+{
+	"@type":"Dimension",
+	"Name":"Merch New Warranty Category",
+	"Hierarchies@Code.links":
+	[
+		"Merch New Warranty Category.hierarchies/Merch New Warranty Category.json"
+	],
+	"DefaultHierarchy":
+	{
+		"@id":"Dimensions('Merch New Warranty Category')/Hierarchies('Merch New Warranty Category')"
+	}
+}

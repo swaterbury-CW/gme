@@ -19,8 +19,8 @@
 			"Type":"String"
 		},
 		{
-			"Name":"pSKU",
-			"Prompt":"SKU (leaf or parent; empty = all)",
+			"Name":"pRole",
+			"Prompt":"Roles hier element",
 			"Value":"",
 			"Type":"String"
 		}

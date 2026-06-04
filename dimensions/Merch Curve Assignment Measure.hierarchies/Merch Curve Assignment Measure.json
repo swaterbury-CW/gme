@@ -12,14 +12,6 @@
 			"Type":"String"
 		},
 		{
-			"Name":"Override Category Build Curve",
-			"Type":"String"
-		},
-		{
-			"Name":"Applied Category Build Curve",
-			"Type":"String"
-		},
-		{
 			"Name":"Forecast Lock",
 			"Type":"String"
 		},
@@ -85,6 +77,14 @@
 		},
 		{
 			"Name":"Applied Markdown End Date",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Override First Week Sell %",
+			"Type":"String"
+		},
+		{
+			"Name":"Applied First Week Sell %",
 			"Type":"Numeric"
 		}
 	],

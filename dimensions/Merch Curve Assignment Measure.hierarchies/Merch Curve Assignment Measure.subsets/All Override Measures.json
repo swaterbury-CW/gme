@@ -11,9 +11,6 @@
 			"@id":"Dimensions('Merch Curve Assignment Measure')/Hierarchies('Merch Curve Assignment Measure')/Elements('Override Start Mode')"
 		},
 		{
-			"@id":"Dimensions('Merch Curve Assignment Measure')/Hierarchies('Merch Curve Assignment Measure')/Elements('Override Category Build Curve')"
-		},
-		{
 			"@id":"Dimensions('Merch Curve Assignment Measure')/Hierarchies('Merch Curve Assignment Measure')/Elements('Override Seasonality Curve')"
 		},
 		{

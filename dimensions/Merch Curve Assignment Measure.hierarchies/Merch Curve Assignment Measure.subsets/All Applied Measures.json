@@ -8,9 +8,6 @@
 			"@id":"Dimensions('Merch Curve Assignment Measure')/Hierarchies('Merch Curve Assignment Measure')/Elements('Start Mode')"
 		},
 		{
-			"@id":"Dimensions('Merch Curve Assignment Measure')/Hierarchies('Merch Curve Assignment Measure')/Elements('Applied Category Build Curve')"
-		},
-		{
 			"@id":"Dimensions('Merch Curve Assignment Measure')/Hierarchies('Merch Curve Assignment Measure')/Elements('Applied Seasonality Curve')"
 		},
 		{

@@ -48,22 +48,6 @@
 			"Type":"Numeric"
 		},
 		{
-			"Name":"Preowned Retro Dreamcast",
-			"Type":"Numeric"
-		},
-		{
-			"Name":"Preowned Retro N64",
-			"Type":"Numeric"
-		},
-		{
-			"Name":"Preowned Retro Sega Saturn",
-			"Type":"Numeric"
-		},
-		{
-			"Name":"Modern Retro",
-			"Type":"Numeric"
-		},
-		{
 			"Name":"Pre-Owned Series X Hardware",
 			"Type":"Numeric"
 		},
@@ -180,15 +164,123 @@
 			"Type":"Consolidated"
 		},
 		{
-			"Name":"PreOwned Other",
-			"Type":"Consolidated"
-		},
-		{
 			"Name":"All PreOwned Categories",
 			"Type":"Consolidated"
 		},
 		{
-			"Name":"Caption",
+			"Name":"Pre-Owned Dreamcast",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Pre-Owned N64",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Pre-Owned Saturn",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Pre-Owned DS",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Pre-Owned Gameboy (original)",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Pre-Owned Gamecube",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Pre-Owned GBA",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Pre-Owned NES",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Pre-Owned PS1",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Pre-Owned PS2",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Pre-Owned PSP",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Pre-Owned PSVita",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Pre-Owned SNES",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Pre-Owned Wii U",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Pre-Owned Genesis",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Pre-Owned Xbox (original)",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"PO SW Merch Planning Reserve",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"PO HW Merch Planning Reserve",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Pre-Owned Chargers / Cables",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Pre-Owned Memory",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"PO Acc Merch Planning Reserve",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"PreOwned Tech",
+			"Type":"Consolidated"
+		},
+		{
+			"Name":"PO Tech Merch Planning Reserve",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"PreOwned Toys & Collectibles",
+			"Type":"Consolidated"
+		},
+		{
+			"Name":"Pre-Owned Apparel",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"PreOwned Digital",
+			"Type":"Consolidated"
+		},
+		{
+			"Name":"Pre-Owned Digital",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Pre-Owned Sports",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Pre-Owned PO TCG Merch Planning Reserve",
 			"Type":"Numeric"
 		}
 	],
@@ -251,22 +343,87 @@
 		},
 		{
 			"ParentName":"PreOwned Software",
-			"ComponentName":"Preowned Retro Dreamcast",
+			"ComponentName":"Pre-Owned Dreamcast",
 			"Weight":1
 		},
 		{
 			"ParentName":"PreOwned Software",
-			"ComponentName":"Preowned Retro N64",
+			"ComponentName":"Pre-Owned N64",
 			"Weight":1
 		},
 		{
 			"ParentName":"PreOwned Software",
-			"ComponentName":"Preowned Retro Sega Saturn",
+			"ComponentName":"Pre-Owned Saturn",
 			"Weight":1
 		},
 		{
 			"ParentName":"PreOwned Software",
-			"ComponentName":"Modern Retro",
+			"ComponentName":"Pre-Owned DS",
+			"Weight":1
+		},
+		{
+			"ParentName":"PreOwned Software",
+			"ComponentName":"Pre-Owned Gameboy (original)",
+			"Weight":1
+		},
+		{
+			"ParentName":"PreOwned Software",
+			"ComponentName":"Pre-Owned Gamecube",
+			"Weight":1
+		},
+		{
+			"ParentName":"PreOwned Software",
+			"ComponentName":"Pre-Owned GBA",
+			"Weight":1
+		},
+		{
+			"ParentName":"PreOwned Software",
+			"ComponentName":"Pre-Owned NES",
+			"Weight":1
+		},
+		{
+			"ParentName":"PreOwned Software",
+			"ComponentName":"Pre-Owned PS1",
+			"Weight":1
+		},
+		{
+			"ParentName":"PreOwned Software",
+			"ComponentName":"Pre-Owned PS2",
+			"Weight":1
+		},
+		{
+			"ParentName":"PreOwned Software",
+			"ComponentName":"Pre-Owned PSP",
+			"Weight":1
+		},
+		{
+			"ParentName":"PreOwned Software",
+			"ComponentName":"Pre-Owned PSVita",
+			"Weight":1
+		},
+		{
+			"ParentName":"PreOwned Software",
+			"ComponentName":"Pre-Owned SNES",
+			"Weight":1
+		},
+		{
+			"ParentName":"PreOwned Software",
+			"ComponentName":"Pre-Owned Wii U",
+			"Weight":1
+		},
+		{
+			"ParentName":"PreOwned Software",
+			"ComponentName":"Pre-Owned Genesis",
+			"Weight":1
+		},
+		{
+			"ParentName":"PreOwned Software",
+			"ComponentName":"Pre-Owned Xbox (original)",
+			"Weight":1
+		},
+		{
+			"ParentName":"PreOwned Software",
+			"ComponentName":"PO SW Merch Planning Reserve",
 			"Weight":1
 		},
 		{
@@ -311,27 +468,12 @@
 		},
 		{
 			"ParentName":"PreOwned Hardware",
-			"ComponentName":"Pre-Owned PC Systems",
-			"Weight":1
-		},
-		{
-			"ParentName":"PreOwned Hardware",
-			"ComponentName":"Pre-Owned PC Components",
-			"Weight":1
-		},
-		{
-			"ParentName":"PreOwned Hardware",
-			"ComponentName":"Pre-Owned Monitors",
+			"ComponentName":"PO HW Merch Planning Reserve",
 			"Weight":1
 		},
 		{
 			"ParentName":"PreOwned Accessories",
 			"ComponentName":"Pre-Owned Controller",
-			"Weight":1
-		},
-		{
-			"ParentName":"PreOwned Accessories",
-			"ComponentName":"Pre-Owned Peripherals",
 			"Weight":1
 		},
 		{
@@ -350,6 +492,21 @@
 			"Weight":1
 		},
 		{
+			"ParentName":"PreOwned Accessories",
+			"ComponentName":"Pre-Owned Chargers / Cables",
+			"Weight":1
+		},
+		{
+			"ParentName":"PreOwned Accessories",
+			"ComponentName":"Pre-Owned Memory",
+			"Weight":1
+		},
+		{
+			"ParentName":"PreOwned Accessories",
+			"ComponentName":"PO Acc Merch Planning Reserve",
+			"Weight":1
+		},
+		{
 			"ParentName":"PreOwned Trading Cards",
 			"ComponentName":"Pre-Owned Pokemon",
 			"Weight":1
@@ -365,33 +522,13 @@
 			"Weight":1
 		},
 		{
-			"ParentName":"PreOwned Other",
-			"ComponentName":"Pre-Owned Collectibles",
+			"ParentName":"PreOwned Trading Cards",
+			"ComponentName":"Pre-Owned Sports",
 			"Weight":1
 		},
 		{
-			"ParentName":"PreOwned Other",
-			"ComponentName":"Pre-Owned Homewares",
-			"Weight":1
-		},
-		{
-			"ParentName":"PreOwned Other",
-			"ComponentName":"Pre-Owned Tech & Entertainment",
-			"Weight":1
-		},
-		{
-			"ParentName":"PreOwned Other",
-			"ComponentName":"Pre-Owned Mobile Phone",
-			"Weight":1
-		},
-		{
-			"ParentName":"PreOwned Other",
-			"ComponentName":"Pre-Owned Other",
-			"Weight":1
-		},
-		{
-			"ParentName":"PreOwned Other",
-			"ComponentName":"Pre-Owned Zero Rev",
+			"ParentName":"PreOwned Trading Cards",
+			"ComponentName":"Pre-Owned PO TCG Merch Planning Reserve",
 			"Weight":1
 		},
 		{
@@ -416,12 +553,82 @@
 		},
 		{
 			"ParentName":"All PreOwned Categories",
-			"ComponentName":"PreOwned Other",
+			"ComponentName":"PreOwned Tech",
 			"Weight":1
 		},
 		{
 			"ParentName":"All PreOwned Categories",
-			"ComponentName":"Caption",
+			"ComponentName":"PreOwned Toys & Collectibles",
+			"Weight":1
+		},
+		{
+			"ParentName":"All PreOwned Categories",
+			"ComponentName":"PreOwned Digital",
+			"Weight":1
+		},
+		{
+			"ParentName":"PreOwned Tech",
+			"ComponentName":"Pre-Owned PC Systems",
+			"Weight":1
+		},
+		{
+			"ParentName":"PreOwned Tech",
+			"ComponentName":"Pre-Owned PC Components",
+			"Weight":1
+		},
+		{
+			"ParentName":"PreOwned Tech",
+			"ComponentName":"Pre-Owned Monitors",
+			"Weight":1
+		},
+		{
+			"ParentName":"PreOwned Tech",
+			"ComponentName":"Pre-Owned Peripherals",
+			"Weight":1
+		},
+		{
+			"ParentName":"PreOwned Tech",
+			"ComponentName":"Pre-Owned Tech & Entertainment",
+			"Weight":1
+		},
+		{
+			"ParentName":"PreOwned Tech",
+			"ComponentName":"Pre-Owned Mobile Phone",
+			"Weight":1
+		},
+		{
+			"ParentName":"PreOwned Tech",
+			"ComponentName":"PO Tech Merch Planning Reserve",
+			"Weight":1
+		},
+		{
+			"ParentName":"PreOwned Toys & Collectibles",
+			"ComponentName":"Pre-Owned Collectibles",
+			"Weight":1
+		},
+		{
+			"ParentName":"PreOwned Toys & Collectibles",
+			"ComponentName":"Pre-Owned Homewares",
+			"Weight":1
+		},
+		{
+			"ParentName":"PreOwned Toys & Collectibles",
+			"ComponentName":"Pre-Owned Other",
+			"Weight":1
+		},
+		{
+			"ParentName":"PreOwned Toys & Collectibles",
+			"ComponentName":"Pre-Owned Apparel",
+			"Weight":1
+		},
+		{
+			"ParentName":"PreOwned Digital",
+			"ComponentName":"Pre-Owned Digital",
+			"Weight":1
+		},
+		{
+			"ParentName":"PreOwned Digital",
+			"ComponentName":"Pre-Owned Zero Rev",
 			"Weight":1
 		}
 	],

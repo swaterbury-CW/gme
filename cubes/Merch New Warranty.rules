@@ -1,0 +1,59 @@
+SKIPCHECK;
+#Region : Rule Header
+# CUBE: Merch New Warranty
+# DEVELOPER: Steve Waterbury
+# CREATED ON: 2026-06-04
+# COMMENTS: In-cube Override/Applied settings (mirrors Merch PreOwned Warranty). Forecast-open: Attach Rate=Applied Attach Rate, Attach Count=Sales Units*Applied Attach Rate, Warranty AUR=Applied Warranty AUR. Actual/closed/consolidated: inverse from loaded actuals. Warranty Dollars=Attach Count*Warranty AUR.
+# CHANGE HISTORY:
+#   2026-06-04 | Steve Waterbury | Initial creation. Design plan b44fc6a18f02.
+#EndRegion
+['Applied Attach Rate'] = N:
+  IF(DB('Merch New Warranty', !Merch Version, !Merch Time Period, !Merch New Warranty Category, !Merch Channel, 'Override Attach Rate') @<> '',
+     NUMBR(DB('Merch New Warranty', !Merch Version, !Merch Time Period, !Merch New Warranty Category, !Merch Channel, 'Override Attach Rate')),
+     IF(ELPAR('Merch New Warranty Category', !Merch New Warranty Category, 1) @= '', 0,
+        CellValueN('Merch New Warranty', 'Merch Version':!Merch Version, 'Merch Time Period':!Merch Time Period, 'Merch New Warranty Category':ELPAR('Merch New Warranty Category', !Merch New Warranty Category, 1), 'Merch Channel':!Merch Channel, 'Merch New Warranty Measure':!Merch New Warranty Measure)));
+['Applied Attach Rate'] = C:
+  IF(DB('Merch New Warranty', !Merch Version, !Merch Time Period, !Merch New Warranty Category, !Merch Channel, 'Override Attach Rate') @<> '',
+     NUMBR(DB('Merch New Warranty', !Merch Version, !Merch Time Period, !Merch New Warranty Category, !Merch Channel, 'Override Attach Rate')),
+     IF(ELPAR('Merch New Warranty Category', !Merch New Warranty Category, 1) @= '', 0,
+        CellValueN('Merch New Warranty', 'Merch Version':!Merch Version, 'Merch Time Period':!Merch Time Period, 'Merch New Warranty Category':ELPAR('Merch New Warranty Category', !Merch New Warranty Category, 1), 'Merch Channel':!Merch Channel, 'Merch New Warranty Measure':!Merch New Warranty Measure)));
+['Applied Warranty AUR'] = N:
+  IF(DB('Merch New Warranty', !Merch Version, !Merch Time Period, !Merch New Warranty Category, !Merch Channel, 'Override Warranty AUR') @<> '',
+     NUMBR(DB('Merch New Warranty', !Merch Version, !Merch Time Period, !Merch New Warranty Category, !Merch Channel, 'Override Warranty AUR')),
+     IF(ELPAR('Merch New Warranty Category', !Merch New Warranty Category, 1) @= '', 0,
+        CellValueN('Merch New Warranty', 'Merch Version':!Merch Version, 'Merch Time Period':!Merch Time Period, 'Merch New Warranty Category':ELPAR('Merch New Warranty Category', !Merch New Warranty Category, 1), 'Merch Channel':!Merch Channel, 'Merch New Warranty Measure':!Merch New Warranty Measure)));
+['Applied Warranty AUR'] = C:
+  IF(DB('Merch New Warranty', !Merch Version, !Merch Time Period, !Merch New Warranty Category, !Merch Channel, 'Override Warranty AUR') @<> '',
+     NUMBR(DB('Merch New Warranty', !Merch Version, !Merch Time Period, !Merch New Warranty Category, !Merch Channel, 'Override Warranty AUR')),
+     IF(ELPAR('Merch New Warranty Category', !Merch New Warranty Category, 1) @= '', 0,
+        CellValueN('Merch New Warranty', 'Merch Version':!Merch Version, 'Merch Time Period':!Merch Time Period, 'Merch New Warranty Category':ELPAR('Merch New Warranty Category', !Merch New Warranty Category, 1), 'Merch Channel':!Merch Channel, 'Merch New Warranty Measure':!Merch New Warranty Measure)));
+['Attach Count'] = N:
+  IF(ATTRS('Merch Version', !Merch Version, 'Version_Type') @= 'Calculated' & ATTRN('Merch Version', !Merch Version, 'Last_Closed_Period') <> 0 & ATTRN('Merch Time Period', !Merch Time Period, 'Start_Date') > ATTRN('Merch Version', !Merch Version, 'Last_Closed_Period'),
+     ['Sales Units'] * ['Applied Attach Rate'],
+     STET);
+['Attach Rate'] = N:
+  IF(ATTRS('Merch Version', !Merch Version, 'Version_Type') @= 'Calculated' & ATTRN('Merch Version', !Merch Version, 'Last_Closed_Period') <> 0 & ATTRN('Merch Time Period', !Merch Time Period, 'Start_Date') > ATTRN('Merch Version', !Merch Version, 'Last_Closed_Period'),
+     ['Applied Attach Rate'],
+     ['Attach Count'] \ ['Sales Units']);
+['Attach Rate'] = C: ['Attach Count'] \ ['Sales Units'];
+['Warranty AUR'] = N:
+  IF(ATTRS('Merch Version', !Merch Version, 'Version_Type') @= 'Calculated' & ATTRN('Merch Version', !Merch Version, 'Last_Closed_Period') <> 0 & ATTRN('Merch Time Period', !Merch Time Period, 'Start_Date') > ATTRN('Merch Version', !Merch Version, 'Last_Closed_Period'),
+     ['Applied Warranty AUR'],
+     ['Attach Amount'] \ ['Attach Count']);
+['Warranty AUR'] = C: ['Attach Amount'] \ ['Attach Count'];
+['Warranty Dollars'] = N: ['Attach Count'] * ['Warranty AUR'];
+['Warranty Dollars'] = C: ['Attach Count'] * ['Warranty AUR'];
+FEEDERS;
+['Override Attach Rate'] => ['Applied Attach Rate'];
+['Override Warranty AUR'] => ['Applied Warranty AUR'];
+['Sales Units'] => ['Attach Count'];
+['Applied Attach Rate'] => ['Attach Count'];
+['Sales Units'] => ['Attach Rate'];
+['Attach Count'] => ['Attach Rate'];
+['Applied Attach Rate'] => ['Attach Rate'];
+['Attach Count'] => ['Warranty AUR'];
+['Attach Amount'] => ['Warranty AUR'];
+['Applied Warranty AUR'] => ['Warranty AUR'];
+['Attach Count'] => ['Warranty Dollars'];
+#Region : Footer
+#EndRegion

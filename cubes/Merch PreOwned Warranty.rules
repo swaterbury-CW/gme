@@ -1,18 +1,14 @@
 SKIPCHECK;
 #Region : Rule Header
-#############################
-##~~ Start Rule File ~~##
-#############################
-# DEVELOPER : Steve Waterbury
-# CUBE       : Merch PreOwned Warranty
-# COMMENTS:
-# Pre-Owned warranty calculations by category and channel.
-# Warranty Dollars = Eligible Units * Attach Rate * Warranty AUR.
-# Actual + Calculated-closed cells STET to stored loaded values.
+# CUBE: Merch PreOwned Warranty
+# DEVELOPER: Steve Waterbury
+# CREATED ON: 2026-04-03
+# COMMENTS: Pre-Owned warranty Override/Applied cascade. Applied measures follow canonical Merch Curve Assignment pattern: String Override populated -> NUMBR; else CellValueN at Merch PreOwned Category Roles parent. Actual + Calculated-closed cells STET to stored loaded values.
 # CHANGE HISTORY:
-# 2026-04-03 Steve Waterbury Initial creation
-# 2026-04-07 Steve Waterbury Added standard header/footer
-# 2026-04-19 Steve Waterbury Added STET guard for Actual + Calculated-closed
+#   2026-04-03 | Steve Waterbury | Initial creation
+#   2026-04-07 | Steve Waterbury | Added standard header/footer
+#   2026-04-19 | Steve Waterbury | Added STET guard for Actual + Calculated-closed
+#   2026-05-17 | Steve Waterbury | Added Override/Applied Attach Rate + Warranty AUR with Roles-cascade per canonical Merch Curve Assignment pattern; dropped legacy non-functional Warranty Dollars N-rule and C-recalc rules
 #EndRegion
 
 #Region : Version STET Guard
@@ -21,24 +17,49 @@ SKIPCHECK;
 [] = N: IF(ATTRS('Merch Version',!Merch Version,'Version_Type')@<>'Calculated',CONTINUE, IF(ATTRN('Merch Version',!Merch Version,'Last_Closed_Period')<>0 & ATTRN('Merch Time Period',!Merch Time Period,'Start_Date')<=ATTRN('Merch Version',!Merch Version,'Last_Closed_Period'), STET,CONTINUE));
 #EndRegion
 
-#Region : Warranty Calculation
-['Warranty Dollars'] = N: ['Eligible Units'] * ['Attach Rate'] * ['Warranty AUR'];
-#EndRegion
+#Region : Applied Roles Cascade
+['Applied Attach Rate'] = N:
+  IF(DB('Merch PreOwned Warranty', !Merch Version, !Merch Time Period, !Merch PreOwned Category, !Merch Channel, 'Override Attach Rate') @<> '',
+    NUMBR(DB('Merch PreOwned Warranty', !Merch Version, !Merch Time Period, !Merch PreOwned Category, !Merch Channel, 'Override Attach Rate')),
+    CellValueN('Merch PreOwned Warranty',
+               'Merch Version':!Merch Version,
+               'Merch Time Period':!Merch Time Period,
+               'Merch PreOwned Category':'Roles':ElementParent('Merch PreOwned Category', 'Roles', !Merch PreOwned Category, 1),
+               'Merch Channel':!Merch Channel,
+               'Merch PreOwned Warranty Measure':!Merch PreOwned Warranty Measure));
 
-#Region : C-level Recalculations
-['Attach Rate'] = C: IF(['Eligible Units'] = 0, 0, IF(['Warranty AUR'] = 0, 0, ['Warranty Dollars'] \ (['Eligible Units'] * ['Warranty AUR'])));
-['Warranty AUR'] = C: IF(['Eligible Units'] = 0, 0, IF(['Attach Rate'] = 0, 0, ['Warranty Dollars'] \ (['Eligible Units'] * ['Attach Rate'])));
+['Applied Attach Rate'] = C:
+  IF(DB('Merch PreOwned Warranty', !Merch Version, !Merch Time Period, !Merch PreOwned Category, !Merch Channel, 'Override Attach Rate') @<> '',
+    NUMBR(DB('Merch PreOwned Warranty', !Merch Version, !Merch Time Period, !Merch PreOwned Category, !Merch Channel, 'Override Attach Rate')),
+    CellValueN('Merch PreOwned Warranty',
+               'Merch Version':!Merch Version,
+               'Merch Time Period':!Merch Time Period,
+               'Merch PreOwned Category':'Roles':ElementParent('Merch PreOwned Category', 'Roles', !Merch PreOwned Category, 1),
+               'Merch Channel':!Merch Channel,
+               'Merch PreOwned Warranty Measure':!Merch PreOwned Warranty Measure));
+
+['Applied Warranty AUR'] = N:
+  IF(DB('Merch PreOwned Warranty', !Merch Version, !Merch Time Period, !Merch PreOwned Category, !Merch Channel, 'Override Warranty AUR') @<> '',
+    NUMBR(DB('Merch PreOwned Warranty', !Merch Version, !Merch Time Period, !Merch PreOwned Category, !Merch Channel, 'Override Warranty AUR')),
+    CellValueN('Merch PreOwned Warranty',
+               'Merch Version':!Merch Version,
+               'Merch Time Period':!Merch Time Period,
+               'Merch PreOwned Category':'Roles':ElementParent('Merch PreOwned Category', 'Roles', !Merch PreOwned Category, 1),
+               'Merch Channel':!Merch Channel,
+               'Merch PreOwned Warranty Measure':!Merch PreOwned Warranty Measure));
+
+['Applied Warranty AUR'] = C:
+  IF(DB('Merch PreOwned Warranty', !Merch Version, !Merch Time Period, !Merch PreOwned Category, !Merch Channel, 'Override Warranty AUR') @<> '',
+    NUMBR(DB('Merch PreOwned Warranty', !Merch Version, !Merch Time Period, !Merch PreOwned Category, !Merch Channel, 'Override Warranty AUR')),
+    CellValueN('Merch PreOwned Warranty',
+               'Merch Version':!Merch Version,
+               'Merch Time Period':!Merch Time Period,
+               'Merch PreOwned Category':'Roles':ElementParent('Merch PreOwned Category', 'Roles', !Merch PreOwned Category, 1),
+               'Merch Channel':!Merch Channel,
+               'Merch PreOwned Warranty Measure':!Merch PreOwned Warranty Measure));
 #EndRegion
 
 FEEDERS;
 #Region : Feeders
-['Eligible Units'] => ['Warranty Dollars'];
-['Attach Rate'] => ['Warranty Dollars'];
-['Warranty AUR'] => ['Warranty Dollars'];
-#EndRegion
-
-#Region : Rule Footer
-#############################
-##~~ End Rule File ~~##
-#############################
+# No feeders - SKIPCHECK cube.
 #EndRegion

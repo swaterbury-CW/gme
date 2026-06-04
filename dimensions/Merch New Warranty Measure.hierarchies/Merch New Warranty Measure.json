@@ -1,10 +1,18 @@
 {
 	"@type":"Hierarchy",
-	"Name":"Merch PreOwned Warranty Measure",
+	"Name":"Merch New Warranty Measure",
 	"Elements":
 	[
 		{
-			"Name":"Eligible Units",
+			"Name":"Attach Count",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Attach Amount",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Sales Units",
 			"Type":"Numeric"
 		},
 		{
@@ -17,7 +25,7 @@
 		},
 		{
 			"Name":"Warranty Dollars",
-			"Type":"Consolidated"
+			"Type":"Numeric"
 		},
 		{
 			"Name":"Override Attach Rate",

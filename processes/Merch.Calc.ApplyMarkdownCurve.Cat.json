@@ -1,27 +1,27 @@
 {
 	"@type":"Process",
-	"Name":"Merch.Calc.ApplyMarkdownCurve",
+	"Name":"Merch.Calc.ApplyMarkdownCurve.Cat",
 	"HasSecurityAccess":false,
-	"Code@Code.link":"Merch.Calc.ApplyMarkdownCurve.ti",
+	"Code@Code.link":"Merch.Calc.ApplyMarkdownCurve.Cat.ti",
 	"DataSource":
 	{
 		"Type":"TM1CubeView",
 		"dataSourceNameForServer":"Merch Curve Assignment",
 		"dataSourceNameForClient":"Merch Curve Assignment",
-		"view":"TI_ApplyMD_placeholder"
+		"view":"TI_ApplyMDCurveRole_bootstrap"
 	},
 	"Parameters":
 	[
 		{
 			"Name":"pVersion",
 			"Prompt":"Version",
-			"Value":"Forecast",
+			"Value":"",
 			"Type":"String"
 		},
 		{
 			"Name":"pFiscalYear",
 			"Prompt":"Fiscal Year",
-			"Value":"FY26",
+			"Value":"",
 			"Type":"String"
 		},
 		{
@@ -41,32 +41,16 @@
 			"EndByte":0
 		},
 		{
-			"Name":"vMerch_Version",
+			"Name":"vMerch_SKU",
 			"Type":"String",
 			"Position":2,
 			"StartByte":0,
 			"EndByte":0
-		},
-		{
-			"Name":"vMerch_SKU",
-			"Type":"String",
-			"Position":3,
-			"StartByte":0,
-			"EndByte":0
-		},
-		{
-			"Name":"Value",
-			"Type":"String",
-			"Position":4,
-			"StartByte":0,
-			"EndByte":0
 		}
 	],
-	"UID": "1774212651000",
+	"UID": "1778705007000",
 	"UIData": "CubeAction=1511\fDataAction=1503\fCubeLogChanges=0\f",
 	"VariablesUIData": [
-		"VarType=32\fColType=827\f",
-		"VarType=32\fColType=827\f",
 		"VarType=32\fColType=827\f",
 		"VarType=32\fColType=827\f"
 	]

@@ -1,44 +1,19 @@
 #region Prolog
-
 #****Begin: Generated Statements***
 #****End: Generated Statements****
-
 #Region : Process Header
-# DEVELOPER : Steve Waterbury
-# CREATED ON : 2026-03-18
-# LAST UPDATE: 2026-05-11
-# CHANGED BY : Steve Waterbury
-# COMMENTS: Applies markdown curve percentages to Merch Forecast.
+# DEVELOPER: Steve Waterbury
+# CREATED ON: 2026-03-18
+# LAST UPDATE: 2026-05-20
+# CHANGED BY: Steve Waterbury
+# COMMENTS: Native Roles fan-out for markdown + explicit Roles guard on sRoot.
 # CHANGE HISTORY:
-#   2026-03-18 | Steve Waterbury | Initial creation
-#   2026-03-22 | Steve Waterbury | Refactored: VIEW datasource
-#   2026-04-01 | Steve Waterbury | Applied guardrails header template
-#   2026-05-05 | Steve Waterbury | Read Applied Markdown <X> numerics; numeric Start_Date attr week gate
-#   2026-05-11 | Steve Waterbury | Qualified Merch Version + Merch SKU hierarchies in MDX (multi-hier ambiguity fix)
+#   2026-03-18 | Steve Waterbury | Initial
+#   2026-05-13 | Steve Waterbury | Native fan-out (plan a830cfe86cfc)
+#   2026-05-20 | Steve Waterbury | Explicit Roles validation on sRoot (plan 6353aa33bf4d)
 #EndRegion
-
+DatasourceType = 'NULL';
 sProcess = GetProcessName();
-sLogLevel = CellGetS('ProcessControl', sProcess, 'LoggingLevel');
-IF(sLogLevel @= '');
-  sLogLevel = 'OFF';
-ENDIF;
-bLogInfo = 0;
-IF(sLogLevel @= 'INFO' % sLogLevel @= 'DEBUG');
-  bLogInfo = 1;
-ENDIF;
-IF(bLogInfo = 1);
-  LogOutput('INFO', 'START: ' | sProcess | ' V=' | pVersion | ' FY=' | pFiscalYear);
-ENDIF;
-cForecastCube = 'Merch Forecast';
-cCurveCube = 'Merch Curve';
-cAssignCube = 'Merch Curve Assignment';
-cDimSKU = 'Merch SKU';
-cDimTime = 'Merch Time Period';
-nSKUsWithCurve = 0;
-nSKUsSkipped = 0;
-nCellsWritten = 0;
-nCellsCleared = 0;
-nCellsSkipped = 0;
 sVersion = pVersion;
 sFiscalYear = pFiscalYear;
 IF(sVersion @= '');
@@ -53,117 +28,55 @@ IF(DIMIX('Merch Version', sVersion) = 0);
   LogOutput('ERROR', sProcess | ' | Version not found');
   ProcessError;
 ENDIF;
-sFYShort = Subst(sFiscalYear, 3, 2);
-nWeeksInTargetFY = 52;
-IF(DIMIX(cDimTime, 'FY' | sFYShort | '-W53') > 0);
-  nWeeksInTargetFY = 53;
+sRoot = pRole;
+IF(sRoot @= '');
+  sRoot = 'Director';
 ENDIF;
-
-sView = 'TI_ApplyMarkdownCurve';
-IF(ViewExists(cAssignCube, sView) = 1);
-  ViewDestroy(cAssignCube, sView);
-ENDIF;
-IF(ViewExists(cAssignCube, sView) = 1);
-  LogOutput('ERROR', sProcess | ' | Could not destroy stale view ' | sView | ' on ' | cAssignCube);
+IF(HierarchyElementExists('Merch SKU', 'Roles', sRoot) = 0);
+  LogOutput('ERROR', sProcess | ' | bad SKU (not in Roles hier): ' | sRoot);
   ProcessError;
 ENDIF;
-
-sMDX = 'SELECT {[Merch Curve Assignment Measure].[Applied Markdown Curve]} ON COLUMNS, '
-     | '{TM1FILTERBYLEVEL({TM1SUBSETALL([Merch SKU].[Merch SKU])}, 0)} ON ROWS '
-     | 'FROM [Merch Curve Assignment] WHERE ([Merch Version].[Merch Version].[' | sVersion | '])';
-ViewCreateByMDX(cAssignCube, sView, sMDX, 1);
-ViewExtractSkipCalcsSet(cAssignCube, sView, 0);
-ViewExtractSkipZeroesSet(cAssignCube, sView, 0);
-DatasourceType = 'VIEW';
-DatasourceNameForServer = cAssignCube;
-DatasourceCubeview = sView;
+nStart = NOW;
+LogOutput('INFO', 'TIMING START: ' | sProcess | ' | V=' | sVersion | ' | FY=' | sFiscalYear | ' | Root=' | sRoot);
 
 #endregion
 #region Metadata
-
 #****Begin: Generated Statements***
 #****End: Generated Statements****
 
 #endregion
 #region Data
-
 #****Begin: Generated Statements***
 #****End: Generated Statements****
-sSKU = vMerch_SKU;
-IF(DTYPE(cDimSKU, sSKU) @<> 'N');
-  ItemSkip;
-ENDIF;
-sMDCurveName = CellGetS(cAssignCube, sVersion, sSKU, 'Applied Markdown Curve');
-nMDStartDate = CellGetN(cAssignCube, sVersion, sSKU, 'Applied Markdown Start Date');
-nMDEndDate = CellGetN(cAssignCube, sVersion, sSKU, 'Applied Markdown End Date');
-IF(sMDCurveName @= '' % nMDStartDate = 0 % nMDEndDate = 0);
-  nSKUsSkipped = nSKUsSkipped + 1;
-  ItemSkip;
-ENDIF;
-IF(DIMIX('Merch Curve Name', sMDCurveName) = 0);
-  LogOutput('WARN', sProcess | ' | Curve not found: ' | sMDCurveName);
-  ItemSkip;
-ENDIF;
-nSKUsWithCurve = nSKUsWithCurve + 1;
-nWkIdx = 1;
-While(nWkIdx <= nWeeksInTargetFY);
-    IF(nWkIdx < 10);
-      sWkStr = '0' | TRIM(STR(nWkIdx,2,0));
-    ELSE;
-      sWkStr = TRIM(STR(nWkIdx,2,0));
-    ENDIF;
-    sFiscalWeek = 'FY' | sFYShort | '-W' | sWkStr;
-    IF(DIMIX(cDimTime, sFiscalWeek) > 0);
-        nWeekStartSerial = ATTRN(cDimTime, sFiscalWeek, 'Start_Date');
-        IF(nWeekStartSerial > 0 & nWeekStartSerial >= nMDStartDate & nWeekStartSerial <= nMDEndDate);
-            IF(CellIsUpdateable(cForecastCube, sVersion, sFiscalWeek, sSKU, 'Markdown %') = 1);
-                CellPutN(0, cForecastCube, sVersion, sFiscalWeek, sSKU, 'Markdown %');
-                nCellsCleared = nCellsCleared + 1;
-            ENDIF;
-        ENDIF;
-    ENDIF;
-    nWkIdx = nWkIdx + 1;
-End;
-nRelativeWeek = 0;
-nWkIdx = 1;
-While(nWkIdx <= nWeeksInTargetFY);
-    IF(nWkIdx < 10);
-      sWkStr = '0' | TRIM(STR(nWkIdx,2,0));
-    ELSE;
-      sWkStr = TRIM(STR(nWkIdx,2,0));
-    ENDIF;
-    sFiscalWeek = 'FY' | sFYShort | '-W' | sWkStr;
-    IF(DIMIX(cDimTime, sFiscalWeek) > 0);
-        nWeekStartSerial = ATTRN(cDimTime, sFiscalWeek, 'Start_Date');
-        IF(nWeekStartSerial > 0 & nWeekStartSerial >= nMDStartDate & nWeekStartSerial <= nMDEndDate);
-            nRelativeWeek = nRelativeWeek + 1;
-            sRelCW = 'Week ' | TRIM(STR(nRelativeWeek, 2, 0));
-            IF(DIMIX('Merch Curve Week', sRelCW) > 0);
-                nMDPct = CellGetN(cCurveCube, sMDCurveName, sRelCW, 'Markdown %');
-                IF(nMDPct > 0);
-                    IF(CellIsUpdateable(cForecastCube, sVersion, sFiscalWeek, sSKU, 'Markdown %') = 1);
-                        CellPutN(nMDPct, cForecastCube, sVersion, sFiscalWeek, sSKU, 'Markdown %');
-                        nCellsWritten = nCellsWritten + 1;
-                    ELSE;
-                      nCellsSkipped = nCellsSkipped + 1;
-                    ENDIF;
-                ENDIF;
-            ENDIF;
-        ENDIF;
-    ENDIF;
-    nWkIdx = nWkIdx + 1;
-End;
 
 #endregion
 #region Epilog
-
 #****Begin: Generated Statements***
 #****End: Generated Statements****
-IF(ViewExists(cAssignCube, sView) = 1);
-  ViewDestroy(cAssignCube, sView);
+sSubRoles = 'TI_OrchMD_' | TRIM(STR(NOW, 15, 0));
+IF(HierarchySubsetExists('Merch SKU', 'Roles', sSubRoles) = 1);
+  HierarchySubsetDestroy('Merch SKU', 'Roles', sSubRoles);
 ENDIF;
-IF(bLogInfo = 1);
-  LogOutput('INFO', 'END: ' | sProcess | ' SKUs=' | TRIM(STR(nSKUsWithCurve,10,0)) | ' Written=' | TRIM(STR(nCellsWritten,10,0)));
+sMDX = '{FILTER({DESCENDANTS([Merch SKU].[Roles].[' | sRoot | '])}, [Merch SKU].[Roles].CurrentMember.LEVEL.ORDINAL = 4)}';
+SubsetCreateByMDX(sSubRoles, sMDX);
+nSubSize = HierarchySubsetGetSize('Merch SKU', 'Roles', sSubRoles);
+nDispatched = 0;
+IF(nSubSize = 0);
+  RunProcess('Merch.Calc.ApplyMarkdownCurve.Cat', 'pVersion', sVersion, 'pFiscalYear', sFiscalYear, 'pRole', sRoot);
+  nDispatched = 1;
+ELSE;
+  nIdx = 1;
+  WHILE(nIdx <= nSubSize);
+    sChild = HierarchySubsetGetElementName('Merch SKU', 'Roles', sSubRoles, nIdx);
+    RunProcess('Merch.Calc.ApplyMarkdownCurve.Cat', 'pVersion', sVersion, 'pFiscalYear', sFiscalYear, 'pRole', sChild);
+    nDispatched = nDispatched + 1;
+    nIdx = nIdx + 1;
+  END;
 ENDIF;
+nDummy = WaitForInternalJobs();
+IF(HierarchySubsetExists('Merch SKU', 'Roles', sSubRoles) = 1);
+  HierarchySubsetDestroy('Merch SKU', 'Roles', sSubRoles);
+ENDIF;
+LogOutput('INFO', 'TIMING END: ' | sProcess | ' | Root=' | sRoot | ' | Dispatched=' | TRIM(STR(nDispatched,10,0)) | ' | Elapsed=' | TRIM(STR((NOW - nStart) * 86400, 12, 1)) | 's');
 
 #endregion

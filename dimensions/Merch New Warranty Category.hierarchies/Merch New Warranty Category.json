@@ -1,0 +1,186 @@
+{
+	"@type":"Hierarchy",
+	"Name":"Merch New Warranty Category",
+	"Elements":
+	[
+		{
+			"Name":"Controller",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Audio",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Chargers / Cables",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Memory",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Misc Accessories",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"PC",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"PS5 Hardware",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Switch Hardware",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Switch 2 Hardware",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Xbox Series X Hardware",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"AR/VR Hardware",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Other VG Hardware",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"PS5 Software",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"PS4 Software",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Switch Software",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Switch 2 Software",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Xbox Series X Software",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Xbox One Software",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Other VG Software",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"All New Warranty",
+			"Type":"Consolidated"
+		}
+	],
+	"Edges":
+	[
+		{
+			"ParentName":"All New Warranty",
+			"ComponentName":"Controller",
+			"Weight":1
+		},
+		{
+			"ParentName":"All New Warranty",
+			"ComponentName":"Audio",
+			"Weight":1
+		},
+		{
+			"ParentName":"All New Warranty",
+			"ComponentName":"Chargers / Cables",
+			"Weight":1
+		},
+		{
+			"ParentName":"All New Warranty",
+			"ComponentName":"Memory",
+			"Weight":1
+		},
+		{
+			"ParentName":"All New Warranty",
+			"ComponentName":"Misc Accessories",
+			"Weight":1
+		},
+		{
+			"ParentName":"All New Warranty",
+			"ComponentName":"PC",
+			"Weight":1
+		},
+		{
+			"ParentName":"All New Warranty",
+			"ComponentName":"PS5 Hardware",
+			"Weight":1
+		},
+		{
+			"ParentName":"All New Warranty",
+			"ComponentName":"Switch Hardware",
+			"Weight":1
+		},
+		{
+			"ParentName":"All New Warranty",
+			"ComponentName":"Switch 2 Hardware",
+			"Weight":1
+		},
+		{
+			"ParentName":"All New Warranty",
+			"ComponentName":"Xbox Series X Hardware",
+			"Weight":1
+		},
+		{
+			"ParentName":"All New Warranty",
+			"ComponentName":"AR/VR Hardware",
+			"Weight":1
+		},
+		{
+			"ParentName":"All New Warranty",
+			"ComponentName":"Other VG Hardware",
+			"Weight":1
+		},
+		{
+			"ParentName":"All New Warranty",
+			"ComponentName":"PS5 Software",
+			"Weight":1
+		},
+		{
+			"ParentName":"All New Warranty",
+			"ComponentName":"PS4 Software",
+			"Weight":1
+		},
+		{
+			"ParentName":"All New Warranty",
+			"ComponentName":"Switch Software",
+			"Weight":1
+		},
+		{
+			"ParentName":"All New Warranty",
+			"ComponentName":"Switch 2 Software",
+			"Weight":1
+		},
+		{
+			"ParentName":"All New Warranty",
+			"ComponentName":"Xbox Series X Software",
+			"Weight":1
+		},
+		{
+			"ParentName":"All New Warranty",
+			"ComponentName":"Xbox One Software",
+			"Weight":1
+		},
+		{
+			"ParentName":"All New Warranty",
+			"ComponentName":"Other VG Software",
+			"Weight":1
+		}
+	],
+	"Subsets@Code.links":[]
+}
