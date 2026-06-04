@@ -1,55 +1,49 @@
 {
 	"@type":"Process",
-	"Name":"Merch.Load.NewHardwareWarranty.FromActuals",
+	"Name":"Merch.Load.ActualsToForecast",
 	"HasSecurityAccess":false,
-	"Code@Code.link":"Merch.Load.NewHardwareWarranty.FromActuals.ti",
+	"Code@Code.link":"Merch.Load.ActualsToForecast.ti",
 	"DataSource":
 	{
 		"Type":"TM1CubeView",
 		"dataSourceNameForServer":"Merch Actuals",
 		"dataSourceNameForClient":"Merch Actuals",
-		"view":"TI_NHW_Act_bootstrap"
+		"view":"TI_ActualsToForecast_placeholder"
 	},
 	"Parameters":
 	[
 		{
-			"Name":"pVersion",
-			"Prompt":"Version",
-			"Value":"Actual",
-			"Type":"String"
-		},
-		{
 			"Name":"pTimePeriod",
-			"Prompt":"Time period",
-			"Value":"FY2026",
+			"Prompt":"pTimePeriod",
+			"Value":"",
 			"Type":"String"
 		}
 	],
 	"Variables":
 	[
 		{
-			"Name":"vMeasure",
+			"Name":"vMerch_Actuals_Measure",
 			"Type":"String",
 			"Position":1,
 			"StartByte":0,
 			"EndByte":0
 		},
 		{
-			"Name":"vSKU",
+			"Name":"vMerch_Time_Period",
 			"Type":"String",
 			"Position":2,
 			"StartByte":0,
 			"EndByte":0
 		},
 		{
-			"Name":"vTimePeriod",
+			"Name":"vMerch_SKU",
 			"Type":"String",
 			"Position":3,
 			"StartByte":0,
 			"EndByte":0
 		},
 		{
-			"Name":"vChannel",
+			"Name":"vMerch_Channel",
 			"Type":"String",
 			"Position":4,
 			"StartByte":0,
@@ -63,6 +57,7 @@
 			"EndByte":0
 		}
 	],
+	"UID": "1775159017000",
 	"UIData": "CubeAction=1511\fDataAction=1503\fCubeLogChanges=0\f",
 	"VariablesUIData": [
 		"VarType=32\fColType=827\f",
