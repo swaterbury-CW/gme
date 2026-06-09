@@ -1,0 +1,14 @@
+{
+	"@type":"Cube",
+	"Name":"ProcessControl",
+	"Dimensions":
+	[
+		{
+			"@id":"Dimensions('}Processes')"
+		},
+		{
+			"@id":"Dimensions('Merch Process Control Measure')"
+		}
+	],
+	"Views@Code.links":[]
+}

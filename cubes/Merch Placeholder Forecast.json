@@ -1,10 +1,13 @@
 {
 	"@type":"Cube",
-	"Name":"Merch Placeholder Curve Assignment",
+	"Name":"Merch Placeholder Forecast",
 	"Dimensions":
 	[
 		{
 			"@id":"Dimensions('Merch Version')"
+		},
+		{
+			"@id":"Dimensions('Merch Time Period')"
 		},
 		{
 			"@id":"Dimensions('Merch Category')"
@@ -16,9 +19,9 @@
 			"@id":"Dimensions('}Groups')"
 		},
 		{
-			"@id":"Dimensions('Merch Curve Assignment Measure')"
+			"@id":"Dimensions('Merch Forecast Measure')"
 		}
 	],
-	"Rules@Code.link":"Merch Placeholder Curve Assignment.rules",
+	"Rules@Code.link":"Merch Placeholder Forecast.rules",
 	"Views@Code.links":[]
 }

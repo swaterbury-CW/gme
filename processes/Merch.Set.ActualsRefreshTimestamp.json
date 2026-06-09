@@ -1,0 +1,23 @@
+{
+	"@type":"Process",
+	"Name":"Merch.Set.ActualsRefreshTimestamp",
+	"HasSecurityAccess":false,
+	"Code@Code.link":"Merch.Set.ActualsRefreshTimestamp.ti",
+	"DataSource":
+	{
+		"Type":"None"
+	},
+	"Parameters":
+	[
+		{
+			"Name":"pTimestampSerial",
+			"Prompt":"Optional DAYNO serial; empty=NOW",
+			"Value":"",
+			"Type":"String"
+		}
+	],
+	"Variables":[],
+	"UID": "17785420960001",
+	"UIData": "CubeAction=1511\fDataAction=1503\fCubeLogChanges=0\f",
+	"VariablesUIData": []
+}

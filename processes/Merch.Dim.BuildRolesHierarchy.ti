@@ -1,0 +1,435 @@
+#region Prolog
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+#Region : Process Header
+##############################################
+##~~ Merch.Dim.BuildRolesHierarchy ~~##
+##############################################
+# DEVELOPER  : Rose Morgan
+# CREATED ON : 2026-05-08
+# LAST UPDATE: 2026-06-08
+# CHANGED BY : Steve Waterbury
+# COMMENTS:
+# Rebuilds 'Roles' alt hierarchy on Merch SKU. Active path:
+#   Director -> Manager -> Planner -> '<Planner> - <SGM>' -> [<bucket> - <Custom Group>] -> SKU
+# Inactive carve-out (ANY-MATCH): sellable<>'Y' OR Level_1='Used' OR
+# (no sales last 4 FYs AND no on-order curFY+nextFY AND no inventory at LCP week).
+# Sales test uses ABS-sum so returns/voids that cancel positives don't false-Inactive.
+# OVERRIDE: SKUs starting with '978' always treated as active (placeholder SKUs), bypass Inactive.
+# Inactive subtree: 'Inactive' -> 'Inactive - <Planner>' -> 'Inactive - <Planner> - <SGM>' -> SKU.
+# Activity reads via CellGetN on Merch Actuals.
+#
+# CHANGE HISTORY:
+#   2026-05-08 | Rose Morgan      | Creation
+#   2026-05-12 | Steve Waterbury  | SGM_Category bucket layer
+#   2026-05-22 | Steve Waterbury  | Custom-group reroute
+#   2026-05-27 | Steve Waterbury  | Used + sellable floating roots
+#   2026-05-28 | Steve Waterbury  | Non-destructive rebuild
+#   2026-05-29 | Steve Waterbury  | Inactive carve-out (CellGetN); RecordCount marker
+#   2026-05-29 | Steve Waterbury  | 978-prefix active override
+#   2026-06-03 | Steve Waterbury  | Sales window: 3-FY -> 4-FY (add curFY)
+#   2026-06-03 | Steve Waterbury  | Sales test ABS-sum (cancel-resistant)
+#   2026-06-08 | Steve Waterbury  | Stamp ProcessControl LastRun (TIMST) in Epilog
+#EndRegion
+
+sLogLevel = CellGetS('ProcessControl', GetProcessName(), 'LoggingLevel');
+IF(sLogLevel @= '');
+  sLogLevel = 'OFF';
+ENDIF;
+bLogInfo = 0;
+bLogDebug = 0;
+IF(sLogLevel @= 'INFO' % sLogLevel @= 'DEBUG');
+  bLogInfo = 1;
+ENDIF;
+IF(sLogLevel @= 'DEBUG');
+  bLogDebug = 1;
+ENDIF;
+IF(bLogInfo = 1);
+  LogOutput('INFO', 'START: ' | GetProcessName());
+ENDIF;
+
+cProcessName = GetProcessName();
+sDim = 'Merch SKU';
+sHier = 'Roles';
+sSubset = 'TI_BuildRolesHier_Worker';
+sStripSub = 'TI_BuildRolesHier_StripAll';
+
+nLeafCount = 0;
+nUnassigned = 0;
+nGroupsCreated = 0;
+nSgmNodes = 0;
+nCustomNodes = 0;
+nInactive = 0;
+nInactivePlannersCreated = 0;
+nInactiveSgmCreated = 0;
+nEdgesStripped = 0;
+
+IF(HierarchyExists(sDim, sHier) = 0);
+  HierarchyCreate(sDim, sHier);
+ELSE;
+  IF(HierarchySubsetExists(sDim, sHier, sStripSub) = 1);
+    HierarchySubsetDestroy(sDim, sHier, sStripSub);
+  ENDIF;
+  SubsetCreateByMDX(sStripSub, '{TM1SUBSETALL([' | sDim | '].[' | sHier | '])}');
+  nElems = HierarchySubsetGetSize(sDim, sHier, sStripSub);
+  i = 1;
+  WHILE(i <= nElems);
+    sElem = HierarchySubsetGetElementName(sDim, sHier, sStripSub, i);
+    bStrip = 0;
+    IF(DIMIX(sDim, sElem) > 0);
+      bStrip = 1;
+    ELSEIF(SCAN(' - ', sElem) > 0);
+      bStrip = 1;
+    ENDIF;
+    IF(bStrip = 1);
+      nP = ElementParentCount(sDim, sHier, sElem);
+      j = nP;
+      WHILE(j >= 1);
+        sPar = ElementParent(sDim, sHier, sElem, j);
+        HierarchyElementComponentDelete(sDim, sHier, sPar, sElem);
+        j = j - 1;
+      END;
+      nEdgesStripped = nEdgesStripped + nP;
+    ENDIF;
+    i = i + 1;
+  END;
+  HierarchySubsetDestroy(sDim, sHier, sStripSub);
+ENDIF;
+
+HierarchyElementInsert(sDim, sHier, '', 'Director', 'C');
+HierarchyElementInsert(sDim, sHier, '', 'T&C Director', 'C');
+HierarchyElementInsert(sDim, sHier, '', 'VG Director', 'C');
+HierarchyElementInsert(sDim, sHier, '', 'TCG Director', 'C');
+HierarchyElementInsert(sDim, sHier, '', 'Pre-Owned Director', 'C');
+HierarchyElementInsert(sDim, sHier, '', 'Warranty Director', 'C');
+HierarchyElementInsert(sDim, sHier, '', 'Digital Director', 'C');
+HierarchyElementInsert(sDim, sHier, '', 'Other Director', 'C');
+HierarchyElementInsert(sDim, sHier, '', 'Grading Director', 'C');
+HierarchyElementInsert(sDim, sHier, '', 'Pre-Owned T&C Director', 'C');
+HierarchyElementInsert(sDim, sHier, '', 'Pre-Owned TCG Director', 'C');
+HierarchyElementInsert(sDim, sHier, '', 'Pre-Owned Digital Director', 'C');
+HierarchyElementInsert(sDim, sHier, '', 'Pre-Owned Other Director', 'C');
+HierarchyElementInsert(sDim, sHier, '', 'Loyalty Director', 'C');
+HierarchyElementComponentAdd(sDim, sHier, 'Director', 'T&C Director', 1);
+HierarchyElementComponentAdd(sDim, sHier, 'Director', 'VG Director', 1);
+HierarchyElementComponentAdd(sDim, sHier, 'Director', 'TCG Director', 1);
+HierarchyElementComponentAdd(sDim, sHier, 'Director', 'Pre-Owned Director', 1);
+HierarchyElementComponentAdd(sDim, sHier, 'Director', 'Warranty Director', 1);
+HierarchyElementComponentAdd(sDim, sHier, 'Director', 'Digital Director', 1);
+HierarchyElementComponentAdd(sDim, sHier, 'Director', 'Other Director', 1);
+HierarchyElementComponentAdd(sDim, sHier, 'Director', 'Grading Director', 1);
+HierarchyElementComponentAdd(sDim, sHier, 'Director', 'Pre-Owned T&C Director', 1);
+HierarchyElementComponentAdd(sDim, sHier, 'Director', 'Pre-Owned TCG Director', 1);
+HierarchyElementComponentAdd(sDim, sHier, 'Director', 'Pre-Owned Digital Director', 1);
+HierarchyElementComponentAdd(sDim, sHier, 'Director', 'Pre-Owned Other Director', 1);
+HierarchyElementComponentAdd(sDim, sHier, 'Director', 'Loyalty Director', 1);
+HierarchyElementInsert(sDim, sHier, '', 'T&C Manager', 'C');
+HierarchyElementInsert(sDim, sHier, '', 'VG SW Manager', 'C');
+HierarchyElementInsert(sDim, sHier, '', 'VG HW Manager', 'C');
+HierarchyElementInsert(sDim, sHier, '', 'VGA Manager', 'C');
+HierarchyElementInsert(sDim, sHier, '', 'TCG Manager', 'C');
+HierarchyElementInsert(sDim, sHier, '', 'Pre-Owned Manager', 'C');
+HierarchyElementInsert(sDim, sHier, '', 'Warranty Manager', 'C');
+HierarchyElementInsert(sDim, sHier, '', 'Digital Manager', 'C');
+HierarchyElementInsert(sDim, sHier, '', 'Other Manager', 'C');
+HierarchyElementInsert(sDim, sHier, '', 'Grading Manager', 'C');
+HierarchyElementInsert(sDim, sHier, '', 'Pre-Owned T&C Manager', 'C');
+HierarchyElementInsert(sDim, sHier, '', 'Pre-Owned TCG Manager', 'C');
+HierarchyElementInsert(sDim, sHier, '', 'Pre-Owned Digital Manager', 'C');
+HierarchyElementInsert(sDim, sHier, '', 'Pre-Owned Other Manager', 'C');
+HierarchyElementInsert(sDim, sHier, '', 'Loyalty Manager', 'C');
+HierarchyElementComponentAdd(sDim, sHier, 'T&C Director', 'T&C Manager', 1);
+HierarchyElementComponentAdd(sDim, sHier, 'VG Director', 'VG SW Manager', 1);
+HierarchyElementComponentAdd(sDim, sHier, 'VG Director', 'VG HW Manager', 1);
+HierarchyElementComponentAdd(sDim, sHier, 'VG Director', 'VGA Manager', 1);
+HierarchyElementComponentAdd(sDim, sHier, 'TCG Director', 'TCG Manager', 1);
+HierarchyElementComponentAdd(sDim, sHier, 'Pre-Owned Director', 'Pre-Owned Manager', 1);
+HierarchyElementComponentAdd(sDim, sHier, 'Warranty Director', 'Warranty Manager', 1);
+HierarchyElementComponentAdd(sDim, sHier, 'Digital Director', 'Digital Manager', 1);
+HierarchyElementComponentAdd(sDim, sHier, 'Other Director', 'Other Manager', 1);
+HierarchyElementComponentAdd(sDim, sHier, 'Grading Director', 'Grading Manager', 1);
+HierarchyElementComponentAdd(sDim, sHier, 'Pre-Owned T&C Director', 'Pre-Owned T&C Manager', 1);
+HierarchyElementComponentAdd(sDim, sHier, 'Pre-Owned TCG Director', 'Pre-Owned TCG Manager', 1);
+HierarchyElementComponentAdd(sDim, sHier, 'Pre-Owned Digital Director', 'Pre-Owned Digital Manager', 1);
+HierarchyElementComponentAdd(sDim, sHier, 'Pre-Owned Other Director', 'Pre-Owned Other Manager', 1);
+HierarchyElementComponentAdd(sDim, sHier, 'Loyalty Director', 'Loyalty Manager', 1);
+HierarchyElementInsert(sDim, sHier, '', 'Toys planner', 'C');
+HierarchyElementInsert(sDim, sHier, '', 'Collectibles planner', 'C');
+HierarchyElementInsert(sDim, sHier, '', 'Apparel planner', 'C');
+HierarchyElementInsert(sDim, sHier, '', 'Homewares planner', 'C');
+HierarchyElementInsert(sDim, sHier, '', 'Board Games planner', 'C');
+HierarchyElementInsert(sDim, sHier, '', '1P SW planner', 'C');
+HierarchyElementInsert(sDim, sHier, '', '3P SW planner', 'C');
+HierarchyElementInsert(sDim, sHier, '', 'Hardware planner', 'C');
+HierarchyElementInsert(sDim, sHier, '', 'Controllers planner', 'C');
+HierarchyElementInsert(sDim, sHier, '', '1P VGA planner', 'C');
+HierarchyElementInsert(sDim, sHier, '', '3P VGA planner', 'C');
+HierarchyElementInsert(sDim, sHier, '', 'TCG planner', 'C');
+HierarchyElementInsert(sDim, sHier, '', 'Pre-Owned planner', 'C');
+HierarchyElementInsert(sDim, sHier, '', 'Warranty planner', 'C');
+HierarchyElementInsert(sDim, sHier, '', 'Digital planner', 'C');
+HierarchyElementInsert(sDim, sHier, '', 'Other planner', 'C');
+HierarchyElementInsert(sDim, sHier, '', 'Grading planner', 'C');
+HierarchyElementInsert(sDim, sHier, '', 'Pre-Owned T&C planner', 'C');
+HierarchyElementInsert(sDim, sHier, '', 'Pre-Owned TCG planner', 'C');
+HierarchyElementInsert(sDim, sHier, '', 'Pre-Owned Digital planner', 'C');
+HierarchyElementInsert(sDim, sHier, '', 'Pre-Owned Other planner', 'C');
+HierarchyElementInsert(sDim, sHier, '', 'Loyalty planner', 'C');
+HierarchyElementComponentAdd(sDim, sHier, 'T&C Manager', 'Toys planner', 1);
+HierarchyElementComponentAdd(sDim, sHier, 'T&C Manager', 'Collectibles planner', 1);
+HierarchyElementComponentAdd(sDim, sHier, 'T&C Manager', 'Apparel planner', 1);
+HierarchyElementComponentAdd(sDim, sHier, 'T&C Manager', 'Homewares planner', 1);
+HierarchyElementComponentAdd(sDim, sHier, 'T&C Manager', 'Board Games planner', 1);
+HierarchyElementComponentAdd(sDim, sHier, 'VG SW Manager', '1P SW planner', 1);
+HierarchyElementComponentAdd(sDim, sHier, 'VG SW Manager', '3P SW planner', 1);
+HierarchyElementComponentAdd(sDim, sHier, 'VG HW Manager', 'Hardware planner', 1);
+HierarchyElementComponentAdd(sDim, sHier, 'VGA Manager', 'Controllers planner', 1);
+HierarchyElementComponentAdd(sDim, sHier, 'VGA Manager', '1P VGA planner', 1);
+HierarchyElementComponentAdd(sDim, sHier, 'VGA Manager', '3P VGA planner', 1);
+HierarchyElementComponentAdd(sDim, sHier, 'TCG Manager', 'TCG planner', 1);
+HierarchyElementComponentAdd(sDim, sHier, 'Pre-Owned Manager', 'Pre-Owned planner', 1);
+HierarchyElementComponentAdd(sDim, sHier, 'Warranty Manager', 'Warranty planner', 1);
+HierarchyElementComponentAdd(sDim, sHier, 'Digital Manager', 'Digital planner', 1);
+HierarchyElementComponentAdd(sDim, sHier, 'Other Manager', 'Other planner', 1);
+HierarchyElementComponentAdd(sDim, sHier, 'Grading Manager', 'Grading planner', 1);
+HierarchyElementComponentAdd(sDim, sHier, 'Pre-Owned T&C Manager', 'Pre-Owned T&C planner', 1);
+HierarchyElementComponentAdd(sDim, sHier, 'Pre-Owned TCG Manager', 'Pre-Owned TCG planner', 1);
+HierarchyElementComponentAdd(sDim, sHier, 'Pre-Owned Digital Manager', 'Pre-Owned Digital planner', 1);
+HierarchyElementComponentAdd(sDim, sHier, 'Pre-Owned Other Manager', 'Pre-Owned Other planner', 1);
+HierarchyElementComponentAdd(sDim, sHier, 'Loyalty Manager', 'Loyalty planner', 1);
+
+HierarchyElementInsert(sDim, sHier, '', 'Inactive', 'C');
+
+nCurYear = CellGetN('Merch Settings', 'Current Year', 'Value_Numeric');
+sCurFY  = 'FY' | TRIM(STR(nCurYear,     4, 0));
+sNextFY = 'FY' | TRIM(STR(nCurYear + 1, 4, 0));
+sFYm1   = 'FY' | TRIM(STR(nCurYear - 1, 4, 0));
+sFYm2   = 'FY' | TRIM(STR(nCurYear - 2, 4, 0));
+sFYm3   = 'FY' | TRIM(STR(nCurYear - 3, 4, 0));
+sAllCh  = 'All Channels';
+sActualCube = 'Merch Actuals';
+
+nLcpSerial = ATTRN('Merch Version', 'Forecast', 'Last_Closed_Period');
+sLcpWeek = '';
+sLcpSub = 'TI_BuildRolesHier_LCPLookup';
+IF(SubsetExists('Merch Time Period', sLcpSub) = 1);
+  SubsetDestroy('Merch Time Period', sLcpSub);
+ENDIF;
+SubsetCreateByMDX(sLcpSub, '{TM1FILTERBYLEVEL({TM1SUBSETALL([Merch Time Period])}, 0)}');
+nTP = SubsetGetSize('Merch Time Period', sLcpSub);
+i = 1;
+WHILE(i <= nTP);
+  sWk = SubsetGetElementName('Merch Time Period', sLcpSub, i);
+  IF(ATTRN('Merch Time Period', sWk, 'End_Date') = nLcpSerial);
+    sLcpWeek = sWk;
+    i = nTP;
+  ENDIF;
+  i = i + 1;
+END;
+SubsetDestroy('Merch Time Period', sLcpSub);
+IF(sLcpWeek @= '');
+  LogOutput('ERROR', cProcessName | ' | could not resolve LCP week for serial ' | TRIM(STR(nLcpSerial, 12, 0)));
+  ProcessError;
+ENDIF;
+IF(bLogInfo = 1);
+  LogOutput('INFO', cProcessName | ' | LCP week=' | sLcpWeek | ' | sales FYs=' | sCurFY | '+' | sFYm1 | '+' | sFYm2 | '+' | sFYm3 | ' | on-order FYs=' | sCurFY | '+' | sNextFY);
+ENDIF;
+
+IF(SubsetExists(sDim, sSubset) = 1);
+  SubsetDestroy(sDim, sSubset);
+ENDIF;
+sMDX = '{TM1FILTERBYLEVEL({TM1SUBSETALL([Merch SKU])}, 0)}';
+SubsetCreatebyMDX(sSubset, sMDX);
+
+DatasourceType = 'SUBSET';
+DatasourceNameForServer = sDim;
+DatasourceDimensionSubset = sSubset;
+
+#endregion
+#region Metadata
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+IF(V1 @= '');
+  ItemSkip;
+ENDIF;
+sSku = V1;
+
+sSellable  = ATTRS(sDim, sSku, 'sellable_flag');
+sGroup     = ATTRS(sDim, sSku, 'SGM_Category_Group');
+sCategory  = ATTRS(sDim, sSku, 'SGM_Category');
+sVendor    = ATTRS(sDim, sSku, 'Vendor_Name');
+sPublisher = ATTRS(sDim, sSku, 'Publisher_Name');
+sLevel1    = ATTRS(sDim, sSku, 'Level_1');
+
+sPlanner = 'Unassigned Planner';
+
+IF(sGroup @= 'VG Software');
+  IF((sVendor @= 'Nintendo - Digital' & sPublisher @= 'Nintendo - Digital') % sVendor @= 'Nintendo of America - v' % (sVendor @= 'Solutions 2 Go VAL' & (sPublisher @= 'Sony Computer Ent. America - v' % sPublisher @= 'Microsoft XBOX - V' % sPublisher @= 'Solutions 2 Go')) % (sVendor @= 'Microsoft XBOX - V' & sPublisher @= 'Microsoft XBOX - V'));
+    sPlanner = '1P SW Planner';
+  ELSE;
+    sPlanner = '3P SW Planner';
+  ENDIF;
+ELSEIF(sGroup @= 'VG Hardware');
+  sPlanner = 'Hardware Planner';
+ELSEIF(sGroup @= 'VG Accessories');
+  IF(sCategory @= 'Controller');
+    sPlanner = 'Controllers planner';
+  ELSEIF(sVendor @= 'Nintendo of America - Acc' % sVendor @= 'Nintendo of America - v' % sVendor @= 'Sony Computer Entertain - Acc' % sVendor @= 'Microsoft XBox - Acc' % sVendor @= 'Microsoft XBOX - V' % sVendor @= 'TD SYNNEX CORPORATION');
+    sPlanner = '1P VGA Planner';
+  ELSE;
+    sPlanner = '3P VGA Planner';
+  ENDIF;
+ELSEIF(sGroup @= 'Toys & Collectibles');
+  IF(sCategory @= 'Toys');
+    sPlanner = 'Toys planner';
+  ELSEIF(sCategory @= 'Collectibles');
+    sPlanner = 'Collectibles planner';
+  ELSEIF(sCategory @= 'Apparel');
+    sPlanner = 'Apparel planner';
+  ELSEIF(sCategory @= 'Homewares');
+    sPlanner = 'Homewares planner';
+  ELSEIF(sCategory @= 'Board Games');
+    sPlanner = 'Board games planner';
+  ENDIF;
+ELSEIF(sGroup @= 'Trading Cards');
+  sPlanner = 'TCG Planner';
+ELSEIF(sGroup @= 'Digital');
+  sPlanner = 'Digital Planner';
+ELSEIF(sGroup @= 'Other');
+  sPlanner = 'Other Planner';
+ELSEIF(sGroup @= 'Grading');
+  sPlanner = 'Grading Planner';
+ELSEIF(sGroup @= 'Pre-Owned Toys & Collectibles');
+  sPlanner = 'Pre-Owned T&C Planner';
+ELSEIF(sGroup @= 'Pre-Owned Trading Cards');
+  sPlanner = 'Pre-Owned TCG Planner';
+ELSEIF(sGroup @= 'Pre-Owned Other');
+  sPlanner = 'Pre-Owned Other Planner';
+ELSEIF(sGroup @= 'Pre-Owned Digital');
+  sPlanner = 'Pre-Owned Digital Planner';
+ELSEIF(sGroup @= 'Loyalty');
+  sPlanner = 'Loyalty Planner';
+ELSEIF(sGroup @= 'Warranty');
+  sPlanner = 'Warranty Planner';
+ELSEIF(sGroup @= 'Pre-Owned Hardware' % sGroup @= 'Pre-Owned Software' % sGroup @= 'Pre-Owned Accs' % sGroup @= 'Pre-Owned Tech');
+  sPlanner = 'Pre-Owned Planner';
+ENDIF;
+
+sSgm = sCategory;
+IF(sSgm @= '');
+  sSgm = 'Unassigned';
+ENDIF;
+
+bInactive = 0;
+IF(sSellable @<> 'Y');   bInactive = 1; ENDIF;
+IF(sLevel1   @= 'Used'); bInactive = 1; ENDIF;
+
+IF(bInactive = 0);
+  nS0 = CellGetN(sActualCube, sSku, sCurFY, sAllCh, 'location_sales_amount');
+  nS1 = CellGetN(sActualCube, sSku, sFYm1,  sAllCh, 'location_sales_amount');
+  nS2 = CellGetN(sActualCube, sSku, sFYm2,  sAllCh, 'location_sales_amount');
+  nS3 = CellGetN(sActualCube, sSku, sFYm3,  sAllCh, 'location_sales_amount');
+  nSales4yr = ABS(nS0) + ABS(nS1) + ABS(nS2) + ABS(nS3);
+  nO1 = CellGetN(sActualCube, sSku, sCurFY,  sAllCh, 'location_on_order_amount');
+  nO2 = CellGetN(sActualCube, sSku, sNextFY, sAllCh, 'location_on_order_amount');
+  nOnOrder = nO1 + nO2;
+  nInv = CellGetN(sActualCube, sSku, sLcpWeek, sAllCh, 'location_inventory_quantity_ending');
+  IF(nSales4yr = 0 & nOnOrder = 0 & nInv = 0);
+    bInactive = 1;
+  ENDIF;
+ENDIF;
+
+# 978-prefix active override (books/ISBN): always active regardless of other conditions.
+IF(SUBST(sSku, 1, 3) @= '978');
+  bInactive = 0;
+ENDIF;
+
+IF(bInactive = 1);
+  sInPl  = 'Inactive - ' | sPlanner;
+  sInCat = 'Inactive - ' | sPlanner | ' - ' | sSgm;
+  IF(HierarchyElementExists(sDim, sHier, sInPl) = 0);
+    HierarchyElementInsert(sDim, sHier, '', sInPl, 'C');
+    nInactivePlannersCreated = nInactivePlannersCreated + 1;
+  ENDIF;
+  HierarchyElementComponentAdd(sDim, sHier, 'Inactive', sInPl, 1);
+  IF(HierarchyElementExists(sDim, sHier, sInCat) = 0);
+    HierarchyElementInsert(sDim, sHier, '', sInCat, 'C');
+    nInactiveSgmCreated = nInactiveSgmCreated + 1;
+  ENDIF;
+  HierarchyElementComponentAdd(sDim, sHier, sInPl, sInCat, 1);
+  HierarchyElementComponentAdd(sDim, sHier, sInCat, sSku, 1);
+  nInactive = nInactive + 1;
+ELSE;
+  IF(HierarchyElementExists(sDim, sHier, sPlanner) = 0);
+    HierarchyElementInsert(sDim, sHier, '', sPlanner, 'C');
+    nGroupsCreated = nGroupsCreated + 1;
+  ENDIF;
+  sCat = sPlanner | ' - ' | sSgm;
+  IF(HierarchyElementExists(sDim, sHier, sCat) = 0);
+    HierarchyElementInsert(sDim, sHier, '', sCat, 'C');
+    nSgmNodes = nSgmNodes + 1;
+  ENDIF;
+  HierarchyElementComponentAdd(sDim, sHier, sPlanner, sCat, 1);
+  HierarchyElementComponentAdd(sDim, sHier, sCat, sSku, 1);
+  sCustom = CellGetS('Merch SKU Custom Group Input', sSku, 'Custom Group Name');
+  IF(sCustom @<> '');
+    sBucket = sCat | ' - ' | sCustom;
+    IF(HierarchyElementExists(sDim, sHier, sBucket) = 0);
+      HierarchyElementInsert(sDim, sHier, '', sBucket, 'C');
+      nCustomNodes = nCustomNodes + 1;
+    ENDIF;
+    HierarchyElementComponentAdd(sDim, sHier, sCat, sBucket, 1);
+    HierarchyElementComponentDelete(sDim, sHier, sCat, sSku);
+    HierarchyElementComponentAdd(sDim, sHier, sBucket, sSku, 1);
+  ENDIF;
+  IF(sPlanner @= 'Unassigned Planner');
+    nUnassigned = nUnassigned + 1;
+    IF(bLogDebug = 1);
+      LogOutput('WARN', cProcessName | ' | Unassigned SKU=' | sSku | ' | SGM_Category_Group=' | sGroup | ' | SGM_Category=' | sCategory);
+    ENDIF;
+  ENDIF;
+ENDIF;
+
+nLeafCount = nLeafCount + 1;
+
+#endregion
+#region Data
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+IF(V1 @= '');
+  ItemSkip;
+ENDIF;
+
+#endregion
+#region Epilog
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+IF(SubsetExists(sDim, sSubset) = 1);
+  SubsetDestroy(sDim, sSubset);
+ENDIF;
+
+IF(CellIsUpdateable('ProcessControl', cProcessName, 'SubsetCount') = 1);
+  CellPutN(nLeafCount, 'ProcessControl', cProcessName, 'SubsetCount');
+ENDIF;
+IF(CellIsUpdateable('ProcessControl', cProcessName, 'RecordCount') = 1);
+  CellPutN(nInactive, 'ProcessControl', cProcessName, 'RecordCount');
+ENDIF;
+sLastRun = TIMST(NOW, '\Y-\m-\d \h:\i:\s');
+IF(CellIsUpdateable('ProcessControl', cProcessName, 'LastRun') = 1);
+  CellPutS(sLastRun, 'ProcessControl', cProcessName, 'LastRun');
+ENDIF;
+
+IF(bLogInfo = 1);
+  LogOutput('INFO', cProcessName |
+    ' | Planners=' | TRIM(STR(nGroupsCreated, 10, 0)) |
+    ' | SgmNodes=' | TRIM(STR(nSgmNodes, 10, 0)) |
+    ' | Inactive=' | TRIM(STR(nInactive, 10, 0)) |
+    ' | InactivePlanners=' | TRIM(STR(nInactivePlannersCreated, 10, 0)) |
+    ' | InactiveCats=' | TRIM(STR(nInactiveSgmCreated, 10, 0)) |
+    ' | Leaves=' | TRIM(STR(nLeafCount, 10, 0)) |
+    ' | EdgesStripped=' | TRIM(STR(nEdgesStripped, 10, 0)) |
+    ' | Unassigned=' | TRIM(STR(nUnassigned, 10, 0)));
+  LogOutput('INFO', 'END: ' | GetProcessName());
+ENDIF;
+
+#endregion
