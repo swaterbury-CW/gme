@@ -1,0 +1,796 @@
+{
+	"@type":"Hierarchy",
+	"Name":"Merch Category",
+	"Elements":
+	[
+		{
+			"Name":"All Categories",
+			"Type":"Consolidated"
+		},
+		{
+			"Name":"Pokemon",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Homewares",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Misc Accessories",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"MTG",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Apparel",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Other Entertainment",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Other Sports",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Other TCG",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Chargers / Cables",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Switch 2 Software",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Audio",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Switch Software",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Pre-Owned Series X Software",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Other",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"PC",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Tech & Entertainment",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Subscription",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Collectibles",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Cases / Stands",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Pre-Owned Tech & Entertainment",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Pre-Owned Audio",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Toys",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Virtual Currency",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Board Games",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Other VG Hardware",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Zero Rev",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"POSA",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Fees",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Memory",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Console Digital Software",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"PC Digital Software",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"PS4 Software",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Add - On",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Xbox Series X Software",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"PC Software",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"PS5 Software",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Controller",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Loyalty",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Other VG Software",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Pre-Owned Collectibles",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Pre-Owned Mobile Phone",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Pre-Owned Zero Rev",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Software Warranties",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Pre-Owned Xbox 360 Software",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Pre-Owned Xbox One Software",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Pre-Owned 3DS Software",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Pre-Owned Other VG Software",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Pre-Owned Switch Software",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Pre-Owned Wii Software",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Pre-Owned PC Components",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Pre-Owned Peripherals",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Switch Hardware",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Pre-Owned Other VG Hardware",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Pre-Owned PC Systems",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"PS4 Hardware",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Pre-Owned PS4 Software",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Pre-Owned Switch 2 Software",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Pre-Owned Monitors",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Pre-Owned Misc Accessories",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Pre-Owned Controller",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Pre-Owned Pokemon",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Pre-Owned Other TCG",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Pre-Owned MTG",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Interactive Toy",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Pre-Owned PS3 Software",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"PS5 Hardware",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Pre-Owned Cases / Stands",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"AR/VR Hardware",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Xbox One Hardware",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Xbox Series X Hardware",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Switch 2 Hardware",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Xbox One Software",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Pre-Owned Other",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Accessory Warranties",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"VG Hardware Warranties",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Other Warranties",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Pre-Owned PS5 Software",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Pre-Owned PS4 Hardware",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Pre-Owned PS5 Hardware",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Pre-Owned 3DS Hardware",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Pre-Owned Xbox One Hardware",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Pre-Owned Switch Hardware",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Pre-Owned Series X Hardware",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Pre-Owned Switch 2 Hardware",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"One Piece",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Pre-Owned Homewares",
+			"Type":"Numeric"
+		}
+	],
+	"Edges":
+	[
+		{
+			"ParentName":"All Categories",
+			"ComponentName":"Pokemon",
+			"Weight":1
+		},
+		{
+			"ParentName":"All Categories",
+			"ComponentName":"Homewares",
+			"Weight":1
+		},
+		{
+			"ParentName":"All Categories",
+			"ComponentName":"Misc Accessories",
+			"Weight":1
+		},
+		{
+			"ParentName":"All Categories",
+			"ComponentName":"MTG",
+			"Weight":1
+		},
+		{
+			"ParentName":"All Categories",
+			"ComponentName":"Apparel",
+			"Weight":1
+		},
+		{
+			"ParentName":"All Categories",
+			"ComponentName":"Other Entertainment",
+			"Weight":1
+		},
+		{
+			"ParentName":"All Categories",
+			"ComponentName":"Other Sports",
+			"Weight":1
+		},
+		{
+			"ParentName":"All Categories",
+			"ComponentName":"Other TCG",
+			"Weight":1
+		},
+		{
+			"ParentName":"All Categories",
+			"ComponentName":"Chargers / Cables",
+			"Weight":1
+		},
+		{
+			"ParentName":"All Categories",
+			"ComponentName":"Switch 2 Software",
+			"Weight":1
+		},
+		{
+			"ParentName":"All Categories",
+			"ComponentName":"Audio",
+			"Weight":1
+		},
+		{
+			"ParentName":"All Categories",
+			"ComponentName":"Switch Software",
+			"Weight":1
+		},
+		{
+			"ParentName":"All Categories",
+			"ComponentName":"Pre-Owned Series X Software",
+			"Weight":1
+		},
+		{
+			"ParentName":"All Categories",
+			"ComponentName":"Other",
+			"Weight":1
+		},
+		{
+			"ParentName":"All Categories",
+			"ComponentName":"PC",
+			"Weight":1
+		},
+		{
+			"ParentName":"All Categories",
+			"ComponentName":"Tech & Entertainment",
+			"Weight":1
+		},
+		{
+			"ParentName":"All Categories",
+			"ComponentName":"Subscription",
+			"Weight":1
+		},
+		{
+			"ParentName":"All Categories",
+			"ComponentName":"Collectibles",
+			"Weight":1
+		},
+		{
+			"ParentName":"All Categories",
+			"ComponentName":"Cases / Stands",
+			"Weight":1
+		},
+		{
+			"ParentName":"All Categories",
+			"ComponentName":"Pre-Owned Tech & Entertainment",
+			"Weight":1
+		},
+		{
+			"ParentName":"All Categories",
+			"ComponentName":"Pre-Owned Audio",
+			"Weight":1
+		},
+		{
+			"ParentName":"All Categories",
+			"ComponentName":"Toys",
+			"Weight":1
+		},
+		{
+			"ParentName":"All Categories",
+			"ComponentName":"Virtual Currency",
+			"Weight":1
+		},
+		{
+			"ParentName":"All Categories",
+			"ComponentName":"Board Games",
+			"Weight":1
+		},
+		{
+			"ParentName":"All Categories",
+			"ComponentName":"Other VG Hardware",
+			"Weight":1
+		},
+		{
+			"ParentName":"All Categories",
+			"ComponentName":"Zero Rev",
+			"Weight":1
+		},
+		{
+			"ParentName":"All Categories",
+			"ComponentName":"POSA",
+			"Weight":1
+		},
+		{
+			"ParentName":"All Categories",
+			"ComponentName":"Fees",
+			"Weight":1
+		},
+		{
+			"ParentName":"All Categories",
+			"ComponentName":"Memory",
+			"Weight":1
+		},
+		{
+			"ParentName":"All Categories",
+			"ComponentName":"Console Digital Software",
+			"Weight":1
+		},
+		{
+			"ParentName":"All Categories",
+			"ComponentName":"PC Digital Software",
+			"Weight":1
+		},
+		{
+			"ParentName":"All Categories",
+			"ComponentName":"PS4 Software",
+			"Weight":1
+		},
+		{
+			"ParentName":"All Categories",
+			"ComponentName":"Add - On",
+			"Weight":1
+		},
+		{
+			"ParentName":"All Categories",
+			"ComponentName":"Xbox Series X Software",
+			"Weight":1
+		},
+		{
+			"ParentName":"All Categories",
+			"ComponentName":"PC Software",
+			"Weight":1
+		},
+		{
+			"ParentName":"All Categories",
+			"ComponentName":"PS5 Software",
+			"Weight":1
+		},
+		{
+			"ParentName":"All Categories",
+			"ComponentName":"Controller",
+			"Weight":1
+		},
+		{
+			"ParentName":"All Categories",
+			"ComponentName":"Loyalty",
+			"Weight":1
+		},
+		{
+			"ParentName":"All Categories",
+			"ComponentName":"Other VG Software",
+			"Weight":1
+		},
+		{
+			"ParentName":"All Categories",
+			"ComponentName":"Pre-Owned Collectibles",
+			"Weight":1
+		},
+		{
+			"ParentName":"All Categories",
+			"ComponentName":"Pre-Owned Mobile Phone",
+			"Weight":1
+		},
+		{
+			"ParentName":"All Categories",
+			"ComponentName":"Pre-Owned Zero Rev",
+			"Weight":1
+		},
+		{
+			"ParentName":"All Categories",
+			"ComponentName":"Software Warranties",
+			"Weight":1
+		},
+		{
+			"ParentName":"All Categories",
+			"ComponentName":"Pre-Owned Xbox 360 Software",
+			"Weight":1
+		},
+		{
+			"ParentName":"All Categories",
+			"ComponentName":"Pre-Owned Xbox One Software",
+			"Weight":1
+		},
+		{
+			"ParentName":"All Categories",
+			"ComponentName":"Pre-Owned 3DS Software",
+			"Weight":1
+		},
+		{
+			"ParentName":"All Categories",
+			"ComponentName":"Pre-Owned Other VG Software",
+			"Weight":1
+		},
+		{
+			"ParentName":"All Categories",
+			"ComponentName":"Pre-Owned Switch Software",
+			"Weight":1
+		},
+		{
+			"ParentName":"All Categories",
+			"ComponentName":"Pre-Owned Wii Software",
+			"Weight":1
+		},
+		{
+			"ParentName":"All Categories",
+			"ComponentName":"Pre-Owned PC Components",
+			"Weight":1
+		},
+		{
+			"ParentName":"All Categories",
+			"ComponentName":"Pre-Owned Peripherals",
+			"Weight":1
+		},
+		{
+			"ParentName":"All Categories",
+			"ComponentName":"Switch Hardware",
+			"Weight":1
+		},
+		{
+			"ParentName":"All Categories",
+			"ComponentName":"Pre-Owned Other VG Hardware",
+			"Weight":1
+		},
+		{
+			"ParentName":"All Categories",
+			"ComponentName":"Pre-Owned PC Systems",
+			"Weight":1
+		},
+		{
+			"ParentName":"All Categories",
+			"ComponentName":"PS4 Hardware",
+			"Weight":1
+		},
+		{
+			"ParentName":"All Categories",
+			"ComponentName":"Pre-Owned PS4 Software",
+			"Weight":1
+		},
+		{
+			"ParentName":"All Categories",
+			"ComponentName":"Pre-Owned Switch 2 Software",
+			"Weight":1
+		},
+		{
+			"ParentName":"All Categories",
+			"ComponentName":"Pre-Owned Monitors",
+			"Weight":1
+		},
+		{
+			"ParentName":"All Categories",
+			"ComponentName":"Pre-Owned Misc Accessories",
+			"Weight":1
+		},
+		{
+			"ParentName":"All Categories",
+			"ComponentName":"Pre-Owned Controller",
+			"Weight":1
+		},
+		{
+			"ParentName":"All Categories",
+			"ComponentName":"Pre-Owned Pokemon",
+			"Weight":1
+		},
+		{
+			"ParentName":"All Categories",
+			"ComponentName":"Pre-Owned Other TCG",
+			"Weight":1
+		},
+		{
+			"ParentName":"All Categories",
+			"ComponentName":"Pre-Owned MTG",
+			"Weight":1
+		},
+		{
+			"ParentName":"All Categories",
+			"ComponentName":"Interactive Toy",
+			"Weight":1
+		},
+		{
+			"ParentName":"All Categories",
+			"ComponentName":"Pre-Owned PS3 Software",
+			"Weight":1
+		},
+		{
+			"ParentName":"All Categories",
+			"ComponentName":"PS5 Hardware",
+			"Weight":1
+		},
+		{
+			"ParentName":"All Categories",
+			"ComponentName":"Pre-Owned Cases / Stands",
+			"Weight":1
+		},
+		{
+			"ParentName":"All Categories",
+			"ComponentName":"AR/VR Hardware",
+			"Weight":1
+		},
+		{
+			"ParentName":"All Categories",
+			"ComponentName":"Xbox One Hardware",
+			"Weight":1
+		},
+		{
+			"ParentName":"All Categories",
+			"ComponentName":"Xbox Series X Hardware",
+			"Weight":1
+		},
+		{
+			"ParentName":"All Categories",
+			"ComponentName":"Switch 2 Hardware",
+			"Weight":1
+		},
+		{
+			"ParentName":"All Categories",
+			"ComponentName":"Xbox One Software",
+			"Weight":1
+		},
+		{
+			"ParentName":"All Categories",
+			"ComponentName":"Pre-Owned Other",
+			"Weight":1
+		},
+		{
+			"ParentName":"All Categories",
+			"ComponentName":"Accessory Warranties",
+			"Weight":1
+		},
+		{
+			"ParentName":"All Categories",
+			"ComponentName":"VG Hardware Warranties",
+			"Weight":1
+		},
+		{
+			"ParentName":"All Categories",
+			"ComponentName":"Other Warranties",
+			"Weight":1
+		},
+		{
+			"ParentName":"All Categories",
+			"ComponentName":"Pre-Owned PS5 Software",
+			"Weight":1
+		},
+		{
+			"ParentName":"All Categories",
+			"ComponentName":"Pre-Owned PS4 Hardware",
+			"Weight":1
+		},
+		{
+			"ParentName":"All Categories",
+			"ComponentName":"Pre-Owned PS5 Hardware",
+			"Weight":1
+		},
+		{
+			"ParentName":"All Categories",
+			"ComponentName":"Pre-Owned 3DS Hardware",
+			"Weight":1
+		},
+		{
+			"ParentName":"All Categories",
+			"ComponentName":"Pre-Owned Xbox One Hardware",
+			"Weight":1
+		},
+		{
+			"ParentName":"All Categories",
+			"ComponentName":"Pre-Owned Switch Hardware",
+			"Weight":1
+		},
+		{
+			"ParentName":"All Categories",
+			"ComponentName":"Pre-Owned Series X Hardware",
+			"Weight":1
+		},
+		{
+			"ParentName":"All Categories",
+			"ComponentName":"Pre-Owned Switch 2 Hardware",
+			"Weight":1
+		},
+		{
+			"ParentName":"All Categories",
+			"ComponentName":"One Piece",
+			"Weight":1
+		},
+		{
+			"ParentName":"All Categories",
+			"ComponentName":"Pre-Owned Homewares",
+			"Weight":1
+		}
+	],
+	"Subsets@Code.links":
+	[
+		"Merch Category.subsets/All Categories.json",
+		"Merch Category.subsets/All Categories Excluding Pre-Owned.json",
+		"Merch Category.subsets/All Pre-Owned Categories.json",
+		"Merch Category.subsets/Default.json",
+		"Merch Category.subsets/ForecastVerCopyCat_bootstrap.json"
+	]
+}

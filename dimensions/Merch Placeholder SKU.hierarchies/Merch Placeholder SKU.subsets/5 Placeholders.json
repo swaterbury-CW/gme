@@ -1,0 +1,23 @@
+{
+	"@type":"Subset",
+	"Name":"5 Placeholders",
+	"Alias":"Caption",
+	"Elements":
+	[
+		{
+			"@id":"Dimensions('Merch Placeholder SKU')/Hierarchies('Merch Placeholder SKU')/Elements('PH-001')"
+		},
+		{
+			"@id":"Dimensions('Merch Placeholder SKU')/Hierarchies('Merch Placeholder SKU')/Elements('PH-002')"
+		},
+		{
+			"@id":"Dimensions('Merch Placeholder SKU')/Hierarchies('Merch Placeholder SKU')/Elements('PH-003')"
+		},
+		{
+			"@id":"Dimensions('Merch Placeholder SKU')/Hierarchies('Merch Placeholder SKU')/Elements('PH-004')"
+		},
+		{
+			"@id":"Dimensions('Merch Placeholder SKU')/Hierarchies('Merch Placeholder SKU')/Elements('PH-005')"
+		}
+	]
+}

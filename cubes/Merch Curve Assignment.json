@@ -1,0 +1,24 @@
+{
+	"@type":"Cube",
+	"Name":"Merch Curve Assignment",
+	"Dimensions":
+	[
+		{
+			"@id":"Dimensions('Merch Version')"
+		},
+		{
+			"@id":"Dimensions('Merch SKU')"
+		},
+		{
+			"@id":"Dimensions('Merch Curve Assignment Measure')"
+		}
+	],
+	"Rules@Code.link":"Merch Curve Assignment.rules",
+	"Views@Code.links":
+	[
+		"Merch Curve Assignment.views/TI_CopySKU_placeholder.json",
+		"Merch Curve Assignment.views/temp.json",
+		"Merch Curve Assignment.views/TI_ApplyCurves_placeholder.json",
+		"Merch Curve Assignment.views/TI_ApplyMD_placeholder.json"
+	]
+}

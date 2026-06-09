@@ -1,0 +1,6 @@
+{
+	"@type":"Subset",
+	"Name":"All Placeholder Members",
+	"Alias":"Caption",
+	"Expression":"TM1IGNORE_BADTUPLES {TM1FILTERBYLEVEL(TM1SUBSETALL([Merch Placeholder SKU].[Merch Placeholder SKU]) , 0)}"
+}

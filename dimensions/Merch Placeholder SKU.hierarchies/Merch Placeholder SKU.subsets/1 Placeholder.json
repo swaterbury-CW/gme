@@ -1,0 +1,11 @@
+{
+	"@type":"Subset",
+	"Name":"1 Placeholder",
+	"Alias":"Caption",
+	"Elements":
+	[
+		{
+			"@id":"Dimensions('Merch Placeholder SKU')/Hierarchies('Merch Placeholder SKU')/Elements('PH-001')"
+		}
+	]
+}

@@ -1,0 +1,24 @@
+{
+	"@type":"Hierarchy",
+	"Name":"Merch Placeholder Settings Measure",
+	"Elements":
+	[
+		{
+			"Name":"Full Price AUR",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Base AUC",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Receipt AUC",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Sales AUC",
+			"Type":"Numeric"
+		}
+	],
+	"Subsets@Code.links":[]
+}

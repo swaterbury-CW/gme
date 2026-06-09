@@ -1,0 +1,203 @@
+{
+	"@type":"Hierarchy",
+	"Name":"Merch Placeholder SKU",
+	"Elements":
+	[
+		{
+			"Name":"PH-001",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"PH-002",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"PH-003",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"PH-004",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"PH-005",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"PH-006",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"PH-007",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"PH-008",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"PH-009",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"PH-010",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"PH-011",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"PH-012",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"PH-013",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"PH-014",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"PH-015",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"PH-016",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"PH-017",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"PH-018",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"PH-019",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"PH-020",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"All Placeholder SKUs",
+			"Type":"Consolidated"
+		}
+	],
+	"Edges":
+	[
+		{
+			"ParentName":"All Placeholder SKUs",
+			"ComponentName":"PH-001",
+			"Weight":1
+		},
+		{
+			"ParentName":"All Placeholder SKUs",
+			"ComponentName":"PH-002",
+			"Weight":1
+		},
+		{
+			"ParentName":"All Placeholder SKUs",
+			"ComponentName":"PH-003",
+			"Weight":1
+		},
+		{
+			"ParentName":"All Placeholder SKUs",
+			"ComponentName":"PH-004",
+			"Weight":1
+		},
+		{
+			"ParentName":"All Placeholder SKUs",
+			"ComponentName":"PH-005",
+			"Weight":1
+		},
+		{
+			"ParentName":"All Placeholder SKUs",
+			"ComponentName":"PH-006",
+			"Weight":1
+		},
+		{
+			"ParentName":"All Placeholder SKUs",
+			"ComponentName":"PH-007",
+			"Weight":1
+		},
+		{
+			"ParentName":"All Placeholder SKUs",
+			"ComponentName":"PH-008",
+			"Weight":1
+		},
+		{
+			"ParentName":"All Placeholder SKUs",
+			"ComponentName":"PH-009",
+			"Weight":1
+		},
+		{
+			"ParentName":"All Placeholder SKUs",
+			"ComponentName":"PH-010",
+			"Weight":1
+		},
+		{
+			"ParentName":"All Placeholder SKUs",
+			"ComponentName":"PH-011",
+			"Weight":1
+		},
+		{
+			"ParentName":"All Placeholder SKUs",
+			"ComponentName":"PH-012",
+			"Weight":1
+		},
+		{
+			"ParentName":"All Placeholder SKUs",
+			"ComponentName":"PH-013",
+			"Weight":1
+		},
+		{
+			"ParentName":"All Placeholder SKUs",
+			"ComponentName":"PH-014",
+			"Weight":1
+		},
+		{
+			"ParentName":"All Placeholder SKUs",
+			"ComponentName":"PH-015",
+			"Weight":1
+		},
+		{
+			"ParentName":"All Placeholder SKUs",
+			"ComponentName":"PH-016",
+			"Weight":1
+		},
+		{
+			"ParentName":"All Placeholder SKUs",
+			"ComponentName":"PH-017",
+			"Weight":1
+		},
+		{
+			"ParentName":"All Placeholder SKUs",
+			"ComponentName":"PH-018",
+			"Weight":1
+		},
+		{
+			"ParentName":"All Placeholder SKUs",
+			"ComponentName":"PH-019",
+			"Weight":1
+		},
+		{
+			"ParentName":"All Placeholder SKUs",
+			"ComponentName":"PH-020",
+			"Weight":1
+		}
+	],
+	"Subsets@Code.links":
+	[
+		"Merch Placeholder SKU.subsets/10 Placeholders.json",
+		"Merch Placeholder SKU.subsets/15 Placeholders.json",
+		"Merch Placeholder SKU.subsets/1 Placeholder.json",
+		"Merch Placeholder SKU.subsets/5 Placeholders.json",
+		"Merch Placeholder SKU.subsets/All Placeholder Members.json",
+		"Merch Placeholder SKU.subsets/All Placeholders.json"
+	]
+}

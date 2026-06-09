@@ -1,0 +1,71 @@
+#region Prolog
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+#Region : Process Header
+# PROCESS    : Merch.Security.RefreshOverlays.All
+# DEVELOPER  : Steve Waterbury
+# CREATED ON : 2026-06-08
+# CHANGED BY : Steve Waterbury
+# PURPOSE    : Wrapper that refreshes EVERY security overlay by dispatching
+#              Merch.Security.RefreshOverlays(pCube) for each REGULAR cube that
+#              has an existing }SecurityOverlayGlobal_<cube> overlay. Data-driven
+#              (no hardcoded cube list), idempotent. Both time-bearing and
+#              non-time overlay cubes are handled (the per-cube worker branches
+#              on the presence of Merch Time Period). No datasource, no params.
+#              Dispatch loop lives in EPILOG (canonical orchestrator pattern).
+# CHANGE HISTORY:
+#   2026-06-08  Steve Waterbury  Initial creation (design plan 6ff6ede1e816, EP6).
+#   2026-06-09  Steve Waterbury  Re-validated on real }SecurityOverlayGlobal_ output (design plan 690f01e96825).
+#EndRegion
+
+sProc = GetProcessName();
+IF( CubeExists( 'ProcessControl' ) = 1 );
+    sLogLevel = CellGetS( 'ProcessControl', sProc, 'Logging Level' );
+ELSE;
+    sLogLevel = '';
+ENDIF;
+IF( sLogLevel @= '' );
+    sLogLevel = 'INFO';
+ENDIF;
+bLogInfo = IF( sLogLevel @= 'INFO' % sLogLevel @= 'DEBUG', 1, 0 );
+nRefreshed = 0;
+IF( bLogInfo = 1 );
+    LogOutput( 'INFO', 'START: ' | sProc );
+ENDIF;
+
+#endregion
+#region Metadata
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+
+#endregion
+#region Data
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+
+#endregion
+#region Epilog
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+# Dispatch loop (canonical pattern): iterate cubes, refresh every existing overlay.
+nCubes = DIMSIZ( '}Cubes' );
+nI = 1;
+WHILE( nI <= nCubes );
+    sCube = DIMNM( '}Cubes', nI );
+    IF( SUBST( sCube, 1, 1 ) @<> '}' );
+        sOverlay = '}SecurityOverlayGlobal_' | sCube;
+        IF( CubeExists( sOverlay ) = 1 );
+            ExecuteProcess( 'Merch.Security.RefreshOverlays', 'pCube', sCube );
+            nRefreshed = nRefreshed + 1;
+            IF( bLogInfo = 1 );
+                LogOutput( 'INFO', sProc | ' | Refreshed overlay for cube: ' | sCube );
+            ENDIF;
+        ENDIF;
+    ENDIF;
+    nI = nI + 1;
+END;
+IF( bLogInfo = 1 );
+    LogOutput( 'INFO', 'END: ' | sProc | ' | OverlaysRefreshed=' | NUMBERTOSTRING( nRefreshed ) );
+ENDIF;
+
+#endregion

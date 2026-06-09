@@ -1,0 +1,10 @@
+{
+	"@type":"Subset",
+	"Name":"ForecastVerCopyCat_bootstrap",
+	"Elements":
+	[
+		{
+			"@id":"Dimensions('Merch Category')/Hierarchies('Merch Category')/Elements('Pokemon')"
+		}
+	]
+}
