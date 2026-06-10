@@ -1,0 +1,80 @@
+#region Prolog
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+#Region : Process Header
+# DEVELOPER : Steve Waterbury
+# CREATED ON : 2026-03-28
+# CHANGED BY : Steve Waterbury
+# COMMENTS: ORCHESTRATOR. Multithreaded forecast -> Plan Reporting submission. Fans out across
+#  Merch SKU Roles alt-hier level-4 nodes (Planner-Category) under pSKUElement (blank => 'Director'),
+#  dispatching Merch.Calc.SubmitForecastToInventory.Cat per partition via RunProcess (async) and
+#  joining with WaitForInternalJobs. Then logs once via .Log. Mirrors Merch.Calc.ApplyForecastCurves.
+#### CHANGE HISTORY:
+### 2026-04-24  Steve Waterbury  Widened VIEW to 8 measures incl. Receipts
+### 2026-06-09  Steve Waterbury  Convert single-pass submit to Roles-L4 parallel orchestrator + .Cat worker. Design plan 24d10f22516f.
+#EndRegion
+DatasourceType = 'NULL';
+cProcessName = GetProcessName();
+sLogLevel = CellGetS('ProcessControl', cProcessName, 'LoggingLevel');
+IF(sLogLevel @= ''); sLogLevel = 'OFF'; ENDIF;
+bLogInfo = 0;
+IF(sLogLevel @= 'INFO' % sLogLevel @= 'DEBUG'); bLogInfo = 1; ENDIF;
+
+IF(DIMIX('Merch Version', pVersion) = 0);
+  LogOutput('ERROR', cProcessName | ' | Invalid pVersion: ' | pVersion);
+  ProcessError;
+ENDIF;
+sRoot = pSKUElement;
+IF(sRoot @= ''); sRoot = 'Director'; ENDIF;
+IF(HierarchyElementExists('Merch SKU', 'Roles', sRoot) = 0);
+  LogOutput('ERROR', cProcessName | ' | Invalid pSKUElement (not in Roles hier): ' | sRoot);
+  ProcessError;
+ENDIF;
+nStart = NOW;
+IF(bLogInfo = 1); LogOutput('INFO', 'START ' | cProcessName | ' V=' | pVersion | ' Root=' | sRoot); ENDIF;
+
+#endregion
+#region Metadata
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+
+#endregion
+#region Data
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+
+#endregion
+#region Epilog
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+sSub = 'TI_OrchSubmitFC_' | TRIM(STR(NOW, 15, 0));
+IF(HierarchySubsetExists('Merch SKU', 'Roles', sSub) = 1);
+  HierarchySubsetDestroy('Merch SKU', 'Roles', sSub);
+ENDIF;
+sMDX = '{FILTER({DESCENDANTS([Merch SKU].[Roles].[' | sRoot | '])}, [Merch SKU].[Roles].CurrentMember.LEVEL.ORDINAL = 4)}';
+SubsetCreateByMDX(sSub, sMDX);
+nSubSize = HierarchySubsetGetSize('Merch SKU', 'Roles', sSub);
+nDispatched = 0;
+IF(nSubSize = 0);
+  RunProcess('Merch.Calc.SubmitForecastToInventory.Cat', 'pVersion', pVersion, 'pSKUElement', sRoot);
+  nDispatched = 1;
+ELSE;
+  nIdx = 1;
+  WHILE(nIdx <= nSubSize);
+    sChild = HierarchySubsetGetElementName('Merch SKU', 'Roles', sSub, nIdx);
+    RunProcess('Merch.Calc.SubmitForecastToInventory.Cat', 'pVersion', pVersion, 'pSKUElement', sChild);
+    nDispatched = nDispatched + 1;
+    nIdx = nIdx + 1;
+  END;
+ENDIF;
+nDummy = WaitForInternalJobs();
+IF(HierarchySubsetExists('Merch SKU', 'Roles', sSub) = 1);
+  HierarchySubsetDestroy('Merch SKU', 'Roles', sSub);
+ENDIF;
+RunProcess('Merch.Calc.SubmitForecastToInventory.Log', 'pVersion', pVersion, 'pSKUElement', sRoot);
+nDummy = WaitForInternalJobs();
+IF(bLogInfo = 1);
+  LogOutput('INFO', 'END ' | cProcessName | ' Root=' | sRoot | ' Dispatched=' | TRIM(STR(nDispatched, 10, 0)) | ' Elapsed=' | TRIM(STR((NOW - nStart) * 86400, 12, 1)) | 's');
+ENDIF;
+
+#endregion
