@@ -1,0 +1,49 @@
+{
+	"@type":"Process",
+	"Name":"Merch.Calc.ApplyPlaceholderForecast",
+	"HasSecurityAccess":false,
+	"Code@Code.link":"Merch.Calc.ApplyPlaceholderForecast.ti",
+	"DataSource":
+	{
+		"Type":"TM1DimensionSubset",
+		"dataSourceNameForServer":"Merch Placeholder SKU",
+		"dataSourceNameForClient":"Merch Placeholder SKU",
+		"subset":"temp_ApplyPlaceholderFcst"
+	},
+	"Parameters":
+	[
+		{
+			"Name":"pVersion",
+			"Prompt":"Calculated version",
+			"Value":"",
+			"Type":"String"
+		},
+		{
+			"Name":"pCategory",
+			"Prompt":"Optional single category",
+			"Value":"",
+			"Type":"String"
+		},
+		{
+			"Name":"pGroup",
+			"Prompt":"Functional group",
+			"Value":"",
+			"Type":"String"
+		}
+	],
+	"Variables":
+	[
+		{
+			"Name":"vSKU",
+			"Type":"String",
+			"Position":1,
+			"StartByte":0,
+			"EndByte":0
+		}
+	],
+	"UID": "1774391825000",
+	"UIData": "CubeAction=1511\fDataAction=1503\fCubeLogChanges=0\f",
+	"VariablesUIData": [
+		"VarType=32\fColType=827\f"
+	]
+}
