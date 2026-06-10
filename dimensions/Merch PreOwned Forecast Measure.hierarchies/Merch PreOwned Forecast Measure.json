@@ -1,0 +1,235 @@
+{
+	"@type":"Hierarchy",
+	"Name":"Merch PreOwned Forecast Measure",
+	"Elements":
+	[
+		{
+			"Name":"Sales Dollars",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"AUR",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Margin Pct",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Total Trade Units",
+			"Type":"Consolidated"
+		},
+		{
+			"Name":"Trade Units",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Calc Trade Units",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"AUT",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Margin Dollars",
+			"Type":"Consolidated"
+		},
+		{
+			"Name":"Calc Sales Dollars",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Sales Units",
+			"Type":"Consolidated"
+		},
+		{
+			"Name":"Calc Units",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Trade Dollars",
+			"Type":"Consolidated"
+		},
+		{
+			"Name":"Total Sales Dollars",
+			"Type":"Consolidated"
+		},
+		{
+			"Name":"Category Calc Sales",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Category Calc Trades",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Sales Mix Pct",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Trade Mix Pct",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Margin Mix Pct",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"AUR Mix Pct",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"AUT Mix Pct",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Calc Margin Dollars",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Calc Trade Dollars",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Category Calc Trade Units",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Sales Mix Calc",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Trade Mix Calc",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Margin Mix Calc",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"AUR Mix Calc",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"AUT Mix Calc",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"AUR Calc",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"AUT Calc",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Margin Pct Calc",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Build Yr1 Sales",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Build Yr2 Sales",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Build Yr3 Sales",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Build Yr1 Trades",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Build Yr2 Trades",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Build Yr3 Trades",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Build Yr1 Trade Units",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Build Yr2 Trade Units",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Build Yr3 Trade Units",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Adjustment Sales",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Adjustment Trades",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Adjustment Trade Units",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Final Build Sales",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Final Build Trades",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Final Build Trade Units",
+			"Type":"Numeric"
+		}
+	],
+	"Edges":
+	[
+		{
+			"ParentName":"Total Trade Units",
+			"ComponentName":"Trade Units",
+			"Weight":1
+		},
+		{
+			"ParentName":"Total Trade Units",
+			"ComponentName":"Calc Trade Units",
+			"Weight":1
+		},
+		{
+			"ParentName":"Margin Dollars",
+			"ComponentName":"Calc Margin Dollars",
+			"Weight":1
+		},
+		{
+			"ParentName":"Sales Units",
+			"ComponentName":"Calc Units",
+			"Weight":1
+		},
+		{
+			"ParentName":"Trade Dollars",
+			"ComponentName":"Calc Trade Dollars",
+			"Weight":1
+		},
+		{
+			"ParentName":"Total Sales Dollars",
+			"ComponentName":"Calc Sales Dollars",
+			"Weight":1
+		},
+		{
+			"ParentName":"Total Sales Dollars",
+			"ComponentName":"Sales Dollars",
+			"Weight":1
+		}
+	],
+	"Subsets@Code.links":
+	[
+		"Merch PreOwned Forecast Measure.subsets/All Sales Dollars Measures.json",
+		"Merch PreOwned Forecast Measure.subsets/All Sales Units Measures.json",
+		"Merch PreOwned Forecast Measure.subsets/All Trade Dollars Measures.json"
+	]
+}

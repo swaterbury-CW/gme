@@ -1,0 +1,29 @@
+{
+	"@type":"Subset",
+	"Name":"All Trade Dollars Measures",
+	"Alias":"MEMBER_NAME",
+	"Elements":
+	[
+		{
+			"@id":"Dimensions('Merch PreOwned Forecast Measure')/Hierarchies('Merch PreOwned Forecast Measure')/Elements('Calc Trade Dollars')"
+		},
+		{
+			"@id":"Dimensions('Merch PreOwned Forecast Measure')/Hierarchies('Merch PreOwned Forecast Measure')/Elements('Sales Dollars')"
+		},
+		{
+			"@id":"Dimensions('Merch PreOwned Forecast Measure')/Hierarchies('Merch PreOwned Forecast Measure')/Elements('Category Calc Trades')"
+		},
+		{
+			"@id":"Dimensions('Merch PreOwned Forecast Measure')/Hierarchies('Merch PreOwned Forecast Measure')/Elements('Trade Mix Calc')"
+		},
+		{
+			"@id":"Dimensions('Merch PreOwned Forecast Measure')/Hierarchies('Merch PreOwned Forecast Measure')/Elements('Trade Mix Pct')"
+		},
+		{
+			"@id":"Dimensions('Merch PreOwned Forecast Measure')/Hierarchies('Merch PreOwned Forecast Measure')/Elements('AUT')"
+		},
+		{
+			"@id":"Dimensions('Merch PreOwned Forecast Measure')/Hierarchies('Merch PreOwned Forecast Measure')/Elements('Trade Dollars')"
+		}
+	]
+}

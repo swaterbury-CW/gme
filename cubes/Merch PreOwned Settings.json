@@ -1,0 +1,18 @@
+{
+	"@type":"Cube",
+	"Name":"Merch PreOwned Settings",
+	"Dimensions":
+	[
+		{
+			"@id":"Dimensions('Merch Version')"
+		},
+		{
+			"@id":"Dimensions('Merch PreOwned Category')"
+		},
+		{
+			"@id":"Dimensions('Merch PreOwned Settings Measure')"
+		}
+	],
+	"Rules@Code.link":"Merch PreOwned Settings.rules",
+	"Views@Code.links":[]
+}

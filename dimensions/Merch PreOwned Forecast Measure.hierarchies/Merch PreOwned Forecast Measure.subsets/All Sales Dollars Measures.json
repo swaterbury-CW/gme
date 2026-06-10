@@ -1,0 +1,26 @@
+{
+	"@type":"Subset",
+	"Name":"All Sales Dollars Measures",
+	"Alias":"MEMBER_NAME",
+	"Elements":
+	[
+		{
+			"@id":"Dimensions('Merch PreOwned Forecast Measure')/Hierarchies('Merch PreOwned Forecast Measure')/Elements('Calc Sales Dollars')"
+		},
+		{
+			"@id":"Dimensions('Merch PreOwned Forecast Measure')/Hierarchies('Merch PreOwned Forecast Measure')/Elements('Sales Dollars')"
+		},
+		{
+			"@id":"Dimensions('Merch PreOwned Forecast Measure')/Hierarchies('Merch PreOwned Forecast Measure')/Elements('Category Calc Sales')"
+		},
+		{
+			"@id":"Dimensions('Merch PreOwned Forecast Measure')/Hierarchies('Merch PreOwned Forecast Measure')/Elements('Sales Mix Pct')"
+		},
+		{
+			"@id":"Dimensions('Merch PreOwned Forecast Measure')/Hierarchies('Merch PreOwned Forecast Measure')/Elements('AUR')"
+		},
+		{
+			"@id":"Dimensions('Merch PreOwned Forecast Measure')/Hierarchies('Merch PreOwned Forecast Measure')/Elements('Total Sales Dollars')"
+		}
+	]
+}
