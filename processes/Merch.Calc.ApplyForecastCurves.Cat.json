@@ -14,13 +14,13 @@
 	[
 		{
 			"Name":"pVersion",
-			"Prompt":"Version (Calculated type)",
+			"Prompt":"Version",
 			"Value":"",
 			"Type":"String"
 		},
 		{
 			"Name":"pRole",
-			"Prompt":"Roles hier element (parent or leaf)",
+			"Prompt":"Roles parent",
 			"Value":"",
 			"Type":"String"
 		}

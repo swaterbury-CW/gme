@@ -4,13 +4,14 @@
 #Region : Process Header
 # DEVELOPER: Steve Waterbury
 # CREATED ON: 2026-05-13
-# LAST UPDATE: 2026-06-04
+# LAST UPDATE: 2026-06-09
 # CHANGED BY: Steve Waterbury
-# COMMENTS: Per-Roles-parent worker for ApplyForecastCurves. Each curve writes ONLY its like-named Merch Forecast measure. First-week sell-through seed added 2026-06-04.
+# COMMENTS: Per-Roles-parent worker for ApplyForecastCurves. First-week sell-through seed 2026-06-04. Rate Adjustment 2026-06-08.
 # CHANGE HISTORY:
-#   2026-05-13 | Steve Waterbury | Initial creation; Category-parallel via Roles hier (design plan 46c8263071d6)
-#   2026-06-02 | Steve Waterbury | Curve realign: drop Build/Debuild + Category Build + Promo Build writes/clears (plan c1cd290268f6)
+#   2026-05-13 | Steve Waterbury | Initial creation (plan 46c8263071d6)
 #   2026-06-04 | Steve Waterbury | First-week sell-through seed (plan a3be75e25c1e)
+#   2026-06-08 | Steve Waterbury | Rate Adjustment %/100 write (plan 6a611b1f97db EP3)
+#   2026-06-09 | Steve Waterbury | Recognize 'Specific Week' Start Mode (plan a240cabb67e4)
 #EndRegion
 
 sCube = 'Merch Forecast';
@@ -22,6 +23,7 @@ sDimTP = 'Merch Time Period';
 cModeSpecific = 'Specific Date';
 cModeStreet = 'Street Date';
 cModeETA = 'ETA';
+cModeSpecificWeek = 'Specific Week';
 cMeasStartWeek = 'Applied Start Date';
 cMeasStreetDate = 'Street Date';
 cMeasETA = 'ETA';
@@ -38,30 +40,29 @@ ENDIF;
 
 sVersion = pVersion;
 IF(sVersion @= '');
-  LogOutput('ERROR', sProcess | ' | pVersion empty');
+  LogOutput('ERROR', sProcess | ' | pVersion empty', 1);
   ProcessError;
 ENDIF;
 IF(DIMIX('Merch Version', sVersion) = 0);
-  LogOutput('ERROR', sProcess | ' | Version not found: ' | sVersion);
+  LogOutput('ERROR', sProcess | ' | Version not found: ' | sVersion, 1);
   ProcessError;
 ENDIF;
 sVersionType = ATTRS('Merch Version', sVersion, 'Version_Type');
 IF(sVersionType @<> 'Calculated');
-  LogOutput('ERROR', sProcess | ' | Not Calculated: ' | sVersionType);
+  LogOutput('ERROR', sProcess | ' | Not Calculated: ' | sVersionType, 1);
   ProcessError;
 ENDIF;
 IF(pRole @= '');
-  LogOutput('ERROR', sProcess | ' | pRole empty');
+  LogOutput('ERROR', sProcess | ' | pRole empty', 1);
   ProcessError;
 ENDIF;
 
-nWeeksPerYear = 52;
 nTPCount = DIMSIZ(sDimTP);
-nVelWrites = 0; nSeaWrites = 0; nRegWrites = 0; nMDWrites = 0; nSkipped = 0; nLocked = 0; nCleared = 0; nSeedWrites = 0;
+nVelWrites = 0; nSeaWrites = 0; nRegWrites = 0; nMDWrites = 0; nSkipped = 0; nLocked = 0; nCleared = 0; nSeedWrites = 0; nRateWrites = 0;
 nLastClosedSerial = ATTRN('Merch Version', sVersion, 'Last_Closed_Period');
 
 nStart = NOW;
-LogOutput('INFO', 'TIMING START: ' | sProcess | ' | V=' | sVersion | ' | Role=' | pRole);
+LogOutput('INFO', 'TIMING START: ' | sProcess | ' | V=' | sVersion | ' | Role=' | pRole, 1);
 
 sView = 'TI_ApplyCurvesRole_' | TRIM(STR(NOW, 15, 0));
 IF(ViewExists(sAssign, sView) = 1);
@@ -79,7 +80,6 @@ ViewExtractSkipZeroesSet(sAssign, sView, 0);
 DatasourceType = 'VIEW';
 DatasourceNameForServer = sAssign;
 DatasourceCubeview = sView;
-LogOutput('INFO', 'TIMING VIEW READY: ' | sProcess | ' | Role=' | pRole | ' | BuildSec=' | TRIM(STR((NOW - nStart) * 86400, 12, 1)));
 
 #endregion
 #region Metadata
@@ -117,7 +117,7 @@ ENDIF;
 sStartMode = CellGetS(sAssign, sVersion, sSKU, 'Start Mode');
 nWeekShift = CellGetN(sAssign, sVersion, sSKU, 'Applied Week Shift');
 nStartWeekSerial = 0;
-IF(sStartMode @= cModeSpecific);
+IF(sStartMode @= cModeSpecific % sStartMode @= cModeSpecificWeek);
   nStartWeekSerial = CellGetN(sAssign, sVersion, sSKU, cMeasStartWeek);
 ELSEIF(sStartMode @= cModeStreet);
   nStartWeekSerial = CellGetN(sSKUAttrCube, sVersion, sSKU, cMeasStreetDate);
@@ -128,7 +128,7 @@ nMarkdownStartDate = CellGetN(sAssign, sVersion, sSKU, 'Applied Markdown Start D
 nMarkdownEndDate = CellGetN(sAssign, sVersion, sSKU, 'Applied Markdown End Date');
 
 bAnchorMode = 0;
-IF(sStartMode @= cModeSpecific % sStartMode @= cModeStreet % sStartMode @= cModeETA);
+IF(sStartMode @= cModeSpecific % sStartMode @= cModeSpecificWeek % sStartMode @= cModeStreet % sStartMode @= cModeETA);
   bAnchorMode = 1;
 ENDIF;
 
@@ -154,6 +154,8 @@ ENDIF;
 nFWSPct = CellGetN(sAssign, sVersion, sSKU, 'Applied First Week Sell %');
 nSeedTPStart = 0;
 sSeedTP = '';
+nRateAdjPct = CellGetN(sAssign, sVersion, sSKU, 'Applied Rate Adjustment %');
+nRateAdj = nRateAdjPct / 100;
 
 nTPIdx = 1;
 WHILE(nTPIdx <= nTPCount);
@@ -223,6 +225,11 @@ WHILE(nTPIdx <= nTPCount);
             CellPutN(0, sCube, sVersion, sTP, sSKU, 'Markdown %');
           ENDIF;
         ENDIF;
+        IF(nRateAdjPct <> 0);
+          IF(CellIsUpdateable(sCube, sVersion, sTP, sSKU, 'Rate Adjustment') = 1);
+            CellPutN(0, sCube, sVersion, sTP, sSKU, 'Rate Adjustment');
+          ENDIF;
+        ENDIF;
         nCleared = nCleared + 1;
       ENDIF;
 
@@ -230,6 +237,13 @@ WHILE(nTPIdx <= nTPCount);
         IF(nSeedTPStart = 0 % nTPStartSerial < nSeedTPStart);
           nSeedTPStart = nTPStartSerial;
           sSeedTP = sTP;
+        ENDIF;
+
+        IF(nRateAdjPct <> 0);
+          IF(CellIsUpdateable(sCube, sVersion, sTP, sSKU, 'Rate Adjustment') = 1);
+            CellPutN(nRateAdj, sCube, sVersion, sTP, sSKU, 'Rate Adjustment');
+            nRateWrites = nRateWrites + 1;
+          ENDIF;
         ENDIF;
 
         sShiftedCurveWeek = 'Week ' | TRIM(STR(nShiftedWeek, 2, 0));
@@ -320,6 +334,6 @@ nLocked = nLocked + 1;
 IF(ViewExists(sAssign, sView) = 1);
   ViewDestroy(sAssign, sView);
 ENDIF;
-LogOutput('INFO', 'TIMING END: ' | sProcess | ' | Role=' | pRole | ' | Elapsed=' | TRIM(STR((NOW - nStart) * 86400, 12, 1)) | 's | Vel=' | TRIM(STR(nVelWrites,10,0)) | ' Sea=' | TRIM(STR(nSeaWrites,10,0)) | ' Reg=' | TRIM(STR(nRegWrites,10,0)) | ' MD=' | TRIM(STR(nMDWrites,10,0)) | ' Seed=' | TRIM(STR(nSeedWrites,10,0)) | ' Locked=' | TRIM(STR(nLocked,10,0)) | ' Skip=' | TRIM(STR(nSkipped,10,0)));
+LogOutput('INFO', 'TIMING END: ' | sProcess | ' | Role=' | pRole, 1);
 
 #endregion
