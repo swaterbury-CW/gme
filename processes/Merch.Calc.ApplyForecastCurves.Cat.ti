@@ -1,0 +1,339 @@
+#region Prolog
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+#Region : Process Header
+# DEVELOPER: Steve Waterbury
+# CREATED ON: 2026-05-13
+# LAST UPDATE: 2026-06-09
+# CHANGED BY: Steve Waterbury
+# COMMENTS: Per-Roles-parent worker for ApplyForecastCurves. First-week sell-through seed 2026-06-04. Rate Adjustment 2026-06-08.
+# CHANGE HISTORY:
+#   2026-05-13 | Steve Waterbury | Initial creation (plan 46c8263071d6)
+#   2026-06-04 | Steve Waterbury | First-week sell-through seed (plan a3be75e25c1e)
+#   2026-06-08 | Steve Waterbury | Rate Adjustment %/100 write (plan 6a611b1f97db EP3)
+#   2026-06-09 | Steve Waterbury | Recognize 'Specific Week' Start Mode (plan a240cabb67e4)
+#EndRegion
+
+sCube = 'Merch Forecast';
+sCurveCube = 'Merch Curve';
+sAssign = 'Merch Curve Assignment';
+sSKUAttrCube = 'Merch Version SKU Attributes';
+sDimSKU = 'Merch SKU';
+sDimTP = 'Merch Time Period';
+cModeSpecific = 'Specific Date';
+cModeStreet = 'Street Date';
+cModeETA = 'ETA';
+cModeSpecificWeek = 'Specific Week';
+cMeasStartWeek = 'Applied Start Date';
+cMeasStreetDate = 'Street Date';
+cMeasETA = 'ETA';
+
+sProcess = GetProcessName();
+sLogLevel = CellGetS('ProcessControl', sProcess, 'LoggingLevel');
+IF(sLogLevel @= '');
+  sLogLevel = 'OFF';
+ENDIF;
+bLogInfo = 0;
+IF(sLogLevel @= 'INFO' % sLogLevel @= 'DEBUG');
+  bLogInfo = 1;
+ENDIF;
+
+sVersion = pVersion;
+IF(sVersion @= '');
+  LogOutput('ERROR', sProcess | ' | pVersion empty', 1);
+  ProcessError;
+ENDIF;
+IF(DIMIX('Merch Version', sVersion) = 0);
+  LogOutput('ERROR', sProcess | ' | Version not found: ' | sVersion, 1);
+  ProcessError;
+ENDIF;
+sVersionType = ATTRS('Merch Version', sVersion, 'Version_Type');
+IF(sVersionType @<> 'Calculated');
+  LogOutput('ERROR', sProcess | ' | Not Calculated: ' | sVersionType, 1);
+  ProcessError;
+ENDIF;
+IF(pRole @= '');
+  LogOutput('ERROR', sProcess | ' | pRole empty', 1);
+  ProcessError;
+ENDIF;
+
+nTPCount = DIMSIZ(sDimTP);
+nVelWrites = 0; nSeaWrites = 0; nRegWrites = 0; nMDWrites = 0; nSkipped = 0; nLocked = 0; nCleared = 0; nSeedWrites = 0; nRateWrites = 0;
+nLastClosedSerial = ATTRN('Merch Version', sVersion, 'Last_Closed_Period');
+
+nStart = NOW;
+LogOutput('INFO', 'TIMING START: ' | sProcess | ' | V=' | sVersion | ' | Role=' | pRole, 1);
+
+sView = 'TI_ApplyCurvesRole_' | TRIM(STR(NOW, 15, 0));
+IF(ViewExists(sAssign, sView) = 1);
+  ViewDestroy(sAssign, sView);
+ENDIF;
+sMDX = 'SELECT {[Merch Curve Assignment Measure].[Merch Curve Assignment Measure].[Applied Velocity Curve], '
+     | '[Merch Curve Assignment Measure].[Merch Curve Assignment Measure].[Applied Seasonality Curve], '
+     | '[Merch Curve Assignment Measure].[Merch Curve Assignment Measure].[Applied Regime Curve], '
+     | '[Merch Curve Assignment Measure].[Merch Curve Assignment Measure].[Applied Markdown Curve]} ON COLUMNS, '
+     | '{DESCENDANTS([Merch SKU].[Roles].[' | pRole | '], , LEAVES)} ON ROWS '
+     | 'FROM [Merch Curve Assignment] WHERE ([Merch Version].[Merch Version].[' | sVersion | '])';
+ViewCreateByMDX(sAssign, sView, sMDX, 1);
+ViewExtractSkipCalcsSet(sAssign, sView, 0);
+ViewExtractSkipZeroesSet(sAssign, sView, 0);
+DatasourceType = 'VIEW';
+DatasourceNameForServer = sAssign;
+DatasourceCubeview = sView;
+
+#endregion
+#region Metadata
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+
+#endregion
+#region Data
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+sSKU = vMerch_SKU;
+IF(sSKU @= '');
+  ItemReject('Empty SKU encountered in Merch Curve Assignment view');
+ENDIF;
+IF(DTYPE(sDimSKU, sSKU) @<> 'N');
+  ItemSkip;
+ENDIF;
+
+sForecastLock = CellGetS(sAssign, sVersion, sSKU, 'Forecast Lock');
+IF(sForecastLock @<> '');
+  nSkipped = nSkipped + 1;
+  ItemSkip;
+ENDIF;
+
+sVelocityCurve = CellGetS(sAssign, sVersion, sSKU, 'Applied Velocity Curve');
+sSeasonalityCurve = CellGetS(sAssign, sVersion, sSKU, 'Applied Seasonality Curve');
+sRegimeCurve = CellGetS(sAssign, sVersion, sSKU, 'Applied Regime Curve');
+sMarkdownCurve = CellGetS(sAssign, sVersion, sSKU, 'Applied Markdown Curve');
+
+IF(sVelocityCurve @= '' & sSeasonalityCurve @= '' & sRegimeCurve @= '' & sMarkdownCurve @= '');
+  nSkipped = nSkipped + 1;
+  ItemSkip;
+ENDIF;
+
+sStartMode = CellGetS(sAssign, sVersion, sSKU, 'Start Mode');
+nWeekShift = CellGetN(sAssign, sVersion, sSKU, 'Applied Week Shift');
+nStartWeekSerial = 0;
+IF(sStartMode @= cModeSpecific % sStartMode @= cModeSpecificWeek);
+  nStartWeekSerial = CellGetN(sAssign, sVersion, sSKU, cMeasStartWeek);
+ELSEIF(sStartMode @= cModeStreet);
+  nStartWeekSerial = CellGetN(sSKUAttrCube, sVersion, sSKU, cMeasStreetDate);
+ELSEIF(sStartMode @= cModeETA);
+  nStartWeekSerial = CellGetN(sSKUAttrCube, sVersion, sSKU, cMeasETA);
+ENDIF;
+nMarkdownStartDate = CellGetN(sAssign, sVersion, sSKU, 'Applied Markdown Start Date');
+nMarkdownEndDate = CellGetN(sAssign, sVersion, sSKU, 'Applied Markdown End Date');
+
+bAnchorMode = 0;
+IF(sStartMode @= cModeSpecific % sStartMode @= cModeSpecificWeek % sStartMode @= cModeStreet % sStartMode @= cModeETA);
+  bAnchorMode = 1;
+ENDIF;
+
+nStartWeekNum = 1;
+IF(nStartWeekSerial > 0);
+  nSWIdx = 1;
+  WHILE(nSWIdx <= nTPCount);
+    sSWElem = DIMNM(sDimTP, nSWIdx);
+    IF(DTYPE(sDimTP, sSWElem) @= 'N');
+      nSWStart = ATTRN(sDimTP, sSWElem, 'Start_Date');
+      nSWEnd = ATTRN(sDimTP, sSWElem, 'End_Date');
+      IF(nSWStart > 0 & nSWEnd > 0);
+        IF(nStartWeekSerial >= nSWStart & nStartWeekSerial <= nSWEnd);
+          nStartWeekNum = ATTRN(sDimTP, sSWElem, 'Week Number');
+          nSWIdx = nTPCount;
+        ENDIF;
+      ENDIF;
+    ENDIF;
+    nSWIdx = nSWIdx + 1;
+  END;
+ENDIF;
+
+nFWSPct = CellGetN(sAssign, sVersion, sSKU, 'Applied First Week Sell %');
+nSeedTPStart = 0;
+sSeedTP = '';
+nRateAdjPct = CellGetN(sAssign, sVersion, sSKU, 'Applied Rate Adjustment %');
+nRateAdj = nRateAdjPct / 100;
+
+nTPIdx = 1;
+WHILE(nTPIdx <= nTPCount);
+  sTP = DIMNM(sDimTP, nTPIdx);
+  IF(DTYPE(sDimTP, sTP) @= 'N');
+    nWkNum = ATTRN(sDimTP, sTP, 'Week Number');
+    nTPStartSerial = ATTRN(sDimTP, sTP, 'Start_Date');
+    IF(nLastClosedSerial = 0 % nTPStartSerial > nLastClosedSerial);
+      nRelWeek = nWkNum - nStartWeekNum + 1;
+      bWriteThisWeek = 1;
+      bClearThisWeek = 0;
+      IF(bAnchorMode = 1);
+        IF(nRelWeek < 1 % nRelWeek > 52);
+          bWriteThisWeek = 0;
+          bClearThisWeek = 1;
+        ENDIF;
+      ELSE;
+        IF(nRelWeek <= 0);
+          nRelWeek = nRelWeek + 52;
+        ENDIF;
+        IF(nRelWeek > 52);
+          nRelWeek = nRelWeek - 52;
+        ENDIF;
+        IF(nRelWeek < 1);
+          nRelWeek = 1;
+        ENDIF;
+      ENDIF;
+
+      IF(bWriteThisWeek = 1);
+        nShiftedWeek = nRelWeek - nWeekShift;
+        IF(bAnchorMode = 1);
+          IF(nShiftedWeek < 1 % nShiftedWeek > 52);
+            bWriteThisWeek = 0;
+            bClearThisWeek = 1;
+          ENDIF;
+        ELSE;
+          IF(nShiftedWeek < 1);
+            nShiftedWeek = nShiftedWeek + 52;
+          ENDIF;
+          IF(nShiftedWeek > 52);
+            nShiftedWeek = nShiftedWeek - 52;
+          ENDIF;
+          IF(nShiftedWeek < 1);
+            nShiftedWeek = 1;
+          ENDIF;
+        ENDIF;
+      ENDIF;
+
+      IF(bClearThisWeek = 1);
+        IF(sVelocityCurve @<> '');
+          IF(CellIsUpdateable(sCube, sVersion, sTP, sSKU, 'Velocity') = 1);
+            CellPutN(0, sCube, sVersion, sTP, sSKU, 'Velocity');
+          ENDIF;
+        ENDIF;
+        IF(sSeasonalityCurve @<> '');
+          IF(CellIsUpdateable(sCube, sVersion, sTP, sSKU, 'Seasonality') = 1);
+            CellPutN(0, sCube, sVersion, sTP, sSKU, 'Seasonality');
+          ENDIF;
+        ENDIF;
+        IF(sRegimeCurve @<> '');
+          IF(CellIsUpdateable(sCube, sVersion, sTP, sSKU, 'Regime') = 1);
+            CellPutN(0, sCube, sVersion, sTP, sSKU, 'Regime');
+          ENDIF;
+        ENDIF;
+        IF(sMarkdownCurve @<> '');
+          IF(CellIsUpdateable(sCube, sVersion, sTP, sSKU, 'Markdown %') = 1);
+            CellPutN(0, sCube, sVersion, sTP, sSKU, 'Markdown %');
+          ENDIF;
+        ENDIF;
+        IF(nRateAdjPct <> 0);
+          IF(CellIsUpdateable(sCube, sVersion, sTP, sSKU, 'Rate Adjustment') = 1);
+            CellPutN(0, sCube, sVersion, sTP, sSKU, 'Rate Adjustment');
+          ENDIF;
+        ENDIF;
+        nCleared = nCleared + 1;
+      ENDIF;
+
+      IF(bWriteThisWeek = 1);
+        IF(nSeedTPStart = 0 % nTPStartSerial < nSeedTPStart);
+          nSeedTPStart = nTPStartSerial;
+          sSeedTP = sTP;
+        ENDIF;
+
+        IF(nRateAdjPct <> 0);
+          IF(CellIsUpdateable(sCube, sVersion, sTP, sSKU, 'Rate Adjustment') = 1);
+            CellPutN(nRateAdj, sCube, sVersion, sTP, sSKU, 'Rate Adjustment');
+            nRateWrites = nRateWrites + 1;
+          ENDIF;
+        ENDIF;
+
+        sShiftedCurveWeek = 'Week ' | TRIM(STR(nShiftedWeek, 2, 0));
+        sCurveWeek = 'Week ' | TRIM(STR(nRelWeek, 2, 0));
+
+        IF(sVelocityCurve @<> '');
+          IF(DIMIX('Merch Curve Name', sVelocityCurve) > 0);
+            nVel = CellGetN(sCurveCube, sVelocityCurve, sShiftedCurveWeek, 'Velocity');
+            IF(CellIsUpdateable(sCube, sVersion, sTP, sSKU, 'Velocity') = 1);
+              CellPutN(nVel, sCube, sVersion, sTP, sSKU, 'Velocity');
+              nVelWrites = nVelWrites + 1;
+            ENDIF;
+          ENDIF;
+        ENDIF;
+        IF(sSeasonalityCurve @<> '');
+          IF(DIMIX('Merch Curve Name', sSeasonalityCurve) > 0);
+            nSea = CellGetN(sCurveCube, sSeasonalityCurve, sShiftedCurveWeek, 'Seasonality');
+            IF(CellIsUpdateable(sCube, sVersion, sTP, sSKU, 'Seasonality') = 1);
+              CellPutN(nSea, sCube, sVersion, sTP, sSKU, 'Seasonality');
+              nSeaWrites = nSeaWrites + 1;
+            ENDIF;
+          ENDIF;
+        ENDIF;
+        IF(sRegimeCurve @<> '');
+          IF(DIMIX('Merch Curve Name', sRegimeCurve) > 0);
+            nReg = CellGetN(sCurveCube, sRegimeCurve, sCurveWeek, 'Regime');
+            IF(CellIsUpdateable(sCube, sVersion, sTP, sSKU, 'Regime') = 1);
+              CellPutN(nReg, sCube, sVersion, sTP, sSKU, 'Regime');
+              nRegWrites = nRegWrites + 1;
+            ENDIF;
+          ENDIF;
+        ENDIF;
+        IF(sMarkdownCurve @<> '');
+          IF(DIMIX('Merch Curve Name', sMarkdownCurve) > 0);
+            bInMDRange = 1;
+            IF(nMarkdownStartDate > 0);
+              IF(nTPStartSerial < nMarkdownStartDate);
+                bInMDRange = 0;
+              ENDIF;
+            ENDIF;
+            IF(nMarkdownEndDate > 0);
+              nTPEndSerial = ATTRN(sDimTP, sTP, 'End_Date');
+              IF(nTPEndSerial > nMarkdownEndDate);
+                bInMDRange = 0;
+              ENDIF;
+            ENDIF;
+            IF(bInMDRange = 1);
+              nMD = CellGetN(sCurveCube, sMarkdownCurve, sCurveWeek, 'Markdown %');
+              IF(CellIsUpdateable(sCube, sVersion, sTP, sSKU, 'Markdown %') = 1);
+                CellPutN(nMD, sCube, sVersion, sTP, sSKU, 'Markdown %');
+                nMDWrites = nMDWrites + 1;
+              ENDIF;
+            ENDIF;
+          ENDIF;
+        ENDIF;
+      ENDIF;
+    ENDIF;
+  ENDIF;
+  nTPIdx = nTPIdx + 1;
+END;
+
+IF(nFWSPct > 0 & sSeedTP @<> '');
+  IF(CellIsUpdateable(sCube, sVersion, sSeedTP, sSKU, 'Adjustment Units') = 1);
+    CellPutN(0, sCube, sVersion, sSeedTP, sSKU, 'Adjustment Units');
+  ENDIF;
+  sPriorWk = ATTRS(sDimTP, sSeedTP, 'Previous Week');
+  nPriorSales = 0;
+  IF(sPriorWk @<> '');
+    nPriorSales = CellGetN(sCube, sVersion, sPriorWk, sSKU, 'Calc Units');
+  ENDIF;
+  IF(nPriorSales = 0);
+    nBaseInv = CellGetN(sCube, sVersion, sSeedTP, sSKU, 'Opening Inventory') + CellGetN(sCube, sVersion, sSeedTP, sSKU, 'Receipts') + CellGetN(sCube, sVersion, sSeedTP, sSKU, 'On-Order');
+    nSeed = ROUND(nBaseInv * nFWSPct / 100);
+    IF(CellIsUpdateable(sCube, sVersion, sSeedTP, sSKU, 'Adjustment Units') = 1);
+      CellPutN(nSeed, sCube, sVersion, sSeedTP, sSKU, 'Adjustment Units');
+      nSeedWrites = nSeedWrites + 1;
+    ENDIF;
+  ENDIF;
+ENDIF;
+
+CellPutS('Y', sAssign, sVersion, sSKU, 'Forecast Lock');
+nLocked = nLocked + 1;
+
+#endregion
+#region Epilog
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+IF(ViewExists(sAssign, sView) = 1);
+  ViewDestroy(sAssign, sView);
+ENDIF;
+LogOutput('INFO', 'TIMING END: ' | sProcess | ' | Role=' | pRole, 1);
+
+#endregion
