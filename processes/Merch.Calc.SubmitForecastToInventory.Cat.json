@@ -1,8 +1,8 @@
 {
 	"@type":"Process",
-	"Name":"Merch.Calc.SubmitForecastToInventory",
+	"Name":"Merch.Calc.SubmitForecastToInventory.Cat",
 	"HasSecurityAccess":false,
-	"Code@Code.link":"Merch.Calc.SubmitForecastToInventory.ti",
+	"Code@Code.link":"Merch.Calc.SubmitForecastToInventory.Cat.ti",
 	"DataSource":
 	{
 		"Type":"TM1CubeView",
@@ -20,9 +20,15 @@
 		},
 		{
 			"Name":"pSKUElement",
-			"Prompt":"SKU or Roles node (blank=Director)",
+			"Prompt":"SKU or Roles node",
 			"Value":"",
 			"Type":"String"
+		},
+		{
+			"Name":"pPartIdx",
+			"Prompt":"Partition index (unique per concurrent worker)",
+			"Value":0,
+			"Type":"Numeric"
 		}
 	],
 	"Variables":
@@ -63,7 +69,7 @@
 			"EndByte":0
 		}
 	],
-	"UID": "1774874686000",
+	"UID": "1781032954000",
 	"UIData": "CubeAction=1511\fDataAction=1503\fCubeLogChanges=0\f",
 	"VariablesUIData": [
 		"VarType=32\fColType=827\f",

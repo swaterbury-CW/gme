@@ -1,6 +1,0 @@
-{
-	"@type":"Subset",
-	"Name":"All Categories Excluding Pre-Owned",
-	"Alias":"MEMBER_NAME",
-	"Expression":"TM1IGNORE_BADTUPLES {EXCEPT(TM1FILTERBYLEVEL(TM1SUBSETALL([Merch Category].[Merch Category]) , 0) , TM1FILTERBYPATTERN(TM1FILTERBYLEVEL(TM1SUBSETALL([Merch Category].[Merch Category]) , 0) , \"*Pre-Owned*\" , \"MEMBER_NAME\"))}"
-}
