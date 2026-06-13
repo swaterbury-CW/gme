@@ -1,0 +1,51 @@
+{
+	"@type":"Process",
+	"Name":"Merch.Calc.ApplyForecastCurves.Cat",
+	"HasSecurityAccess":false,
+	"Code@Code.link":"Merch.Calc.ApplyForecastCurves.Cat.ti",
+	"DataSource":
+	{
+		"Type":"TM1CubeView",
+		"dataSourceNameForServer":"Merch Curve Assignment",
+		"dataSourceNameForClient":"Merch Curve Assignment",
+		"view":"TI_ApplyCurvesRole_bootstrap"
+	},
+	"Parameters":
+	[
+		{
+			"Name":"pVersion",
+			"Prompt":"Calculated version",
+			"Value":"Forecast",
+			"Type":"String"
+		},
+		{
+			"Name":"pRole",
+			"Prompt":"Roles parent element",
+			"Value":"",
+			"Type":"String"
+		}
+	],
+	"Variables":
+	[
+		{
+			"Name":"vMerch_Curve_Assignment_Measure",
+			"Type":"String",
+			"Position":1,
+			"StartByte":0,
+			"EndByte":0
+		},
+		{
+			"Name":"vMerch_SKU",
+			"Type":"String",
+			"Position":2,
+			"StartByte":0,
+			"EndByte":0
+		}
+	],
+	"UID": "17787018230001",
+	"UIData": "CubeAction=1511\fDataAction=1503\fCubeLogChanges=0\f",
+	"VariablesUIData": [
+		"VarType=32\fColType=827\f",
+		"VarType=32\fColType=827\f"
+	]
+}

@@ -1,0 +1,123 @@
+{
+	"@type":"Process",
+	"Name":"Merch.Calc.BuildCurve",
+	"HasSecurityAccess":false,
+	"Code@Code.link":"Merch.Calc.BuildCurve.ti",
+	"DataSource":
+	{
+		"Type":"TM1CubeView",
+		"dataSourceNameForServer":"Merch Forecast",
+		"dataSourceNameForClient":"Merch Forecast",
+		"view":"TI_CopyTPSKU_placeholder"
+	},
+	"Parameters":
+	[
+		{
+			"Name":"pCurveName",
+			"Prompt":"Curve Name",
+			"Value":"",
+			"Type":"String"
+		},
+		{
+			"Name":"pSourceVersion",
+			"Prompt":"Source Version",
+			"Value":"Forecast",
+			"Type":"String"
+		},
+		{
+			"Name":"pSourceElement",
+			"Prompt":"Source SKU/Role",
+			"Value":"",
+			"Type":"String"
+		},
+		{
+			"Name":"pFiscalYear",
+			"Prompt":"Source Fiscal Year",
+			"Value":"FY2026",
+			"Type":"String"
+		},
+		{
+			"Name":"pBuildVelocity",
+			"Prompt":"Build Velocity (1/0)",
+			"Value":0,
+			"Type":"Numeric"
+		},
+		{
+			"Name":"pBuildSeasonality",
+			"Prompt":"Build Seasonality (1/0)",
+			"Value":0,
+			"Type":"Numeric"
+		},
+		{
+			"Name":"pBuildRegime",
+			"Prompt":"Build Regime (1/0)",
+			"Value":0,
+			"Type":"Numeric"
+		},
+		{
+			"Name":"pBuildMarkdown",
+			"Prompt":"Build Markdown (1/0)",
+			"Value":0,
+			"Type":"Numeric"
+		},
+		{
+			"Name":"pStartDate",
+			"Prompt":"Source Start Date (serial; 0=FY start)",
+			"Value":0,
+			"Type":"Numeric"
+		},
+		{
+			"Name":"pEndDate",
+			"Prompt":"Source End Date (serial; 0=FY end)",
+			"Value":0,
+			"Type":"Numeric"
+		}
+	],
+	"Variables":
+	[
+		{
+			"Name":"vMerch_Version",
+			"Type":"String",
+			"Position":1,
+			"StartByte":0,
+			"EndByte":0
+		},
+		{
+			"Name":"vMerch_Time_Period",
+			"Type":"String",
+			"Position":2,
+			"StartByte":0,
+			"EndByte":0
+		},
+		{
+			"Name":"vMerch_SKU",
+			"Type":"String",
+			"Position":3,
+			"StartByte":0,
+			"EndByte":0
+		},
+		{
+			"Name":"vMerch_Forecast_Measure",
+			"Type":"String",
+			"Position":4,
+			"StartByte":0,
+			"EndByte":0
+		},
+		{
+			"Name":"vValue",
+			"Type":"Numeric",
+			"Position":5,
+			"StartByte":0,
+			"EndByte":0
+		}
+	],
+	"UID": "1774222885000",
+	"UIData": "CubeAction=1511\fDataAction=1503\fCubeLogChanges=0\f",
+	"VariablesUIData": [
+		"VarType=32\fColType=827\f",
+		"VarType=32\fColType=827\f",
+		"VarType=32\fColType=827\f",
+		"VarType=32\fColType=827\f",
+		"VarType=33\fColType=827\f"
+	]
+}
