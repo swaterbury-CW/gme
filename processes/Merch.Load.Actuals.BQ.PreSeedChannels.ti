@@ -1,0 +1,95 @@
+#region Prolog
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+#Region : Process Header
+# PROCESS    : Merch.Load.Actuals.BQ.PreSeedChannels
+# DEVELOPER  : Steve Waterbury
+# CREATED ON : 2026-06-13
+# CHANGED BY : Steve Waterbury
+# COMMENTS: Single-threaded channel pre-seed. BQ DISTINCT location_group -> create missing
+#           Merch Channel leaves (+All Channels) in Metadata tab. Epilog stamps leaf count
+#           to ProcessControl.RecordCount.
+# CHANGE HISTORY:
+#   2026-06-13 | Steve Waterbury | Creation (design plan dacddc567387)
+#EndRegion
+
+cProcessName = GetProcessName();
+cChannelDim = 'Merch Channel';
+nChannelsCreated = 0;
+
+sLogLevel = CellGetS('ProcessControl', 'Merch.Load.Actuals.BQ', 'LoggingLevel');
+IF(sLogLevel @= '');
+  sLogLevel = 'OFF';
+ENDIF;
+bLogInfo = 0;
+IF(sLogLevel @= 'INFO' % sLogLevel @= 'DEBUG');
+  bLogInfo = 1;
+ENDIF;
+
+IF(pWeekEndDate @= '');
+  LogOutput('ERROR', cProcessName | ' | pWeekEndDate is empty', 1);
+  ProcessError;
+ENDIF;
+
+sSQL = 'SELECT DISTINCT location_group FROM `merchplanning-suite-prod-062.planninganalytics.location_metrics_weekly` WHERE fiscal_week_end = DATE ' | '''' | pWeekEndDate | '''' | ' AND location_group is not null ORDER BY location_group';
+
+nRC = ExecuteProcess('API.BigQuery.Export', 'pQuery', sSQL, 'pOutputFile', 'actuals_channels', 'pMaxResults', '10000');
+IF(nRC <> 0);
+  LogOutput('ERROR', cProcessName | ' | API.BigQuery.Export failed, code=' | TRIM(STR(nRC, 10, 0)), 1);
+  ProcessError;
+ENDIF;
+
+DatasourceType = 'JSON';
+DatasourceNameForServer = 'actuals_channels_page_1.json';
+DataSourceJsonRootPointer = '/rows';
+DataSourceJsonVariableMapping = JsonAdd('{}', 'vRow', StringToJson('/f'));
+
+#endregion
+#region Metadata
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+cChannelDim = 'Merch Channel';
+sChannel = JsonGet(vRow, '/0/v');
+IF(SUBST(sChannel, 1, 1) @= '"');
+  sChannel = SUBST(sChannel, 2, LONG(sChannel) - 2);
+ENDIF;
+IF(sChannel @= '' % sChannel @= 'null');
+  ItemSkip;
+ENDIF;
+IF(DIMIX(cChannelDim, sChannel) = 0);
+  DimensionElementInsert(cChannelDim, '', sChannel, 'N');
+  DimensionElementComponentAdd(cChannelDim, 'All Channels', sChannel, 1);
+  nChannelsCreated = nChannelsCreated + 1;
+ENDIF;
+
+#endregion
+#region Data
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+# Data tab intentionally empty: channel creation is structural and lives in the Metadata tab.
+
+#endregion
+#region Epilog
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+nLeafCount = 0;
+nci = 1;
+nCSize = DIMSIZ(cChannelDim);
+WHILE(nci <= nCSize);
+  IF(DTYPE(cChannelDim, DIMNM(cChannelDim, nci)) @= 'N');
+    nLeafCount = nLeafCount + 1;
+  ENDIF;
+  nci = nci + 1;
+END;
+IF(CellIsUpdateable('ProcessControl', cProcessName, 'RecordCount') = 1);
+  CellPutN(nLeafCount, 'ProcessControl', cProcessName, 'RecordCount');
+ENDIF;
+
+IF(FileExists('actuals_channels_page_1.json') = 1);
+  ASCIIDelete('actuals_channels_page_1.json');
+ENDIF;
+IF(bLogInfo = 1);
+  LogOutput('INFO', cProcessName | ' | Channels created=' | TRIM(STR(nChannelsCreated, 10, 0)) | ' Leaves=' | TRIM(STR(nLeafCount, 10, 0)), 1);
+ENDIF;
+
+#endregion
