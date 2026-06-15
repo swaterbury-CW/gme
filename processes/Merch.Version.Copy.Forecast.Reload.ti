@@ -1,0 +1,91 @@
+#region Prolog
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+#Region : Process Header
+# DEVELOPER: Steve Waterbury
+# CREATED ON: 2026-05-14
+# CHANGED BY: Steve Waterbury
+# CHANGE HISTORY:
+#   2026-05-14 | Steve Waterbury | Initial: per-slice ASCII reload
+#   2026-05-17 | Steve Waterbury | WildcardFileSearch -> FileExists
+#   2026-06-15 | Steve Waterbury | Rewrite: slice file by pPartIdx+FY; REMOVED forced AttrPutS('Static',target); pCategory dropped
+#EndRegion
+
+cProcessName = GetProcessName();
+nRowsWritten = 0;
+nCalcUnitsSum = 0;
+nPartIdx = pPartIdx;
+
+IF(pSourceVersion @= '' % pTargetVersion @= '' % pFiscalYear @= '' % pBatchTag @= '');
+  LogOutput('ERROR', cProcessName | ' | missing param', 1);
+  ProcessError;
+ENDIF;
+IF(DIMIX('Merch Version', pTargetVersion) = 0);
+  LogOutput('ERROR', cProcessName | ' | bad target version: ' | pTargetVersion, 1);
+  ProcessError;
+ENDIF;
+
+# Target Version_Type is NEVER mutated by the copy (forced AttrPutS('Static') removed 2026-06-15).
+
+sFile = './version_copy/' | pBatchTag | '_' | pSourceVersion | '_part' | TRIM(STR(nPartIdx, 10, 0)) | '_' | pFiscalYear | '.csv';
+
+IF(FileExists(sFile) = 0);
+  LogOutput('INFO', cProcessName | ' | no extract file | ' | sFile, 1);
+  ProcessBreak;
+ENDIF;
+
+DatasourceType = 'CHARACTERDELIMITED';
+DatasourceNameForServer = sFile;
+DatasourceASCIIDelimiter = ',';
+DatasourceASCIIQuoteCharacter = '"';
+DatasourceASCIIHeaderRecords = 0;
+
+nStartTime = NOW;
+LogOutput('INFO', 'TIMING START: ' | cProcessName | ' | File=' | sFile | ' | Tgt=' | pTargetVersion, 1);
+
+#endregion
+#region Metadata
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+
+#endregion
+#region Data
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+IF(vDType @= 'S');
+  IF(CellIsUpdateable('Merch Forecast', pTargetVersion, vTP, vSKU, vMeasure) = 0);
+    ItemSkip;
+  ENDIF;
+  CellPutS(vValue, 'Merch Forecast', pTargetVersion, vTP, vSKU, vMeasure);
+  nRowsWritten = nRowsWritten + 1;
+  ItemSkip;
+ENDIF;
+
+IF(vDType @<> 'N');
+  ItemSkip;
+ENDIF;
+
+nVal = NUMBR(vValue);
+IF(CellIsUpdateable('Merch Forecast', pTargetVersion, vTP, vSKU, vMeasure) = 0);
+  ItemSkip;
+ENDIF;
+CellPutN(nVal, 'Merch Forecast', pTargetVersion, vTP, vSKU, vMeasure);
+nRowsWritten = nRowsWritten + 1;
+
+IF(vMeasure @= 'Calc Units');
+  nCalcUnitsSum = nCalcUnitsSum + nVal;
+ENDIF;
+
+#endregion
+#region Epilog
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+IF(CellIsUpdateable('ProcessControl', cProcessName, 'SubsetCount') = 0);
+  LogOutput('ERROR', cProcessName | ' | ProcessControl.SubsetCount not updateable', 1);
+ELSE;
+  CellPutN(nRowsWritten, 'ProcessControl', cProcessName, 'SubsetCount');
+ENDIF;
+
+LogOutput('INFO', 'TIMING END: ' | cProcessName | ' | Rows=' | TRIM(STR(nRowsWritten, 12, 0)) | ' | Elapsed=' | TRIM(STR((NOW - nStartTime) * 86400, 12, 1)) | 's', 1);
+
+#endregion

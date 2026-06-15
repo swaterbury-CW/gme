@@ -1,0 +1,89 @@
+{
+	"@type":"Process",
+	"Name":"Merch.Version.Copy.Forecast.Extract",
+	"HasSecurityAccess":false,
+	"Code@Code.link":"Merch.Version.Copy.Forecast.Extract.ti",
+	"DataSource":
+	{
+		"Type":"TM1CubeView",
+		"dataSourceNameForServer":"Merch Forecast",
+		"dataSourceNameForClient":"Merch Forecast",
+		"view":"Test_ForecastExtract_bootstrap"
+	},
+	"Parameters":
+	[
+		{
+			"Name":"pSourceVersion",
+			"Prompt":"Source version",
+			"Value":"",
+			"Type":"String"
+		},
+		{
+			"Name":"pPartIdx",
+			"Prompt":"Partition index (1-based)",
+			"Value":0,
+			"Type":"Numeric"
+		},
+		{
+			"Name":"pStart",
+			"Prompt":"SUBSET start (0-based)",
+			"Value":0,
+			"Type":"Numeric"
+		},
+		{
+			"Name":"pCount",
+			"Prompt":"SUBSET count",
+			"Value":0,
+			"Type":"Numeric"
+		},
+		{
+			"Name":"pFiscalYear",
+			"Prompt":"Fiscal year element",
+			"Value":"",
+			"Type":"String"
+		},
+		{
+			"Name":"pBatchTag",
+			"Prompt":"Batch tag",
+			"Value":"",
+			"Type":"String"
+		},
+		{
+			"Name":"pSkipCalcs",
+			"Prompt":"1=skip rule calcs, 0=full snapshot",
+			"Value":1,
+			"Type":"Numeric"
+		}
+	],
+	"Variables":
+	[
+		{
+			"Name":"vMerch_Forecast_Measure",
+			"Type":"String",
+			"Position":1,
+			"StartByte":0,
+			"EndByte":0
+		},
+		{
+			"Name":"vMerch_Time_Period",
+			"Type":"String",
+			"Position":2,
+			"StartByte":0,
+			"EndByte":0
+		},
+		{
+			"Name":"vMerch_SKU",
+			"Type":"String",
+			"Position":3,
+			"StartByte":0,
+			"EndByte":0
+		}
+	],
+	"UID": "17787696100001",
+	"UIData": "CubeAction=1511\fDataAction=1503\fCubeLogChanges=0\f",
+	"VariablesUIData": [
+		"VarType=32\fColType=827\f",
+		"VarType=32\fColType=827\f",
+		"VarType=32\fColType=827\f"
+	]
+}

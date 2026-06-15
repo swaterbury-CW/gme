@@ -1,0 +1,95 @@
+#region Prolog
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+#Region : Process Header
+# DEVELOPER: Steve Waterbury
+# CREATED ON: 2026-05-14
+# CHANGED BY: Steve Waterbury
+# CHANGE HISTORY:
+#   2026-05-17 | Steve Waterbury | Epilog dispatch + WaitForAllJobs
+#   2026-06-15 | Steve Waterbury | Rewrite: index fan-out over SKU-leaf partitions (SUBSET start/count) instead of Merch Category; pSkipCalcs + pMaxParts
+#EndRegion
+
+cProcessName = GetProcessName();
+nDispatches = 0;
+sJobIDs = '';
+nPartSize = 2500;
+nSkipCalcs = pSkipCalcs;
+nMaxParts = pMaxParts;
+
+IF(pSourceVersion @= '' % pLY @= '' % pCY @= '' % pNY @= '' % pBatchTag @= '');
+  LogOutput('ERROR', cProcessName | ' | missing param', 1);
+  ProcessError;
+ENDIF;
+
+sCountSub = 'TI_VCFcstCount_' | TRIM(STR(NOW, 15, 0));
+IF(SubsetExists('Merch SKU', sCountSub) = 1);
+  SubsetDestroy('Merch SKU', sCountSub);
+ENDIF;
+SubsetCreateByMDX(sCountSub, '{TM1FILTERBYLEVEL({TM1SUBSETALL([Merch SKU].[Merch SKU])}, 0)}');
+nTotal = SubsetGetSize('Merch SKU', sCountSub);
+SubsetDestroy('Merch SKU', sCountSub);
+
+IF(nTotal <= 0);
+  LogOutput('ERROR', cProcessName | ' | SKU leaf count is zero', 1);
+  ProcessError;
+ENDIF;
+
+nParts = INT((nTotal - 1) / nPartSize) + 1;
+IF(nMaxParts > 0);
+  IF(nMaxParts < nParts);
+    nParts = nMaxParts;
+  ENDIF;
+ENDIF;
+
+DatasourceType = 'NULL';
+
+nStartTime = NOW;
+LogOutput('INFO', 'TIMING START: ' | cProcessName | ' | Src=' | pSourceVersion | ' | Total=' | TRIM(STR(nTotal, 12, 0)) | ' | Parts=' | TRIM(STR(nParts, 8, 0)) | ' | Skip=' | TRIM(STR(nSkipCalcs, 1, 0)), 1);
+
+#endregion
+#region Metadata
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+
+#endregion
+#region Data
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+
+#endregion
+#region Epilog
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+nIdx = 1;
+WHILE(nIdx <= nParts);
+  nStart = (nIdx - 1) * nPartSize;
+
+  sJobId = RunProcess('Merch.Version.Copy.Forecast.Extract', 'pSourceVersion', pSourceVersion, 'pPartIdx', nIdx, 'pStart', nStart, 'pCount', nPartSize, 'pFiscalYear', pLY, 'pBatchTag', pBatchTag, 'pSkipCalcs', nSkipCalcs);
+  IF(sJobIDs @= ''); sJobIDs = sJobId; ELSE; sJobIDs = sJobIDs | ',' | sJobId; ENDIF;
+  nDispatches = nDispatches + 1;
+
+  sJobId = RunProcess('Merch.Version.Copy.Forecast.Extract', 'pSourceVersion', pSourceVersion, 'pPartIdx', nIdx, 'pStart', nStart, 'pCount', nPartSize, 'pFiscalYear', pCY, 'pBatchTag', pBatchTag, 'pSkipCalcs', nSkipCalcs);
+  IF(sJobIDs @= ''); sJobIDs = sJobId; ELSE; sJobIDs = sJobIDs | ',' | sJobId; ENDIF;
+  nDispatches = nDispatches + 1;
+
+  sJobId = RunProcess('Merch.Version.Copy.Forecast.Extract', 'pSourceVersion', pSourceVersion, 'pPartIdx', nIdx, 'pStart', nStart, 'pCount', nPartSize, 'pFiscalYear', pNY, 'pBatchTag', pBatchTag, 'pSkipCalcs', nSkipCalcs);
+  IF(sJobIDs @= ''); sJobIDs = sJobId; ELSE; sJobIDs = sJobIDs | ',' | sJobId; ENDIF;
+  nDispatches = nDispatches + 1;
+
+  nIdx = nIdx + 1;
+END;
+
+IF(sJobIDs @<> '');
+  WaitForAllJobs(sJobIDs);
+ENDIF;
+
+IF(CellIsUpdateable('ProcessControl', cProcessName, 'SubsetCount') = 0);
+  LogOutput('ERROR', cProcessName | ' | ProcessControl.SubsetCount not updateable', 1);
+ELSE;
+  CellPutN(nDispatches, 'ProcessControl', cProcessName, 'SubsetCount');
+ENDIF;
+
+LogOutput('INFO', 'TIMING END: ' | cProcessName | ' | Dispatches=' | TRIM(STR(nDispatches, 12, 0)) | ' | Elapsed=' | TRIM(STR((NOW - nStartTime) * 86400, 12, 1)) | 's', 1);
+
+#endregion

@@ -1,0 +1,55 @@
+{
+	"@type":"Process",
+	"Name":"Merch.Version.Copy.Forecast",
+	"HasSecurityAccess":false,
+	"Code@Code.link":"Merch.Version.Copy.Forecast.ti",
+	"DataSource":
+	{
+		"Type":"TM1DimensionSubset",
+		"dataSourceNameForServer":"Merch Time Period",
+		"dataSourceNameForClient":"Merch Time Period",
+		"subset":"ForecastTPLookup_bootstrap"
+	},
+	"Parameters":
+	[
+		{
+			"Name":"pSourceVersion",
+			"Prompt":"Source version",
+			"Value":"",
+			"Type":"String"
+		},
+		{
+			"Name":"pTargetVersion",
+			"Prompt":"Target version",
+			"Value":"",
+			"Type":"String"
+		},
+		{
+			"Name":"pCategoryFilter",
+			"Prompt":"(inert; retained for parent compatibility)",
+			"Value":"",
+			"Type":"String"
+		},
+		{
+			"Name":"pMaxParts",
+			"Prompt":"0=all partitions, N=first N (testing)",
+			"Value":0,
+			"Type":"Numeric"
+		}
+	],
+	"Variables":
+	[
+		{
+			"Name":"vMerch_Time_Period",
+			"Type":"String",
+			"Position":1,
+			"StartByte":0,
+			"EndByte":0
+		}
+	],
+	"UID": "1778771855000",
+	"UIData": "CubeAction=1511\fDataAction=1503\fCubeLogChanges=0\f",
+	"VariablesUIData": [
+		"VarType=32\fColType=827\f"
+	]
+}

@@ -1,0 +1,117 @@
+#region Prolog
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+#Region : Process Header
+# DEVELOPER: Steve Waterbury
+# CREATED ON: 2026-05-14
+# CHANGED BY: Steve Waterbury
+# CHANGE HISTORY:
+#   2026-05-14 | Steve Waterbury | Initial (DESCENDANTS for TP)
+#   2026-06-15 | Steve Waterbury | Rewrite: index-SUBSET partition over Roles leaves; fixed 3-axis MDX (no SGM_Category, no crossjoin, no malformed DESCENDANTS); pPartIdx/pStart/pCount/pSkipCalcs; pPartIdx+FY view name and slice file
+#EndRegion
+
+cProcessName = GetProcessName();
+nRowsWritten = 0;
+nCalcUnitsSum = 0;
+
+nPartIdx = pPartIdx;
+nStart = pStart;
+nCount = pCount;
+nSkipCalcs = pSkipCalcs;
+
+IF(pSourceVersion @= '' % pFiscalYear @= '' % pBatchTag @= '');
+  LogOutput('ERROR', cProcessName | ' | missing param', 1);
+  ProcessError;
+ENDIF;
+IF(DIMIX('Merch Version', pSourceVersion) = 0);
+  LogOutput('ERROR', cProcessName | ' | bad source version: ' | pSourceVersion, 1);
+  ProcessError;
+ENDIF;
+IF(DIMIX('Merch Time Period', pFiscalYear) = 0);
+  LogOutput('ERROR', cProcessName | ' | bad fiscal year: ' | pFiscalYear, 1);
+  ProcessError;
+ENDIF;
+IF(nCount <= 0);
+  LogOutput('ERROR', cProcessName | ' | bad partition count', 1);
+  ProcessError;
+ENDIF;
+
+sFile = './version_copy/' | pBatchTag | '_' | pSourceVersion | '_part' | TRIM(STR(nPartIdx, 10, 0)) | '_' | pFiscalYear | '.csv';
+sView = 'TI_ForecastExtract_' | TRIM(STR(nPartIdx, 10, 0)) | '_' | pFiscalYear;
+
+sMDX = 'SELECT NON EMPTY {TM1FILTERBYLEVEL({TM1SUBSETALL([Merch Forecast Measure].[Merch Forecast Measure])}, 0)} ON 0, ';
+sMDX = sMDX | 'NON EMPTY {TM1FILTERBYLEVEL({DESCENDANTS([Merch Time Period].[Merch Time Period].[' | pFiscalYear | '])}, 0)} ON 1, ';
+sMDX = sMDX | 'NON EMPTY {SUBSET({TM1FILTERBYLEVEL({TM1SUBSETALL([Merch SKU].[Roles])}, 0)}, ' | TRIM(STR(nStart, 10, 0)) | ', ' | TRIM(STR(nCount, 10, 0)) | ')} ON 2 ';
+sMDX = sMDX | 'FROM [Merch Forecast] ';
+sMDX = sMDX | 'WHERE ([Merch Version].[Merch Version].[' | pSourceVersion | '])';
+
+IF(ViewExists('Merch Forecast', sView) = 1);
+  ViewDestroy('Merch Forecast', sView);
+ENDIF;
+ViewCreateByMDX('Merch Forecast', sView, sMDX, 1);
+ViewExtractSkipCalcsSet('Merch Forecast', sView, nSkipCalcs);
+ViewExtractSkipZeroesSet('Merch Forecast', sView, 1);
+
+DatasourceType = 'VIEW';
+DatasourceNameForServer = 'Merch Forecast';
+DatasourceCubeview = sView;
+DatasourceASCIIDelimiter = ',';
+DatasourceASCIIQuoteCharacter = '"';
+
+nStartTime = NOW;
+LogOutput('INFO', 'TIMING START: ' | cProcessName | ' | Src=' | pSourceVersion | ' | Part=' | TRIM(STR(nPartIdx, 10, 0)) | ' | FY=' | pFiscalYear | ' | Skip=' | TRIM(STR(nSkipCalcs, 1, 0)), 1);
+
+#endregion
+#region Metadata
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+
+#endregion
+#region Data
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+sMeasType = DTYPE('Merch Forecast Measure', vMerch_Forecast_Measure);
+
+IF(sMeasType @= 'S');
+  sVal = CellGetS('Merch Forecast', pSourceVersion, vMerch_Time_Period, vMerch_SKU, vMerch_Forecast_Measure);
+  IF(sVal @= '');
+    ItemSkip;
+  ENDIF;
+  ASCIIOutput(sFile, vMerch_Time_Period, vMerch_SKU, vMerch_Forecast_Measure, sVal, 'S');
+  nRowsWritten = nRowsWritten + 1;
+  ItemSkip;
+ENDIF;
+
+IF(sMeasType @<> 'N');
+  ItemSkip;
+ENDIF;
+
+nVal = CellGetN('Merch Forecast', pSourceVersion, vMerch_Time_Period, vMerch_SKU, vMerch_Forecast_Measure);
+IF(nVal = 0);
+  ItemSkip;
+ENDIF;
+
+IF(vMerch_Forecast_Measure @= 'Calc Units');
+  nCalcUnitsSum = nCalcUnitsSum + nVal;
+ENDIF;
+
+ASCIIOutput(sFile, vMerch_Time_Period, vMerch_SKU, vMerch_Forecast_Measure, TRIM(STR(nVal, 25, 6)), 'N');
+nRowsWritten = nRowsWritten + 1;
+
+#endregion
+#region Epilog
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+IF(ViewExists('Merch Forecast', sView) = 1);
+  ViewDestroy('Merch Forecast', sView);
+ENDIF;
+
+IF(CellIsUpdateable('ProcessControl', cProcessName, 'SubsetCount') = 0);
+  LogOutput('ERROR', cProcessName | ' | ProcessControl.SubsetCount not updateable', 1);
+ELSE;
+  CellPutN(nRowsWritten, 'ProcessControl', cProcessName, 'SubsetCount');
+ENDIF;
+
+LogOutput('INFO', 'TIMING END: ' | cProcessName | ' | Rows=' | TRIM(STR(nRowsWritten, 12, 0)) | ' | CalcUnits=' | TRIM(STR(nCalcUnitsSum, 25, 2)) | ' | Elapsed=' | TRIM(STR((NOW - nStartTime) * 86400, 12, 1)) | 's', 1);
+
+#endregion

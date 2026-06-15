@@ -1,0 +1,73 @@
+{
+	"@type":"Process",
+	"Name":"Merch.Version.Copy.Forecast.ExtractByCat",
+	"HasSecurityAccess":false,
+	"Code@Code.link":"Merch.Version.Copy.Forecast.ExtractByCat.ti",
+	"DataSource":
+	{
+		"Type":"TM1DimensionSubset",
+		"dataSourceNameForServer":"Merch Category",
+		"dataSourceNameForClient":"Merch Category",
+		"subset":"ForecastVerCopyCat_bootstrap"
+	},
+	"Parameters":
+	[
+		{
+			"Name":"pSourceVersion",
+			"Prompt":"Source version",
+			"Value":"",
+			"Type":"String"
+		},
+		{
+			"Name":"pLY",
+			"Prompt":"Last year FY",
+			"Value":"",
+			"Type":"String"
+		},
+		{
+			"Name":"pCY",
+			"Prompt":"Current year FY",
+			"Value":"",
+			"Type":"String"
+		},
+		{
+			"Name":"pNY",
+			"Prompt":"Next year FY",
+			"Value":"",
+			"Type":"String"
+		},
+		{
+			"Name":"pBatchTag",
+			"Prompt":"Batch tag",
+			"Value":"",
+			"Type":"String"
+		},
+		{
+			"Name":"pSkipCalcs",
+			"Prompt":"1=inputs only, 0=full",
+			"Value":1,
+			"Type":"Numeric"
+		},
+		{
+			"Name":"pMaxParts",
+			"Prompt":"0=all partitions, N=first N",
+			"Value":0,
+			"Type":"Numeric"
+		}
+	],
+	"Variables":
+	[
+		{
+			"Name":"vMerch_Category",
+			"Type":"String",
+			"Position":1,
+			"StartByte":0,
+			"EndByte":0
+		}
+	],
+	"UID": "17787699360001",
+	"UIData": "CubeAction=1511\fDataAction=1503\fCubeLogChanges=0\f",
+	"VariablesUIData": [
+		"VarType=32\fColType=827\f"
+	]
+}

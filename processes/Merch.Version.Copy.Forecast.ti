@@ -1,0 +1,100 @@
+#region Prolog
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+#Region : Process Header
+# DEVELOPER: Steve Waterbury
+# CREATED ON: 2026-05-14
+# CHANGED BY: Steve Waterbury
+# CHANGE HISTORY:
+#   2026-05-14 | Steve Waterbury | Top orchestrator for Forecast version copy
+#   2026-06-15 | Steve Waterbury | Remove forced-Static; derive pSkipCalcs from target Version_Type; add pMaxParts; pCategoryFilter kept inert
+#EndRegion
+
+cProcessName = GetProcessName();
+nStart = NOW;
+
+IF(pSourceVersion @= '' % pTargetVersion @= '');
+  LogOutput('ERROR', cProcessName | ' | missing params', 1);
+  ProcessError;
+ENDIF;
+IF(DIMIX('Merch Version', pSourceVersion) = 0 % DIMIX('Merch Version', pTargetVersion) = 0);
+  LogOutput('ERROR', cProcessName | ' | bad versions', 1);
+  ProcessError;
+ENDIF;
+
+nLCP = ATTRN('Merch Version', pSourceVersion, 'Last_Closed_Period');
+IF(nLCP = 0);
+  nLCP = INT(NOW);
+ENDIF;
+
+sCurLeaf = '';
+
+sTPSubset = 'TI_ForecastTPLookup_' | TRIM(STR(NOW, 15, 0));
+SubsetCreateByMDX(sTPSubset, '{TM1FILTERBYLEVEL({TM1SUBSETALL([Merch Time Period].[Merch Time Period])}, 0)}');
+DatasourceType = 'SUBSET';
+DatasourceNameForServer = 'Merch Time Period';
+DatasourceDimensionSubset = sTPSubset;
+
+LogOutput('INFO', 'TIMING START: ' | cProcessName | ' | Src=' | pSourceVersion | ' | Tgt=' | pTargetVersion | ' | LCP=' | TRIM(STR(nLCP, 15, 0)), 1);
+
+#endregion
+#region Metadata
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+
+#endregion
+#region Data
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+IF(sCurLeaf @<> '');
+  ItemSkip;
+ENDIF;
+nStartDate = ATTRN('Merch Time Period', vMerch_Time_Period, 'Start_Date');
+nEndDate = ATTRN('Merch Time Period', vMerch_Time_Period, 'End_Date');
+IF(nLCP >= nStartDate & nLCP <= nEndDate);
+  sCurLeaf = vMerch_Time_Period;
+ENDIF;
+
+#endregion
+#region Epilog
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+IF(SubsetExists('Merch Time Period', sTPSubset) = 1);
+  SubsetDestroy('Merch Time Period', sTPSubset);
+ENDIF;
+
+IF(sCurLeaf @= '');
+  LogOutput('ERROR', cProcessName | ' | could not resolve current period LCP=' | TRIM(STR(nLCP, 15, 0)), 1);
+  ProcessError;
+ENDIF;
+
+sCY = ATTRS('Merch Time Period', sCurLeaf, 'Fiscal Year');
+nYearNum = NUMBR(SUBST(sCY, 3, 4));
+sLY = 'FY' | TRIM(STR(nYearNum - 1, 5, 0));
+sNY = 'FY' | TRIM(STR(nYearNum + 1, 5, 0));
+
+IF(DIMIX('Merch Time Period', sLY) = 0 % DIMIX('Merch Time Period', sCY) = 0 % DIMIX('Merch Time Period', sNY) = 0);
+  LogOutput('ERROR', cProcessName | ' | resolved year missing: ' | sLY | '/' | sCY | '/' | sNY, 1);
+  ProcessError;
+ENDIF;
+
+sBatchTag = 'vc_' | pSourceVersion | '_' | TRIM(STR(NOW, 15, 0));
+
+sTgtType = ATTRS('Merch Version', pTargetVersion, 'Version_Type');
+nSkip = 1;
+IF(sTgtType @= 'Static');
+  nSkip = 0;
+ENDIF;
+
+ExecuteProcess('Merch.Version.Copy.Forecast.ExtractByCat', 'pSourceVersion', pSourceVersion, 'pLY', sLY, 'pCY', sCY, 'pNY', sNY, 'pBatchTag', sBatchTag, 'pSkipCalcs', nSkip, 'pMaxParts', pMaxParts);
+ExecuteProcess('Merch.Version.Copy.Forecast.ReloadByCat', 'pSourceVersion', pSourceVersion, 'pTargetVersion', pTargetVersion, 'pLY', sLY, 'pCY', sCY, 'pNY', sNY, 'pBatchTag', sBatchTag, 'pMaxParts', pMaxParts);
+
+IF(CellIsUpdateable('ProcessControl', cProcessName, 'SubsetCount') = 0);
+  LogOutput('ERROR', cProcessName | ' | ProcessControl.SubsetCount not updateable', 1);
+ELSE;
+  CellPutN(1, 'ProcessControl', cProcessName, 'SubsetCount');
+ENDIF;
+
+LogOutput('INFO', 'TIMING END: ' | cProcessName | ' | Years=' | sLY | '/' | sCY | '/' | sNY | ' | Tgt=' | sTgtType | ' | Skip=' | TRIM(STR(nSkip, 1, 0)) | ' | Elapsed=' | TRIM(STR((NOW - nStart) * 86400, 12, 1)) | 's', 1);
+
+#endregion
