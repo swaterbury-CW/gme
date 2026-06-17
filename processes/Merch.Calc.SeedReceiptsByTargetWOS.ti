@@ -1,0 +1,226 @@
+#region Prolog
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+#Region : Process Header
+# DEVELOPER : Steve Waterbury
+# CREATED ON : 2026-04-23
+# LAST UPDATE: 2026-06-16
+# CHANGED BY : Steve Waterbury
+# COMMENTS: Seeds Forecast Receipts on Roles-hier SKUs.
+# CHANGE HISTORY:
+#   2026-04-23 | Steve Waterbury | Initial
+#   2026-05-20 | Steve Waterbury | Roles validation + MDX
+#   2026-05-28 | Steve Waterbury | Track running OI across week walk; forward-walking WOS calc; remove nECS>0 outer guard
+#   2026-06-16 | Steve Waterbury | Reconcile to Prod-current (descendants SKU set, replen gate off, dead Is Replenishable read removed, LogOutput 3-arg); net On-Order into supply (forward WOS walk + deficit + running-OI advance) to stop over-ordering against open POs
+#EndRegion
+
+cCubeForecast = 'Merch Forecast';
+cCubeAttrs    = 'Merch Version SKU Attributes';
+cDimVersion   = 'Merch Version';
+cDimSKU       = 'Merch SKU';
+cDimTP        = 'Merch Time Period';
+cAttrLCP      = 'Last_Closed_Period';
+cAttrNextWk   = 'Next Week';
+cMeasTgtWOS   = 'Target_WOS_Applied';
+cMeasMOQ      = 'Master_Pack_Quantity';
+cMeasReceipts = 'Receipts';
+cMeasOI       = 'Opening Inventory';
+cMeasECS      = 'Expected Calc Sales';
+cMeasOnOrder  = 'On-Order';
+
+cProcessName = GetProcessName();
+bLogInfo = 0;
+bLogDebug = 0;
+sLogLevel = CellGetS('ProcessControl', cProcessName, 'LoggingLevel');
+IF(sLogLevel @= 'INFO' % sLogLevel @= 'DEBUG');
+  bLogInfo = 1;
+ENDIF;
+
+IF(pVersion @= '');
+  LogOutput('ERROR', cProcessName | ' | pVersion required', 1);
+  ProcessError;
+ENDIF;
+IF(DIMIX(cDimVersion, pVersion) = 0);
+  LogOutput('ERROR', cProcessName | ' | Version missing', 1);
+  ProcessError;
+ENDIF;
+IF(pOverwrite @= '');
+  pOverwrite = 'N';
+ENDIF;
+IF(pOverwrite @<> 'Y' & pOverwrite @<> 'N');
+  LogOutput('ERROR', cProcessName | ' | pOverwrite must be Y or N', 1);
+  ProcessError;
+ENDIF;
+
+nLCP = ATTRN(cDimVersion, pVersion, cAttrLCP);
+IF(nLCP = 0);
+  LogOutput('ERROR', cProcessName | ' | Last_Closed_Period not set', 1);
+  ProcessError;
+ENDIF;
+sFirstOpenTP = TIMST(nLCP + 7, '\Y-\m-\d');
+IF(DIMIX(cDimTP, sFirstOpenTP) = 0);
+  LogOutput('ERROR', cProcessName | ' | First open week not found', 1);
+  ProcessError;
+ENDIF;
+
+IF(pSKU @<> '');
+  IF(HierarchyElementExists(cDimSKU, 'Roles', pSKU) = 0);
+    LogOutput('ERROR', cProcessName | ' | SKU not in Roles hier: ' | pSKU, 1);
+    ProcessError;
+  ENDIF;
+  sSkuSet = '{tm1FilterByLevel(DESCENDANTS([Merch SKU].[Roles].[' | pSKU | ']),0)}';
+ELSE;
+  IF(pCategory @<> '');
+    sSkuSet = 'FILTER({TM1FILTERBYLEVEL({TM1SUBSETALL([Merch SKU].[Roles])},0)}, [Merch SKU].[Roles].CurrentMember.Properties("SGM Category") = "' | pCategory | '")';
+  ELSE;
+    sSkuSet = 'TM1FILTERBYLEVEL({TM1SUBSETALL([Merch SKU].[Roles])},0)';
+  ENDIF;
+ENDIF;
+
+sViewName = 'TI_SeedReceiptsByTargetWOS';
+IF(ViewExists(cCubeAttrs, sViewName) = 1);
+  ViewDestroy(cCubeAttrs, sViewName);
+ENDIF;
+sMdxQuery = 'SELECT NON EMPTY {[Merch Version SKU Attribute Measure].[Merch Version SKU Attribute Measure].[Target_WOS_Applied]} ON COLUMNS, NON EMPTY {' | sSkuSet | '} ON ROWS FROM [Merch Version SKU Attributes] WHERE ([Merch Version].[Merch Version].[' | pVersion | '])';
+ViewCreateByMDX(cCubeAttrs, sViewName, sMdxQuery, 1);
+ViewExtractSkipCalcsSet(cCubeAttrs, sViewName, 0);
+ViewExtractSkipZeroesSet(cCubeAttrs, sViewName, 1);
+ViewSuppressZeroesSet(cCubeAttrs, sViewName, 1);
+
+DatasourceType = 'VIEW';
+DatasourceNameForServer = cCubeAttrs;
+DatasourceCubeview = sViewName;
+
+nSkuProcessed = 0;
+nSkuSkipped = 0;
+nReceiptsWritten = 0;
+nReceiptsCleared = 0;
+
+#endregion
+#region Metadata
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+
+#endregion
+#region Data
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+sSKU = vMerch_SKU;
+nTargetWOS = CellGetN(cCubeAttrs, pVersion, sSKU, cMeasTgtWOS);
+nMOQ = CellGetN(cCubeAttrs, pVersion, sSKU, cMeasMOQ);
+
+IF(nTargetWOS <= 0);
+  nSkuSkipped = nSkuSkipped + 1;
+  ItemSkip;
+ENDIF;
+IF(nMOQ <= 0);
+  nSkuSkipped = nSkuSkipped + 1;
+  ItemSkip;
+ENDIF;
+
+nTargetWOSInt = INT(nTargetWOS);
+IF(nTargetWOSInt < 1);
+  nTargetWOSInt = 1;
+ENDIF;
+
+IF(pOverwrite @= 'Y');
+  sTPClr = sFirstOpenTP;
+  WHILE(sTPClr @<> '');
+    IF(CellIsUpdateable(cCubeForecast, pVersion, sTPClr, sSKU, cMeasReceipts) = 1);
+      CellPutN(0, cCubeForecast, pVersion, sTPClr, sSKU, cMeasReceipts);
+      nReceiptsCleared = nReceiptsCleared + 1;
+    ENDIF;
+    sTPClr = ATTRS(cDimTP, sTPClr, cAttrNextWk);
+  END;
+ENDIF;
+
+# Read initial OI once; track running OI in TI memory across the week walk.
+# On-Order (already-inbound POs) is netted into supply so the seeder does not
+# re-buy quantity already on the water (mirrors cube rule OI(t+1)=OI(t)+Receipts(t)+On-Order(t)-Units(t)).
+sTP = sFirstOpenTP;
+nRunningOI = CellGetN(cCubeForecast, pVersion, sTP, sSKU, cMeasOI);
+
+WHILE(sTP @<> '');
+  nECS = CellGetN(cCubeForecast, pVersion, sTP, sSKU, cMeasECS);
+  nOnOrderTP = CellGetN(cCubeForecast, pVersion, sTP, sSKU, cMeasOnOrder);
+
+  sFwd = sTP;
+  nRemaining = nRunningOI;
+  nWOSCurrent = 0;
+  nGuardSteps = 0;
+  WHILE(sFwd @<> '' & nWOSCurrent < nTargetWOS & nGuardSteps < 520);
+    nRemaining = nRemaining + CellGetN(cCubeForecast, pVersion, sFwd, sSKU, cMeasOnOrder);
+    nECSFwd = CellGetN(cCubeForecast, pVersion, sFwd, sSKU, cMeasECS);
+    IF(nECSFwd <= 0);
+      nWOSCurrent = nWOSCurrent + 1;
+    ELSE;
+      IF(nRemaining >= nECSFwd);
+        nRemaining = nRemaining - nECSFwd;
+        nWOSCurrent = nWOSCurrent + 1;
+      ELSE;
+        nWOSCurrent = nWOSCurrent + (nRemaining \ nECSFwd);
+        nRemaining = 0;
+      ENDIF;
+    ENDIF;
+    IF(nRemaining <= 0);
+      sFwd = '';
+    ELSE;
+      sFwd = ATTRS(cDimTP, sFwd, cAttrNextWk);
+    ENDIF;
+    nGuardSteps = nGuardSteps + 1;
+  END;
+
+  nReceipt = 0;
+  IF(nWOSCurrent < nTargetWOS);
+    sFwd = sTP;
+    k = 0;
+    nFwdSum = 0;
+    nFwdOnOrderSum = 0;
+    WHILE(k < nTargetWOSInt & sFwd @<> '');
+      nFwdSum = nFwdSum + CellGetN(cCubeForecast, pVersion, sFwd, sSKU, cMeasECS);
+      nFwdOnOrderSum = nFwdOnOrderSum + CellGetN(cCubeForecast, pVersion, sFwd, sSKU, cMeasOnOrder);
+      sFwd = ATTRS(cDimTP, sFwd, cAttrNextWk);
+      k = k + 1;
+    END;
+    nDeficit = nFwdSum - nRunningOI - nFwdOnOrderSum;
+    IF(nDeficit > 0);
+      nMultiple = INT(nDeficit \ nMOQ);
+      IF(nMultiple * nMOQ < nDeficit);
+        nMultiple = nMultiple + 1;
+      ENDIF;
+      nReceipt = nMultiple * nMOQ;
+      IF(CellIsUpdateable(cCubeForecast, pVersion, sTP, sSKU, cMeasReceipts) = 1);
+        CellPutN(nReceipt, cCubeForecast, pVersion, sTP, sSKU, cMeasReceipts);
+        nReceiptsWritten = nReceiptsWritten + 1;
+      ELSE;
+        nReceipt = 0;
+      ENDIF;
+    ENDIF;
+  ENDIF;
+
+  nConsumed = nECS;
+  IF(nConsumed > nRunningOI + nOnOrderTP + nReceipt);
+    nConsumed = nRunningOI + nOnOrderTP + nReceipt;
+  ENDIF;
+  nRunningOI = nRunningOI + nOnOrderTP + nReceipt - nConsumed;
+  IF(nRunningOI < 0);
+    nRunningOI = 0;
+  ENDIF;
+
+  sTP = ATTRS(cDimTP, sTP, cAttrNextWk);
+END;
+
+nSkuProcessed = nSkuProcessed + 1;
+
+#endregion
+#region Epilog
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+IF(ViewExists(cCubeAttrs, sViewName) = 1);
+  ViewDestroy(cCubeAttrs, sViewName);
+ENDIF;
+IF(bLogInfo = 1);
+  LogOutput('INFO', 'END: ' | cProcessName | ' | SkuProcessed=' | TRIM(STR(nSkuProcessed, 10, 0)) | ' | ReceiptsWritten=' | TRIM(STR(nReceiptsWritten, 10, 0)), 1);
+ENDIF;
+
+#endregion
