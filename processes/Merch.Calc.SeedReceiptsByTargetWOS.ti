@@ -4,14 +4,15 @@
 #Region : Process Header
 # DEVELOPER : Steve Waterbury
 # CREATED ON : 2026-04-23
-# LAST UPDATE: 2026-06-16
+# LAST UPDATE: 2026-06-17
 # CHANGED BY : Steve Waterbury
 # COMMENTS: Seeds Forecast Receipts on Roles-hier SKUs.
 # CHANGE HISTORY:
 #   2026-04-23 | Steve Waterbury | Initial
 #   2026-05-20 | Steve Waterbury | Roles validation + MDX
 #   2026-05-28 | Steve Waterbury | Track running OI across week walk; forward-walking WOS calc; remove nECS>0 outer guard
-#   2026-06-16 | Steve Waterbury | Reconcile to Prod-current (descendants SKU set, replen gate off, dead Is Replenishable read removed, LogOutput 3-arg); net On-Order into supply (forward WOS walk + deficit + running-OI advance) to stop over-ordering against open POs
+#   2026-06-16 | Steve Waterbury | Reconcile to Prod-current; net On-Order into supply (forward WOS walk + deficit + running-OI advance) to stop over-ordering against open POs
+#   2026-06-17 | Steve Waterbury | Honor per-user Hold control cube: never clear/overwrite Receipts cells the running user has held (HoldStatus='H'); leaf SKUs / Receipts only
 #EndRegion
 
 cCubeForecast = 'Merch Forecast';
@@ -27,6 +28,8 @@ cMeasReceipts = 'Receipts';
 cMeasOI       = 'Opening Inventory';
 cMeasECS      = 'Expected Calc Sales';
 cMeasOnOrder  = 'On-Order';
+cHoldElem     = 'HoldStatus';
+cHoldFlag     = 'H';
 
 cProcessName = GetProcessName();
 bLogInfo = 0;
@@ -34,6 +37,13 @@ bLogDebug = 0;
 sLogLevel = CellGetS('ProcessControl', cProcessName, 'LoggingLevel');
 IF(sLogLevel @= 'INFO' % sLogLevel @= 'DEBUG');
   bLogInfo = 1;
+ENDIF;
+
+sRunUser = TM1User();
+sHoldCube = '}Hold_' | sRunUser | '_}}_' | cCubeForecast;
+bHoldCubeExists = CubeExists(sHoldCube);
+IF(bLogInfo = 1);
+  LogOutput('INFO', cProcessName | ' | RunUser=' | sRunUser | ' | HoldCube=' | sHoldCube | ' | Exists=' | TRIM(STR(bHoldCubeExists, 1, 0)), 1);
 ENDIF;
 
 IF(pVersion @= '');
@@ -95,6 +105,7 @@ nSkuProcessed = 0;
 nSkuSkipped = 0;
 nReceiptsWritten = 0;
 nReceiptsCleared = 0;
+nReceiptsHeld = 0;
 
 #endregion
 #region Metadata
@@ -126,17 +137,20 @@ ENDIF;
 IF(pOverwrite @= 'Y');
   sTPClr = sFirstOpenTP;
   WHILE(sTPClr @<> '');
-    IF(CellIsUpdateable(cCubeForecast, pVersion, sTPClr, sSKU, cMeasReceipts) = 1);
-      CellPutN(0, cCubeForecast, pVersion, sTPClr, sSKU, cMeasReceipts);
-      nReceiptsCleared = nReceiptsCleared + 1;
+    sHeldClr = '';
+    IF(bHoldCubeExists = 1);
+      sHeldClr = CellGetS(sHoldCube, pVersion, sTPClr, sSKU, cMeasReceipts, cHoldElem);
+    ENDIF;
+    IF(sHeldClr @<> cHoldFlag);
+      IF(CellIsUpdateable(cCubeForecast, pVersion, sTPClr, sSKU, cMeasReceipts) = 1);
+        CellPutN(0, cCubeForecast, pVersion, sTPClr, sSKU, cMeasReceipts);
+        nReceiptsCleared = nReceiptsCleared + 1;
+      ENDIF;
     ENDIF;
     sTPClr = ATTRS(cDimTP, sTPClr, cAttrNextWk);
   END;
 ENDIF;
 
-# Read initial OI once; track running OI in TI memory across the week walk.
-# On-Order (already-inbound POs) is netted into supply so the seeder does not
-# re-buy quantity already on the water (mirrors cube rule OI(t+1)=OI(t)+Receipts(t)+On-Order(t)-Units(t)).
 sTP = sFirstOpenTP;
 nRunningOI = CellGetN(cCubeForecast, pVersion, sTP, sSKU, cMeasOI);
 
@@ -170,30 +184,40 @@ WHILE(sTP @<> '');
     nGuardSteps = nGuardSteps + 1;
   END;
 
+  sHeld = '';
+  IF(bHoldCubeExists = 1);
+    sHeld = CellGetS(sHoldCube, pVersion, sTP, sSKU, cMeasReceipts, cHoldElem);
+  ENDIF;
+
   nReceipt = 0;
-  IF(nWOSCurrent < nTargetWOS);
-    sFwd = sTP;
-    k = 0;
-    nFwdSum = 0;
-    nFwdOnOrderSum = 0;
-    WHILE(k < nTargetWOSInt & sFwd @<> '');
-      nFwdSum = nFwdSum + CellGetN(cCubeForecast, pVersion, sFwd, sSKU, cMeasECS);
-      nFwdOnOrderSum = nFwdOnOrderSum + CellGetN(cCubeForecast, pVersion, sFwd, sSKU, cMeasOnOrder);
-      sFwd = ATTRS(cDimTP, sFwd, cAttrNextWk);
-      k = k + 1;
-    END;
-    nDeficit = nFwdSum - nRunningOI - nFwdOnOrderSum;
-    IF(nDeficit > 0);
-      nMultiple = INT(nDeficit \ nMOQ);
-      IF(nMultiple * nMOQ < nDeficit);
-        nMultiple = nMultiple + 1;
-      ENDIF;
-      nReceipt = nMultiple * nMOQ;
-      IF(CellIsUpdateable(cCubeForecast, pVersion, sTP, sSKU, cMeasReceipts) = 1);
-        CellPutN(nReceipt, cCubeForecast, pVersion, sTP, sSKU, cMeasReceipts);
-        nReceiptsWritten = nReceiptsWritten + 1;
-      ELSE;
-        nReceipt = 0;
+  IF(sHeld @= cHoldFlag);
+    nReceipt = CellGetN(cCubeForecast, pVersion, sTP, sSKU, cMeasReceipts);
+    nReceiptsHeld = nReceiptsHeld + 1;
+  ELSE;
+    IF(nWOSCurrent < nTargetWOS);
+      sFwd = sTP;
+      k = 0;
+      nFwdSum = 0;
+      nFwdOnOrderSum = 0;
+      WHILE(k < nTargetWOSInt & sFwd @<> '');
+        nFwdSum = nFwdSum + CellGetN(cCubeForecast, pVersion, sFwd, sSKU, cMeasECS);
+        nFwdOnOrderSum = nFwdOnOrderSum + CellGetN(cCubeForecast, pVersion, sFwd, sSKU, cMeasOnOrder);
+        sFwd = ATTRS(cDimTP, sFwd, cAttrNextWk);
+        k = k + 1;
+      END;
+      nDeficit = nFwdSum - nRunningOI - nFwdOnOrderSum;
+      IF(nDeficit > 0);
+        nMultiple = INT(nDeficit \ nMOQ);
+        IF(nMultiple * nMOQ < nDeficit);
+          nMultiple = nMultiple + 1;
+        ENDIF;
+        nReceipt = nMultiple * nMOQ;
+        IF(CellIsUpdateable(cCubeForecast, pVersion, sTP, sSKU, cMeasReceipts) = 1);
+          CellPutN(nReceipt, cCubeForecast, pVersion, sTP, sSKU, cMeasReceipts);
+          nReceiptsWritten = nReceiptsWritten + 1;
+        ELSE;
+          nReceipt = 0;
+        ENDIF;
       ENDIF;
     ENDIF;
   ENDIF;
@@ -220,7 +244,7 @@ IF(ViewExists(cCubeAttrs, sViewName) = 1);
   ViewDestroy(cCubeAttrs, sViewName);
 ENDIF;
 IF(bLogInfo = 1);
-  LogOutput('INFO', 'END: ' | cProcessName | ' | SkuProcessed=' | TRIM(STR(nSkuProcessed, 10, 0)) | ' | ReceiptsWritten=' | TRIM(STR(nReceiptsWritten, 10, 0)), 1);
+  LogOutput('INFO', 'END: ' | cProcessName | ' | SkuProcessed=' | TRIM(STR(nSkuProcessed, 10, 0)) | ' | ReceiptsWritten=' | TRIM(STR(nReceiptsWritten, 10, 0)) | ' | ReceiptsHeld=' | TRIM(STR(nReceiptsHeld, 10, 0)), 1);
 ENDIF;
 
 #endregion
