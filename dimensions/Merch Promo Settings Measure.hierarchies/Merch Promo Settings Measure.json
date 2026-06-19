@@ -1,0 +1,142 @@
+{
+	"@type":"Hierarchy",
+	"Name":"Merch Promo Settings Measure",
+	"Elements":
+	[
+		{
+			"Name":"Promo Name",
+			"Type":"String"
+		},
+		{
+			"Name":"Promo Type",
+			"Type":"String"
+		},
+		{
+			"Name":"Pro Only",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"PPM Ticket",
+			"Type":"String"
+		},
+		{
+			"Name":"Active",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Override Discount Pct",
+			"Type":"String"
+		},
+		{
+			"Name":"Override Promo Price",
+			"Type":"String"
+		},
+		{
+			"Name":"Override Pro Only",
+			"Type":"String"
+		},
+		{
+			"Name":"Override Base AUR",
+			"Type":"String"
+		},
+		{
+			"Name":"Override Sales Lift Pct",
+			"Type":"String"
+		},
+		{
+			"Name":"Override Begin Date",
+			"Type":"String"
+		},
+		{
+			"Name":"Override End Date",
+			"Type":"String"
+		},
+		{
+			"Name":"Override Active",
+			"Type":"String"
+		},
+		{
+			"Name":"Applied Discount Pct",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Applied Promo Price",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Applied Pro Only",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Applied Base AUR",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Applied Sales Lift Pct",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Applied Begin Date",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Applied End Date",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Applied Active",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Override Promo Name",
+			"Type":"String"
+		},
+		{
+			"Name":"Override Promo Type",
+			"Type":"String"
+		},
+		{
+			"Name":"Override PPM Ticket",
+			"Type":"String"
+		},
+		{
+			"Name":"Override Curve Name",
+			"Type":"String"
+		},
+		{
+			"Name":"Resolved Begin Date",
+			"Type":"String"
+		},
+		{
+			"Name":"Resolved End Date",
+			"Type":"String"
+		},
+		{
+			"Name":"Override BER",
+			"Type":"String"
+		},
+		{
+			"Name":"Applied BER",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Applied Curve Name",
+			"Type":"String"
+		},
+		{
+			"Name":"Overwrite Existing",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"File Loaded",
+			"Type":"Numeric"
+		}
+	],
+	"Subsets@Code.links":
+	[
+		"Merch Promo Settings Measure.subsets/All Applied Measures.json",
+		"Merch Promo Settings Measure.subsets/All Measures.json",
+		"Merch Promo Settings Measure.subsets/All Override Measures.json",
+		"Merch Promo Settings Measure.subsets/Promotion Basic Info.json"
+	]
+}

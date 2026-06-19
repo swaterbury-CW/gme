@@ -1,0 +1,131 @@
+#region Prolog
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+#Region : Process Header
+# PROCESS : Merch.Load.PromoSettings.VG.Clear
+# DEVELOPER : Steve Waterbury
+# CREATED ON : 2026-06-15
+# LAST UPDATE: 2026-06-19
+# CHANGED BY : Steve Waterbury
+# COMMENTS: Clears the ENTIRE promo tuple for every Merch Promo Settings slot the VG file upload loaded (File Loaded=1) for pVersion. Manually-keyed promos (File Loaded<>1) untouched. Companion pre-clear invoked by Merch.Load.PromoSettings.VG. Modeled on Merch.Calc.ClearReceipts.
+# CHANGE HISTORY:
+#   2026-06-15 | Steve Waterbury | Initial; ViewExtractSkipZeroes fix. Plan d2fc9e2f9fc0.
+#   2026-06-19 | Steve Waterbury | Discriminator Override PPM Ticket -> File Loaded=1; clears ALL 13 Override measures + resets File Loaded. Plan 977bda6ccdc8.
+#EndRegion
+
+cProcessName = GetProcessName();
+cCube = 'Merch Promo Settings';
+cDimVersion = 'Merch Version';
+cFlag = 'File Loaded';
+
+sLogLevel = CellGetS('ProcessControl', cProcessName, 'LoggingLevel');
+IF(sLogLevel @= '');
+  sLogLevel = 'OFF';
+ENDIF;
+bLogInfo = 0;
+IF(sLogLevel @= 'INFO' % sLogLevel @= 'DEBUG');
+  bLogInfo = 1;
+ENDIF;
+
+IF(pVersion @= '');
+  pVersion = 'Forecast';
+ENDIF;
+IF(DIMIX(cDimVersion, pVersion) = 0);
+  LogOutput('ERROR', cProcessName | ' | Version not found: ' | pVersion, 1);
+  ProcessError;
+ENDIF;
+
+sViewName = 'TI_ClearPromoVG';
+IF(ViewExists(cCube, sViewName) = 1);
+  ViewDestroy(cCube, sViewName);
+ENDIF;
+sMdx = 'SELECT {[Merch Promo Settings Measure].[Merch Promo Settings Measure].[File Loaded]} ON COLUMNS, NON EMPTY {TM1FILTERBYLEVEL({TM1SUBSETALL([Merch SKU].[Merch SKU])},0)} * {TM1FILTERBYLEVEL({TM1SUBSETALL([Merch Promo ID].[Merch Promo ID])},0)} ON ROWS FROM [Merch Promo Settings] WHERE ([Merch Version].[Merch Version].[' | pVersion | '])';
+ViewCreateByMDX(cCube, sViewName, sMdx, 1);
+ViewExtractSkipCalcsSet(cCube, sViewName, 0);
+ViewExtractSkipZeroesSet(cCube, sViewName, 1);
+ViewSuppressZeroesSet(cCube, sViewName, 1);
+
+DatasourceType = 'VIEW';
+DatasourceNameForServer = cCube;
+DatasourceCubeview = sViewName;
+
+nCleared = 0;
+IF(bLogInfo = 1);
+  LogOutput('INFO', cProcessName | ' | START | Version=' | pVersion, 1);
+ENDIF;
+
+#endregion
+#region Metadata
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+
+#endregion
+#region Data
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+sSKU = vMerch_SKU;
+sPromo = vMerch_Promo_ID;
+
+# Only clear tuples the VG file upload loaded (File Loaded=1); manual promos untouched.
+IF(CellGetN(cCube, pVersion, sSKU, sPromo, cFlag) = 0);
+  ItemSkip;
+ENDIF;
+
+# Clear the ENTIRE promo tuple: every Override input measure.
+IF(CellIsUpdateable(cCube, pVersion, sSKU, sPromo, 'Override PPM Ticket') = 1);
+  CellPutS('', cCube, pVersion, sSKU, sPromo, 'Override PPM Ticket');
+ENDIF;
+IF(CellIsUpdateable(cCube, pVersion, sSKU, sPromo, 'Override Promo Name') = 1);
+  CellPutS('', cCube, pVersion, sSKU, sPromo, 'Override Promo Name');
+ENDIF;
+IF(CellIsUpdateable(cCube, pVersion, sSKU, sPromo, 'Override Promo Price') = 1);
+  CellPutS('', cCube, pVersion, sSKU, sPromo, 'Override Promo Price');
+ENDIF;
+IF(CellIsUpdateable(cCube, pVersion, sSKU, sPromo, 'Override BER') = 1);
+  CellPutS('', cCube, pVersion, sSKU, sPromo, 'Override BER');
+ENDIF;
+IF(CellIsUpdateable(cCube, pVersion, sSKU, sPromo, 'Override Begin Date') = 1);
+  CellPutS('', cCube, pVersion, sSKU, sPromo, 'Override Begin Date');
+ENDIF;
+IF(CellIsUpdateable(cCube, pVersion, sSKU, sPromo, 'Override End Date') = 1);
+  CellPutS('', cCube, pVersion, sSKU, sPromo, 'Override End Date');
+ENDIF;
+IF(CellIsUpdateable(cCube, pVersion, sSKU, sPromo, 'Override Active') = 1);
+  CellPutS('', cCube, pVersion, sSKU, sPromo, 'Override Active');
+ENDIF;
+IF(CellIsUpdateable(cCube, pVersion, sSKU, sPromo, 'Override Pro Only') = 1);
+  CellPutS('', cCube, pVersion, sSKU, sPromo, 'Override Pro Only');
+ENDIF;
+IF(CellIsUpdateable(cCube, pVersion, sSKU, sPromo, 'Override Promo Type') = 1);
+  CellPutS('', cCube, pVersion, sSKU, sPromo, 'Override Promo Type');
+ENDIF;
+IF(CellIsUpdateable(cCube, pVersion, sSKU, sPromo, 'Override Discount Pct') = 1);
+  CellPutS('', cCube, pVersion, sSKU, sPromo, 'Override Discount Pct');
+ENDIF;
+IF(CellIsUpdateable(cCube, pVersion, sSKU, sPromo, 'Override Base AUR') = 1);
+  CellPutS('', cCube, pVersion, sSKU, sPromo, 'Override Base AUR');
+ENDIF;
+IF(CellIsUpdateable(cCube, pVersion, sSKU, sPromo, 'Override Sales Lift Pct') = 1);
+  CellPutS('', cCube, pVersion, sSKU, sPromo, 'Override Sales Lift Pct');
+ENDIF;
+IF(CellIsUpdateable(cCube, pVersion, sSKU, sPromo, 'Override Curve Name') = 1);
+  CellPutS('', cCube, pVersion, sSKU, sPromo, 'Override Curve Name');
+ENDIF;
+# Reset the file-loaded flag
+IF(CellIsUpdateable(cCube, pVersion, sSKU, sPromo, cFlag) = 1);
+  CellPutN(0, cCube, pVersion, sSKU, sPromo, cFlag);
+ENDIF;
+nCleared = nCleared + 1;
+
+#endregion
+#region Epilog
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+IF(ViewExists(cCube, sViewName) = 1);
+  ViewDestroy(cCube, sViewName);
+ENDIF;
+IF(bLogInfo = 1);
+  LogOutput('INFO', cProcessName | ' | END | Version=' | pVersion | ' | ClearedTuples=' | TRIM(STR(nCleared, 10, 0)), 1);
+ENDIF;
+
+#endregion

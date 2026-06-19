@@ -1,0 +1,90 @@
+#region Prolog
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+#Region : Process Header
+# PROCESS : Merch.Load.PromoSettings.VG.FlagBackfill
+# DEVELOPER : Steve Waterbury
+# CREATED ON : 2026-06-19
+# LAST UPDATE: 2026-06-19
+# CHANGED BY : Steve Waterbury
+# COMMENTS: One-time backfill. Sets File Loaded=1 on every Merch Promo Settings tuple with a non-empty Override PPM Ticket for pVersion (the file-loaded set that predates the File Loaded flag). Modeled on Merch.Load.PromoSettings.VG.Clear.
+# CHANGE HISTORY:
+#   2026-06-19 | Steve Waterbury | Initial. Design plan 977bda6ccdc8.
+#EndRegion
+
+cProcessName = GetProcessName();
+cCube = 'Merch Promo Settings';
+cDimVersion = 'Merch Version';
+cTicket = 'Override PPM Ticket';
+cFlag = 'File Loaded';
+
+sLogLevel = CellGetS('ProcessControl', cProcessName, 'LoggingLevel');
+IF(sLogLevel @= '');
+  sLogLevel = 'OFF';
+ENDIF;
+bLogInfo = 0;
+IF(sLogLevel @= 'INFO' % sLogLevel @= 'DEBUG');
+  bLogInfo = 1;
+ENDIF;
+
+IF(pVersion @= '');
+  pVersion = 'Forecast';
+ENDIF;
+IF(DIMIX(cDimVersion, pVersion) = 0);
+  LogOutput('ERROR', cProcessName | ' | Version not found: ' | pVersion, 1);
+  ProcessError;
+ENDIF;
+
+sViewName = 'TI_FlagPromoVG';
+IF(ViewExists(cCube, sViewName) = 1);
+  ViewDestroy(cCube, sViewName);
+ENDIF;
+sMdx = 'SELECT {[Merch Promo Settings Measure].[Merch Promo Settings Measure].[Override PPM Ticket]} ON COLUMNS, NON EMPTY {TM1FILTERBYLEVEL({TM1SUBSETALL([Merch SKU].[Merch SKU])},0)} * {TM1FILTERBYLEVEL({TM1SUBSETALL([Merch Promo ID].[Merch Promo ID])},0)} ON ROWS FROM [Merch Promo Settings] WHERE ([Merch Version].[Merch Version].[' | pVersion | '])';
+ViewCreateByMDX(cCube, sViewName, sMdx, 1);
+ViewExtractSkipCalcsSet(cCube, sViewName, 0);
+ViewExtractSkipZeroesSet(cCube, sViewName, 0);
+ViewSuppressZeroesSet(cCube, sViewName, 0);
+
+DatasourceType = 'VIEW';
+DatasourceNameForServer = cCube;
+DatasourceCubeview = sViewName;
+
+nFlagged = 0;
+IF(bLogInfo = 1);
+  LogOutput('INFO', cProcessName | ' | START | Version=' | pVersion, 1);
+ENDIF;
+
+#endregion
+#region Metadata
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+
+#endregion
+#region Data
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+sSKU = vMerch_SKU;
+sPromo = vMerch_Promo_ID;
+
+# Flag only tuples that carry a VG file PPM ticket.
+IF(CellGetS(cCube, pVersion, sSKU, sPromo, cTicket) @= '');
+  ItemSkip;
+ENDIF;
+
+IF(CellIsUpdateable(cCube, pVersion, sSKU, sPromo, cFlag) = 1);
+  CellPutN(1, cCube, pVersion, sSKU, sPromo, cFlag);
+  nFlagged = nFlagged + 1;
+ENDIF;
+
+#endregion
+#region Epilog
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+IF(ViewExists(cCube, sViewName) = 1);
+  ViewDestroy(cCube, sViewName);
+ENDIF;
+IF(bLogInfo = 1);
+  LogOutput('INFO', cProcessName | ' | END | Version=' | pVersion | ' | Flagged=' | TRIM(STR(nFlagged, 10, 0)), 1);
+ENDIF;
+
+#endregion

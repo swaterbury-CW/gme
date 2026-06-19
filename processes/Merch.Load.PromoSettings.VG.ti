@@ -1,0 +1,297 @@
+#region Prolog
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+#Region : Process Header
+# PROCESS: Merch.Load.PromoSettings.VG
+# DEVELOPER: Steve Waterbury
+# CREATED ON: 2026-05-06
+# LAST UPDATE: 2026-06-19
+# CHANGED BY: Steve Waterbury
+# CHANGE HISTORY:
+#   2026-05-06 | Steve Waterbury | Creation - load Video Game promo CSV; auto-assign JIRA tickets to next free PROMO-NNNN. Design plan 706781065f9f.
+#   2026-05-08 | Steve Waterbury | Emit Override Begin/End Date in ISO YYYY-MM-DD; PERM literal 9999-12-31. Design plan 52f7d463ed97.
+#   2026-05-27 | Steve Waterbury | Auto-grow PROMO-NNNN pool when no free slot exists. Design plan 64d0dd95f1e6.
+#   2026-06-15 | Steve Waterbury | Self-clean pre-clear + numeric PROMO-NNNN slot scan via DIMIX. Design plan d2fc9e2f9fc0.
+#   2026-06-19 | Steve Waterbury | Stamp File Loaded=1 per loaded tuple (drives flag-based self-clean). Design plan 977bda6ccdc8.
+#EndRegion
+
+cProcessName = GetProcessName();
+cCube = 'Merch Promo Settings';
+cDimPromo = 'Merch Promo ID';
+cAttrJIRA = 'JIRA_Ticket';
+cPromoRoot = 'All Promos';
+nSlotCap = 999;
+
+sLogLevel = CellGetS('ProcessControl', cProcessName, 'LoggingLevel');
+IF(sLogLevel @= '');
+  sLogLevel = 'OFF';
+ENDIF;
+bLogInfo = 0;
+IF(sLogLevel @= 'INFO' % sLogLevel @= 'DEBUG');
+  bLogInfo = 1;
+ENDIF;
+bLogDebug = 0;
+IF(sLogLevel @= 'DEBUG');
+  bLogDebug = 1;
+ENDIF;
+
+IF(pVersion @= '');
+  pVersion = 'Forecast';
+ENDIF;
+IF(DIMIX('Merch Version', pVersion) = 0);
+  LogOutput('ERROR', cProcessName | ' | Version not found: ' | pVersion, 1);
+  ProcessError;
+ENDIF;
+
+# Self-clean: wipe everything a prior VG upload loaded for this version (File Loaded=1)
+# so slots re-fill from PROMO-0001 instead of stacking past previously used slots.
+nClr = ExecuteProcess('Merch.Load.PromoSettings.VG.Clear', 'pVersion', pVersion);
+IF(nClr <> ProcessExitNormal());
+  LogOutput('WARN', cProcessName | ' | VG pre-clear returned non-normal code: ' | TRIM(STR(nClr, 5, 0)), 1);
+ENDIF;
+
+nLoaded = 0;
+nSkipped = 0;
+nNewPromos = 0;
+nGrownSlots = 0;
+
+Datasourcetype = 'CHARACTERDELIMITED';
+
+LogOutput('INFO', cProcessName | ' | START | Version=' | pVersion, 1);
+
+#endregion
+#region Metadata
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+
+#endregion
+#region Data
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+sJIRA = TRIM(vJIRA);
+IF(sJIRA @= '');
+  ItemSkip;
+ENDIF;
+
+sSKU = TRIM(vSKU);
+IF(sSKU @= '');
+  nSkipped = nSkipped + 1;
+  ItemSkip;
+ENDIF;
+IF(DIMIX('Merch SKU', sSKU) = 0);
+  LogOutput('WARN', cProcessName | ' | SKU not in dim: ' | sSKU, 1);
+  nSkipped = nSkipped + 1;
+  ItemSkip;
+ENDIF;
+
+# --- resolve promo slot at (JIRA, SKU) grain, scanning PROMO-NNNN in NUMERIC order ---
+sPromoID = '';
+sFirstFree = '';
+nMaxSeen = 0;
+n = 1;
+WHILE(n <= nSlotCap & sPromoID @= '');
+  sNum = TRIM(STR(n, 12, 0));
+  WHILE(LONG(sNum) < 4);
+    sNum = '0' | sNum;
+  END;
+  sCand = 'PROMO-' | sNum;
+  IF(DIMIX(cDimPromo, sCand) > 0);
+    nMaxSeen = n;
+    sCellPPM = CellGetS(cCube, pVersion, sSKU, sCand, 'Override PPM Ticket');
+    IF(sCellPPM @= sJIRA);
+      sPromoID = sCand;
+    ELSE;
+      sCellName = CellGetS(cCube, pVersion, sSKU, sCand, 'Override Promo Name');
+      IF(sCellPPM @= '' & sCellName @= '' & sFirstFree @= '');
+        sFirstFree = sCand;
+      ENDIF;
+    ENDIF;
+  ENDIF;
+  n = n + 1;
+END;
+IF(sPromoID @= '');
+  IF(sFirstFree @= '');
+    nNewNum = nMaxSeen + 1;
+    sNewNum = TRIM(STR(nNewNum, 12, 0));
+    WHILE(LONG(sNewNum) < 4);
+      sNewNum = '0' | sNewNum;
+    END;
+    sFirstFree = 'PROMO-' | sNewNum;
+    DimensionElementInsert(cDimPromo, '', sFirstFree, 'N');
+    DimensionElementComponentAdd(cDimPromo, cPromoRoot, sFirstFree, 1);
+    nGrownSlots = nGrownSlots + 1;
+    LogOutput('INFO', cProcessName | ' | POOL_GROW | new slot ' | sFirstFree, 1);
+  ENDIF;
+  sPromoID = sFirstFree;
+  nNewPromos = nNewPromos + 1;
+  LogOutput('INFO', cProcessName | ' | NEW_PROMO | JIRA=' | sJIRA | ' SKU=' | sSKU | ' -> ' | sPromoID, 1);
+ENDIF;
+# Stamp per-cell identity so reloads dedup by (JIRA, SKU) instead of stacking.
+IF(CellIsUpdateable(cCube, pVersion, sSKU, sPromoID, 'Override PPM Ticket') = 0);
+  LogOutput('WARN', cProcessName | ' | CANT_WRITE Override PPM Ticket | ' | pVersion | '|' | sSKU | '|' | sPromoID, 1);
+ELSE;
+  CellPutS(sJIRA, cCube, pVersion, sSKU, sPromoID, 'Override PPM Ticket');
+ENDIF;
+
+# Mark this tuple as loaded from the VG file (drives the File Loaded=1 self-clean pre-clear).
+IF(CellIsUpdateable(cCube, pVersion, sSKU, sPromoID, 'File Loaded') = 1);
+  CellPutN(1, cCube, pVersion, sSKU, sPromoID, 'File Loaded');
+ENDIF;
+
+sPromoName = TRIM(vDescription);
+
+sPromoPrice = TRIM(vPromoPrice);
+IF(LONG(sPromoPrice) > 0 & SUBST(sPromoPrice, 1, 1) @= '$');
+  sPromoPrice = SUBST(sPromoPrice, 2, LONG(sPromoPrice) - 1);
+ENDIF;
+WHILE(SCAN(',', sPromoPrice) > 0);
+  nC = SCAN(',', sPromoPrice);
+  sPromoPrice = SUBST(sPromoPrice, 1, nC - 1) | SUBST(sPromoPrice, nC + 1, LONG(sPromoPrice) - nC);
+END;
+sPromoPrice = TRIM(sPromoPrice);
+
+sBER = TRIM(vBER);
+IF(LONG(sBER) > 0 & SUBST(sBER, 1, 1) @= '$');
+  sBER = SUBST(sBER, 2, LONG(sBER) - 1);
+ENDIF;
+WHILE(SCAN(',', sBER) > 0);
+  nC = SCAN(',', sBER);
+  sBER = SUBST(sBER, 1, nC - 1) | SUBST(sBER, nC + 1, LONG(sBER) - nC);
+END;
+sBER = TRIM(sBER);
+
+sIn = TRIM(vBeginDate);
+IF(UPPER(sIn) @= 'PERM');
+  sBeginDate = '9999-12-31';
+ELSEIF(SCAN('/', sIn) = 0);
+  sBeginDate = '';
+ELSE;
+  n1 = SCAN('/', sIn);
+  sMM = SUBST(sIn, 1, n1 - 1);
+  sRest = SUBST(sIn, n1 + 1, LONG(sIn) - n1);
+  n2 = SCAN('/', sRest);
+  IF(n2 = 0);
+    sBeginDate = '';
+  ELSE;
+    sDD = SUBST(sRest, 1, n2 - 1);
+    sYYYY = SUBST(sRest, n2 + 1, LONG(sRest) - n2);
+    IF(LONG(sMM) = 1);
+      sMM = '0' | sMM;
+    ENDIF;
+    IF(LONG(sDD) = 1);
+      sDD = '0' | sDD;
+    ENDIF;
+    IF(LONG(sYYYY) = 4 & LONG(sMM) = 2 & LONG(sDD) = 2);
+      sBeginDate = sYYYY | '-' | sMM | '-' | sDD;
+    ELSE;
+      sBeginDate = '';
+    ENDIF;
+  ENDIF;
+ENDIF;
+
+sIn = TRIM(vEndDate);
+IF(UPPER(sIn) @= 'PERM');
+  sEndDate = '9999-12-31';
+ELSEIF(SCAN('/', sIn) = 0);
+  sEndDate = '';
+ELSE;
+  n1 = SCAN('/', sIn);
+  sMM = SUBST(sIn, 1, n1 - 1);
+  sRest = SUBST(sIn, n1 + 1, LONG(sIn) - n1);
+  n2 = SCAN('/', sRest);
+  IF(n2 = 0);
+    sEndDate = '';
+  ELSE;
+    sDD = SUBST(sRest, 1, n2 - 1);
+    sYYYY = SUBST(sRest, n2 + 1, LONG(sRest) - n2);
+    IF(LONG(sMM) = 1);
+      sMM = '0' | sMM;
+    ENDIF;
+    IF(LONG(sDD) = 1);
+      sDD = '0' | sDD;
+    ENDIF;
+    IF(LONG(sYYYY) = 4 & LONG(sMM) = 2 & LONG(sDD) = 2);
+      sEndDate = sYYYY | '-' | sMM | '-' | sDD;
+    ELSE;
+      sEndDate = '';
+    ENDIF;
+  ENDIF;
+ENDIF;
+
+sActive = '0';
+IF(TRIM(vEnableStatus) @= 'Active');
+  sActive = '1';
+ENDIF;
+sProOnly = '0';
+IF(SUBST(UPPER(TRIM(vProExclusive)), 1, 1) @= 'Y');
+  sProOnly = '1';
+ENDIF;
+
+IF(sPromoName @<> '');
+  IF(CellIsUpdateable(cCube, pVersion, sSKU, sPromoID, 'Override Promo Name') = 0);
+    LogOutput('WARN', cProcessName | ' | CANT_WRITE Override Promo Name | ' | pVersion | '|' | sSKU | '|' | sPromoID, 1);
+  ELSE;
+    CellPutS(sPromoName, cCube, pVersion, sSKU, sPromoID, 'Override Promo Name');
+    nLoaded = nLoaded + 1;
+  ENDIF;
+ENDIF;
+
+IF(sPromoPrice @<> '');
+  IF(CellIsUpdateable(cCube, pVersion, sSKU, sPromoID, 'Override Promo Price') = 0);
+    LogOutput('WARN', cProcessName | ' | CANT_WRITE Override Promo Price', 1);
+  ELSE;
+    CellPutS(sPromoPrice, cCube, pVersion, sSKU, sPromoID, 'Override Promo Price');
+    nLoaded = nLoaded + 1;
+  ENDIF;
+ENDIF;
+
+IF(sBER @<> '');
+  IF(CellIsUpdateable(cCube, pVersion, sSKU, sPromoID, 'Override BER') = 0);
+    LogOutput('WARN', cProcessName | ' | CANT_WRITE Override BER', 1);
+  ELSE;
+    CellPutS(sBER, cCube, pVersion, sSKU, sPromoID, 'Override BER');
+    nLoaded = nLoaded + 1;
+  ENDIF;
+ENDIF;
+
+IF(sBeginDate @<> '');
+  IF(CellIsUpdateable(cCube, pVersion, sSKU, sPromoID, 'Override Begin Date') = 0);
+    LogOutput('WARN', cProcessName | ' | CANT_WRITE Override Begin Date', 1);
+  ELSE;
+    CellPutS(sBeginDate, cCube, pVersion, sSKU, sPromoID, 'Override Begin Date');
+    nLoaded = nLoaded + 1;
+  ENDIF;
+ENDIF;
+
+IF(sEndDate @<> '');
+  IF(CellIsUpdateable(cCube, pVersion, sSKU, sPromoID, 'Override End Date') = 0);
+    LogOutput('WARN', cProcessName | ' | CANT_WRITE Override End Date', 1);
+  ELSE;
+    CellPutS(sEndDate, cCube, pVersion, sSKU, sPromoID, 'Override End Date');
+    nLoaded = nLoaded + 1;
+  ENDIF;
+ENDIF;
+
+IF(CellIsUpdateable(cCube, pVersion, sSKU, sPromoID, 'Override Active') = 0);
+  LogOutput('WARN', cProcessName | ' | CANT_WRITE Override Active', 1);
+ELSE;
+  CellPutS(sActive, cCube, pVersion, sSKU, sPromoID, 'Override Active');
+  nLoaded = nLoaded + 1;
+ENDIF;
+
+IF(CellIsUpdateable(cCube, pVersion, sSKU, sPromoID, 'Override Pro Only') = 0);
+  LogOutput('WARN', cProcessName | ' | CANT_WRITE Override Pro Only', 1);
+ELSE;
+  CellPutS(sProOnly, cCube, pVersion, sSKU, sPromoID, 'Override Pro Only');
+  nLoaded = nLoaded + 1;
+ENDIF;
+
+#endregion
+#region Epilog
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+sStampStr = TIMST(NOW, '\Y-\m-\d \h:\i:\s');
+AttrPutS(sStampStr, 'Merch Version', pVersion, 'Last_Promo_Upload');
+LogOutput('INFO', cProcessName | ' | END | Loaded=' | TRIM(STR(nLoaded,12,0)) | ' | Skipped=' | TRIM(STR(nSkipped,12,0)) | ' | NewPromos=' | TRIM(STR(nNewPromos,12,0)) | ' | GrownSlots=' | TRIM(STR(nGrownSlots,12,0)) | ' | Stamped=' | pVersion | ' ' | sStampStr);
+
+#endregion
