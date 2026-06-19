@@ -1,14 +1,14 @@
 {
 	"@type":"Process",
-	"Name":"Merch.Load.PromoSettings.VG.FlagBackfill",
+	"Name":"Merch.Calc.SubmitForecastToInventory.Cat",
 	"HasSecurityAccess":false,
-	"Code@Code.link":"Merch.Load.PromoSettings.VG.FlagBackfill.ti",
+	"Code@Code.link":"Merch.Calc.SubmitForecastToInventory.Cat.ti",
 	"DataSource":
 	{
 		"Type":"TM1CubeView",
-		"dataSourceNameForServer":"Merch Promo Settings",
-		"dataSourceNameForClient":"Merch Promo Settings",
-		"view":"TI_FlagPromoVG"
+		"dataSourceNameForServer":"Merch Forecast",
+		"dataSourceNameForClient":"Merch Forecast",
+		"view":"temp_SubmitForecast"
 	},
 	"Parameters":
 	[
@@ -17,12 +17,30 @@
 			"Prompt":"Version",
 			"Value":"Forecast",
 			"Type":"String"
+		},
+		{
+			"Name":"pSKUElement",
+			"Prompt":"Roles node",
+			"Value":"",
+			"Type":"String"
+		},
+		{
+			"Name":"pPartIdx",
+			"Prompt":"Partition index",
+			"Value":1,
+			"Type":"Numeric"
+		},
+		{
+			"Name":"sLogLevel",
+			"Prompt":"",
+			"Value":"INFO",
+			"Type":"String"
 		}
 	],
 	"Variables":
 	[
 		{
-			"Name":"vMerch_Promo_Settings_Measure",
+			"Name":"vMerch_Forecast_Measure",
 			"Type":"String",
 			"Position":1,
 			"StartByte":0,
@@ -36,7 +54,7 @@
 			"EndByte":0
 		},
 		{
-			"Name":"vMerch_Promo_ID",
+			"Name":"vMerch_Time_Period",
 			"Type":"String",
 			"Position":3,
 			"StartByte":0,
@@ -48,13 +66,22 @@
 			"Position":4,
 			"StartByte":0,
 			"EndByte":0
+		},
+		{
+			"Name":"Value",
+			"Type":"Numeric",
+			"Position":5,
+			"StartByte":0,
+			"EndByte":0
 		}
 	],
+	"UID": "1781032954000",
 	"UIData": "CubeAction=1511\fDataAction=1503\fCubeLogChanges=0\f",
 	"VariablesUIData": [
 		"VarType=32\fColType=827\f",
 		"VarType=32\fColType=827\f",
 		"VarType=32\fColType=827\f",
-		"VarType=32\fColType=827\f"
+		"VarType=32\fColType=827\f",
+		"VarType=33\fColType=827\f"
 	]
 }

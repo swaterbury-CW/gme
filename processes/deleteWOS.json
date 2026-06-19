@@ -1,0 +1,14 @@
+{
+	"@type":"Process",
+	"Name":"deleteWOS",
+	"HasSecurityAccess":false,
+	"Code@Code.link":"deleteWOS.ti",
+	"DataSource":
+	{
+		"Type":"None"
+	},
+	"Parameters":[],
+	"Variables":[],
+	"UID": "1781880420000",
+	"VariablesUIData": []
+}

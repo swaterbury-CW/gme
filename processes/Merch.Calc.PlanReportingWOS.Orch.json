@@ -1,0 +1,61 @@
+{
+	"@type":"Process",
+	"Name":"Merch.Calc.PlanReportingWOS.Orch",
+	"HasSecurityAccess":false,
+	"Code@Code.link":"Merch.Calc.PlanReportingWOS.Orch.ti",
+	"DataSource":
+	{
+		"Type":"TM1DimensionSubset",
+		"dataSourceNameForServer":"Merch SKU",
+		"dataSourceNameForClient":"Merch SKU",
+		"subset":"TI_WOSOrch_placeholder"
+	},
+	"Parameters":
+	[
+		{
+			"Name":"pVersion",
+			"Prompt":"Merch Version",
+			"Value":"Forecast",
+			"Type":"String"
+		},
+		{
+			"Name":"pSKUElement",
+			"Prompt":"Roles root (blank=Director)",
+			"Value":"",
+			"Type":"String"
+		},
+		{
+			"Name":"pSKU",
+			"Prompt":"Single SKU (optional)",
+			"Value":"",
+			"Type":"String"
+		},
+		{
+			"Name":"pTargetMeasure",
+			"Prompt":"Target measure",
+			"Value":"WOS",
+			"Type":"String"
+		},
+		{
+			"Name":"pUseRunProcess",
+			"Prompt":"1=parallel RunProcess, 0=serial",
+			"Value":"1",
+			"Type":"String"
+		}
+	],
+	"Variables":
+	[
+		{
+			"Name":"vMerch_SKU",
+			"Type":"String",
+			"Position":1,
+			"StartByte":0,
+			"EndByte":0
+		}
+	],
+	"UID": "1781878123000",
+	"UIData": "CubeAction=1511\fDataAction=1503\fCubeLogChanges=0\f",
+	"VariablesUIData": [
+		"VarType=32\fColType=827\f"
+	]
+}

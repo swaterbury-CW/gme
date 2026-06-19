@@ -1,0 +1,49 @@
+{
+	"@type":"Process",
+	"Name":"Merch.Calc.SubmitForecastToInventory",
+	"HasSecurityAccess":false,
+	"Code@Code.link":"Merch.Calc.SubmitForecastToInventory.ti",
+	"DataSource":
+	{
+		"Type":"TM1DimensionSubset",
+		"dataSourceNameForServer":"Merch SKU",
+		"dataSourceNameForClient":"Merch SKU",
+		"subset":"TI_SubmitOrch_placeholder"
+	},
+	"Parameters":
+	[
+		{
+			"Name":"pVersion",
+			"Prompt":"Version",
+			"Value":"Forecast",
+			"Type":"String"
+		},
+		{
+			"Name":"pSKUElement",
+			"Prompt":"Roles SKU element (blank=Director)",
+			"Value":"",
+			"Type":"String"
+		},
+		{
+			"Name":"pUseRunProcess",
+			"Prompt":"1=parallel RunProcess, 0=serial",
+			"Value":"1",
+			"Type":"String"
+		}
+	],
+	"Variables":
+	[
+		{
+			"Name":"vMerch_SKU",
+			"Type":"String",
+			"Position":1,
+			"StartByte":0,
+			"EndByte":0
+		}
+	],
+	"UID": "1774874686000",
+	"UIData": "CubeAction=1511\fDataAction=1503\fCubeLogChanges=0\f",
+	"VariablesUIData": [
+		"VarType=32\fColType=827\f"
+	]
+}
