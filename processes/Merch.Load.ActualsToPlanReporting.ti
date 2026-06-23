@@ -1,0 +1,136 @@
+#region Prolog
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+#Region : Process Header
+# DEVELOPER : Steve Waterbury
+# CREATED ON : 2026-04-20
+# LAST UPDATE: 2026-06-20
+# CHANGED BY : Steve Waterbury
+# COMMENTS:
+# Loads Merch Actuals into Merch Plan Reporting (Actual version), recomputes stored WOS for Actual,
+# then propagates Actual -> all Calculated versions in PR via Merch.Version.Copy.PlanReporting (mirrors Merch Forecast actuals->calc refresh).
+#### CHANGE HISTORY:
+###   2026-04-20 | Steve Waterbury | Initial creation
+###   2026-06-19 | Steve Waterbury | Epilog: propagate Actual -> all Calculated versions in PR; LogOutput 3-arg. Design plan 908774392cf2.
+###   2026-06-20 | Steve Waterbury | Epilog: recompute stored WOS (Merch.Calc.PlanReportingWOS.Orch) for Actual before calc-version propagation. Design plan 908774392cf2.
+#EndRegion
+
+cProcessName = GetProcessName();
+
+sLogLevel = CellGetS('ProcessControl', cProcessName, 'LoggingLevel');
+IF(sLogLevel @= ''); sLogLevel = 'OFF'; ENDIF;
+bLogInfo = 0;
+IF(sLogLevel @= 'INFO' % sLogLevel @= 'DEBUG'); bLogInfo = 1; ENDIF;
+bLogDebug = 0;
+IF(sLogLevel @= 'DEBUG'); bLogDebug = 1; ENDIF;
+IF(bLogInfo = 1);
+  LogOutput('INFO', 'START: ' | cProcessName | ' | TimePeriod=' | pTimePeriod, 1);
+ENDIF;
+
+IF(pTimePeriod @= '');
+  LogOutput('ERROR', cProcessName | ' | pTimePeriod required', 1);
+  ProcessError;
+ENDIF;
+IF(DIMIX('Merch Time Period', pTimePeriod) = 0);
+  LogOutput('ERROR', cProcessName | ' | Time period not found: ' | pTimePeriod, 1);
+  ProcessError;
+ENDIF;
+
+cSrcCube = 'Merch Actuals';
+cDstCube = 'Merch Plan Reporting';
+cVersion = 'Actual';
+cMeasDim = 'Merch Actuals Measure';
+cTgtMeasDim = 'Merch Plan Reporting Measure';
+cLifecycleDim = 'Merch Lifecycle';
+cSKUDim = 'Merch SKU';
+cDefaultLifecycle = 'Active';
+cMapAttribute = 'Forecast Measure Map';
+cLifecycleAttr = 'Lifecycle_Status_Description';
+nCellsWritten = 0;
+nSkipped = 0;
+nRecordCount = 0;
+
+sView = 'TI_ActToPR_' | TRIM(STR(NOW, 15, 0));
+sMDX = 'SELECT {TM1FILTERBYLEVEL({TM1SUBSETALL([Merch Actuals Measure])}, 0)} ON COLUMNS, '
+  | 'NON EMPTY {TM1FILTERBYLEVEL({DESCENDANTS([Merch Time Period].[' | pTimePeriod | '])}, 0)} '
+  | '* {TM1FILTERBYLEVEL({TM1SUBSETALL([Merch SKU].[Merch SKU])}, 0)} '
+  | '* {TM1FILTERBYLEVEL({TM1SUBSETALL([Merch Channel])}, 0)} ON ROWS '
+  | 'FROM [Merch Actuals]';
+ViewCreateByMDX(cSrcCube, sView, sMDX, 1);
+ViewExtractSkipCalcsSet(cSrcCube, sView, 0);
+ViewExtractSkipZeroesSet(cSrcCube, sView, 1);
+DatasourceType = 'VIEW';
+DatasourceNameForServer = cSrcCube;
+DatasourceCubeview = sView;
+
+#endregion
+#region Metadata
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+
+#endregion
+#region Data
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+nRecordCount = nRecordCount + 1;
+
+sMeasure = ATTRS(cMeasDim, vMerch_Actuals_Measure, cMapAttribute);
+IF(sMeasure @= '');
+  ItemSkip;
+ENDIF;
+IF(DIMIX(cTgtMeasDim, sMeasure) = 0);
+  ItemReject('Mapped measure not in target dim: ' | sMeasure);
+ENDIF;
+
+sLifecycle = ATTRS(cSKUDim, vMerch_SKU, cLifecycleAttr);
+IF(sLifecycle @= '');
+  sLifecycle = cDefaultLifecycle;
+ENDIF;
+IF(DIMIX(cLifecycleDim, sLifecycle) = 0);
+  sLifecycle = cDefaultLifecycle;
+ENDIF;
+IF(DTYPE(cLifecycleDim, sLifecycle) @<> 'N');
+  sLifecycle = cDefaultLifecycle;
+ENDIF;
+
+nVal = Value;
+IF(nVal = 0);
+  ItemSkip;
+ENDIF;
+
+IF(CellIsUpdateable(cDstCube, cVersion, vMerch_Time_Period, vMerch_SKU, vMerch_Channel, sLifecycle, sMeasure) = 0);
+  nSkipped = nSkipped + 1;
+  ItemSkip;
+ENDIF;
+
+CellPutN(nVal, cDstCube, cVersion, vMerch_Time_Period, vMerch_SKU, vMerch_Channel, sLifecycle, sMeasure);
+nCellsWritten = nCellsWritten + 1;
+
+#endregion
+#region Epilog
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+IF(ViewExists(cSrcCube, sView) = 1);
+  ViewDestroy(cSrcCube, sView);
+ENDIF;
+
+# Recompute stored WOS for the Actual version across the full SKU tree (parallel orchestrator),
+# BEFORE propagating Actual -> calc versions so each calc copy carries the fresh WOS. Design plan 908774392cf2.
+ExecuteProcess('Merch.Calc.PlanReportingWOS.Orch', 'pVersion', cVersion, 'pSKUElement', 'Director', 'pSKU', '', 'pTargetMeasure', 'WOS', 'pUseRunProcess', '1');
+
+# Propagate Actual -> all Calculated versions in Plan Reporting (mirrors Merch Forecast actuals->calc refresh).
+nVerDim = DIMSIZ('Merch Version');
+iVer = 1;
+WHILE(iVer <= nVerDim);
+  sVer = DIMNM('Merch Version', iVer);
+  IF(ELLEV('Merch Version', sVer) = 0 & ATTRS('Merch Version', sVer, 'Version_Type') @= 'Calculated');
+    ExecuteProcess('Merch.Version.Copy.PlanReporting', 'pSourceVersion', cVersion, 'pTargetVersion', sVer);
+  ENDIF;
+  iVer = iVer + 1;
+END;
+
+IF(bLogInfo = 1);
+  LogOutput('INFO', 'END: ' | cProcessName | ' | Records=' | TRIM(STR(nRecordCount, 10, 0)) | ' | Written=' | TRIM(STR(nCellsWritten, 10, 0)) | ' | Skipped=' | TRIM(STR(nSkipped, 10, 0)), 1);
+ENDIF;
+
+#endregion

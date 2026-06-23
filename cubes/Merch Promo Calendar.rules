@@ -1,0 +1,86 @@
+SKIPCHECK;
+#Region : Rule Header
+#############################
+##~~ Start Rule File ~~##
+#############################
+# DEVELOPER : Steve Waterbury
+# CREATED ON : 2026-04-08
+# LAST UPDATE: 2026-06-19
+# CUBE       : Merch Promo Calendar
+# COMMENTS:
+# Promo calendar blended/effective-week pricing. 2026-06-18: concurrent promos COMPOUND
+# (multiplicative). 2026-06-19: Effective Week AUR base rebased to the post-markdown price
+# FP*(1-Markdown %) so promos compute off the marked-down base (markdown/promo separation).
+#
+#### CHANGE HISTORY:
+### MODIFICATION DATE  CHANGED BY         COMMENT
+### 2026-04-08         Steve Waterbury    Initial creation
+### 2026-04-13         Steve Waterbury    Blended AUR, weighted contributions, effective week C-level rules
+### 2026-05-01         Steve Waterbury    Qualified ['Active'] feeders as ['Merch Promo Calendar Measure':'Active'] to fix v12 ambiguity
+### 2026-06-18         Steve Waterbury    Stacking: Effective Week AUR = Full Price * PRODUCT(per-promo retained multiplier) via log-sum-exp through All Promos (new leaf 'Ln Retained')
+### 2026-06-19         Steve Waterbury    Markdown/promo split: Effective Week AUR base Full Price -> Full Price * (1 - Markdown %) (post-markdown base)
+#
+#EndRegion
+
+#Region : N-level Calculations
+['Blended AUR'] = N: (['Promo Unit Pct'] * ['Promo AUR']) + ((1 - ['Promo Unit Pct']) * ['Base AUR']);
+['Weighted Blended Contribution'] = N: ['Blended AUR'] * ['Pct of Week'];
+['Weighted BER Contribution'] = N: ['BER'] * ['Pct of Week'];
+['Weighted Lift Contribution'] = N: ['Calc Sales Lift Pct'] * ['Pct of Week'];
+# Per-promo time-weighted retained multiplier m = 1 - Pct of Week * (1 - Blended AUR / Base AUR),
+# stored as LOG(m) so the All Promos consolidation SUMS the logs (log-sum-exp -> product).
+['Ln Retained'] = N: IF(['Base AUR'] = 0, 0, LOG(MAX(0.000001, 1 - ['Pct of Week'] * (1 - ['Blended AUR'] / ['Base AUR']))));
+#EndRegion
+
+#Region : C-level Recalculations
+['Promo AUR'] = C: IF(['Pct of Week'] = 0, 0, ['Weighted AUR Contribution'] / ['Pct of Week']);
+['AUR Impact Pct'] = C: IF(['Base AUR'] = 0, 0, (['Promo AUR'] - ['Base AUR']) / ['Base AUR']);
+#EndRegion
+
+#Region : C-level Effective Week Values
+# Stacked effective week AUR: post-markdown base FP*(1-Markdown %) * PRODUCT over active promos of the
+# per-promo retained multiplier = base * EXP(SUM LOG(m)). Base-agnostic via / LOG(EXP(1)). Markdown is
+# applied first (in the base); promos compound off the marked-down price (markdown/promo separation).
+['Effective Week AUR'] = C: IF(['Pct of Week'] = 0, 0, DB('Merch Forecast', !Merch Version, !Merch Time Period, !Merch SKU, 'Full Price AUR') * (1 - DB('Merch Forecast', !Merch Version, !Merch Time Period, !Merch SKU, 'Markdown %')) * EXP(['Ln Retained'] / LOG(EXP(1))));
+['Effective Week BER'] = C: ['Weighted BER Contribution'];
+['Effective Week Lift'] = C: ['Weighted Lift Contribution'];
+['Effective Markdown Pct'] = C: IF(DB('Merch Forecast', !Merch Version, !Merch Time Period, !Merch SKU, 'Full Price AUR') = 0, 0, (DB('Merch Forecast', !Merch Version, !Merch Time Period, !Merch SKU, 'Full Price AUR') - ['Effective Week AUR']) / DB('Merch Forecast', !Merch Version, !Merch Time Period, !Merch SKU, 'Full Price AUR'));
+['Effective Promo Build'] = C: 1 + ['Effective Week Lift'];
+#EndRegion
+
+FEEDERS;
+
+#Region : Feeders
+['Weighted AUR Contribution'] => ['Promo AUR'];
+['Promo AUR'] => ['AUR Impact Pct'];
+['Merch Promo Calendar Measure':'Active'] => ['Pct of Week'];
+['Merch Promo Calendar Measure':'Active'] => ['Base AUR'];
+['Merch Promo Calendar Measure':'Active'] => ['Promo AUR'];
+['Merch Promo Calendar Measure':'Active'] => ['AUR Impact Pct'];
+['Merch Promo Calendar Measure':'Active'] => ['Weighted AUR Contribution'];
+['Merch Promo Calendar Measure':'Active'] => ['Promo Unit Pct'];
+['Merch Promo Calendar Measure':'Active'] => ['BER'];
+['Merch Promo Calendar Measure':'Active'] => ['Blended AUR'];
+['Merch Promo Calendar Measure':'Active'] => ['Weighted Blended Contribution'];
+['Merch Promo Calendar Measure':'Active'] => ['Weighted BER Contribution'];
+['Merch Promo Calendar Measure':'Active'] => ['Weighted Lift Contribution'];
+['Merch Promo Calendar Measure':'Active'] => ['Calc Sales Lift Pct'];
+['Merch Promo Calendar Measure':'Active'] => ['Sales Lift Adjustment'];
+['Merch Promo Calendar Measure':'Active'] => ['Ln Retained'];
+['Promo Unit Pct'] => ['Blended AUR'];
+['Promo AUR'] => ['Blended AUR'];
+['Blended AUR'] => ['Weighted Blended Contribution'];
+['BER'] => ['Weighted BER Contribution'];
+['Weighted Blended Contribution'] => ['Effective Week AUR'];
+['Ln Retained'] => ['Effective Week AUR'];
+['Weighted BER Contribution'] => ['Effective Week BER'];
+['Weighted Lift Contribution'] => ['Effective Week Lift'];
+['Effective Week AUR'] => ['Effective Markdown Pct'];
+['Effective Week Lift'] => ['Effective Promo Build'];
+#EndRegion
+
+#Region : Rule Footer
+#############################
+##~~ End Rule File ~~##
+#############################
+#EndRegion

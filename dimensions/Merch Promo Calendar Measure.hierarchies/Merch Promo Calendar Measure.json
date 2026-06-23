@@ -1,0 +1,132 @@
+{
+	"@type":"Hierarchy",
+	"Name":"Merch Promo Calendar Measure",
+	"Elements":
+	[
+		{
+			"Name":"Active",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Promo Type",
+			"Type":"String"
+		},
+		{
+			"Name":"Promo Name",
+			"Type":"String"
+		},
+		{
+			"Name":"Begin Date",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"End Date",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Pct of Week",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Base AUR",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Promo AUR",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"AUR Impact Pct",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Weighted AUR Contribution",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Pro Only",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Promo Unit Pct",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"BER",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Blended AUR",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Weighted Blended Contribution",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Weighted BER Contribution",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Weighted Lift Contribution",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Effective Week AUR",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Effective Week BER",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Effective Week Lift",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Effective Markdown Pct",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Effective Promo Build",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Calc Sales Lift Pct",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Sales Lift Adjustment",
+			"Type":"Numeric"
+		},
+		{
+			"Name":"Sales Lift Pct",
+			"Type":"Consolidated"
+		},
+		{
+			"Name":"Ln Retained",
+			"Type":"Numeric"
+		}
+	],
+	"Edges":
+	[
+		{
+			"ParentName":"Sales Lift Pct",
+			"ComponentName":"Calc Sales Lift Pct",
+			"Weight":1
+		},
+		{
+			"ParentName":"Sales Lift Pct",
+			"ComponentName":"Sales Lift Adjustment",
+			"Weight":1
+		}
+	],
+	"Subsets@Code.links":
+	[
+		"Merch Promo Calendar Measure.subsets/}Drill_PromoAURCalc_Forecast_FY25-W01_417304.json",
+		"Merch Promo Calendar Measure.subsets/}Drill_PromoAURCalc_Forecast_FY26-W05_198844.json",
+		"Merch Promo Calendar Measure.subsets/}Drill_PromoAURCalc_Forecast_FY26-W06_417304.json",
+		"Merch Promo Calendar Measure.subsets/}Drill_PromoAURCalc_Forecast_FY26-W13_424544.json",
+		"Merch Promo Calendar Measure.subsets/}Drill_PromoAURCalc_Forecast_FY26-W21_396089.json"
+	]
+}

@@ -1,0 +1,5 @@
+{
+	"@type":"Subset",
+	"Name":"}Drill_PromoAURCalc_Forecast_FY26-W21_396089",
+	"Expression":"{[Merch Promo Calendar Measure].[Merch Promo Calendar Measure].MEMBERS}"
+}

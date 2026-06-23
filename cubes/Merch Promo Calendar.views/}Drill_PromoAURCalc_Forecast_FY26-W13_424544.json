@@ -1,0 +1,54 @@
+{
+	"@type":"NativeView",
+	"Name":"}Drill_PromoAURCalc_Forecast_FY26-W13_424544",
+	"Columns":
+	[
+		{
+			"Subset":
+			{
+				"@id":"Dimensions('Merch Promo Calendar Measure')/Hierarchies('Merch Promo Calendar Measure')/Subsets('}Drill_PromoAURCalc_Forecast_FY26-W13_424544')"
+			}
+		}
+	],
+	"Rows":
+	[
+		{
+			"Subset":
+			{
+				"@id":"Dimensions('Merch SKU')/Hierarchies('Merch SKU')/Subsets('}Drill_PromoAURCalc_Forecast_FY26-W13_424544')"
+			}
+		},
+		{
+			"Subset":
+			{
+				"@id":"Dimensions('Merch Promo ID')/Hierarchies('Merch Promo ID')/Subsets('}Drill_PromoAURCalc_Forecast_FY26-W13_424544')"
+			}
+		}
+	],
+	"Titles":
+	[
+		{
+			"Subset":
+			{
+				"@id":"Dimensions('Merch Version')/Hierarchies('Merch Version')/Subsets('}Drill_PromoAURCalc_Forecast_FY26-W13_424544')"
+			},
+			"Selected":
+			{
+				"@id":"Dimensions('Merch Version')/Hierarchies('Merch Version')/Elements('Forecast')"
+			}
+		},
+		{
+			"Subset":
+			{
+				"@id":"Dimensions('Merch Time Period')/Hierarchies('Merch Time Period')/Subsets('}Drill_PromoAURCalc_Forecast_FY26-W13_424544')"
+			},
+			"Selected":
+			{
+				"@id":"Dimensions('Merch Time Period')/Hierarchies('Merch Time Period')/Elements('FY26-W13')"
+			}
+		}
+	],
+	"SuppressEmptyColumns":false,
+	"SuppressEmptyRows":false,
+	"FormatString":""
+}

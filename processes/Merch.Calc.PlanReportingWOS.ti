@@ -1,0 +1,175 @@
+#region Prolog
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+#Region : Process Header
+# DEVELOPER : Steve Waterbury
+# CREATED ON : 2026-06-18
+# LAST UPDATE: 2026-06-19
+# CHANGED BY : Steve Waterbury
+# COMMENTS:
+# SECONDARY/WORKER process: stored forward Weeks-of-Supply on Merch Plan Reporting.
+# Driver = TM1CubeView over Merch Plan Reporting: Opening Inventory ON COLUMNS,
+# NON EMPTY {SKUs} * {Channel leaves} * {Lifecycle leaves} ON ROWS, WHERE(Version, sFirstOpen).
+# Channel & Lifecycle come from the view records (cube dims). Per record: per-week forward walk.
+# pPartIdx makes the runtime view name unique so parallel workers (dispatched by .Orch) don't collide.
+#### CHANGE HISTORY:
+###   2026-06-18 | Steve Waterbury | Initial (plan 908774392cf2)
+###   2026-06-19 | Steve Waterbury | REWRITE to receipts-seed logic
+###   2026-06-19 | Steve Waterbury | PERF v1: single lifecycle + skip zero-split channels
+###   2026-06-19 | Steve Waterbury | REDESIGN: driver = NON EMPTY PR cube view (Channel/Lifecycle from view; SkipZeroes=1)
+###   2026-06-19 | Steve Waterbury | pPartIdx param -> unique view name TI_PRWOS_<pPartIdx> for parallel orchestration
+#EndRegion
+
+cProcessName = GetProcessName();
+
+cDst = 'Merch Plan Reporting';
+cTP = 'Merch Time Period';
+cVerDim = 'Merch Version';
+cMeasUnits = 'Units';
+cMeasOI = 'Opening Inventory';
+cMeasOnOrder = 'On Order';
+cMeasReceipts = 'Receipts';
+cAttrNext = 'Next Week';
+cAttrSerial = 'Start_Date_Serial';
+cAttrLCP = 'Last_Closed_Period';
+
+IF(pVersion @= '');
+  LogOutput('ERROR', cProcessName | ' | pVersion required', 1);
+  ProcessError;
+ENDIF;
+IF(DIMIX(cVerDim, pVersion) = 0);
+  LogOutput('ERROR', cProcessName | ' | Version missing: ' | pVersion, 1);
+  ProcessError;
+ENDIF;
+IF(pTargetMeasure @= '');
+  pTargetMeasure = 'WOS';
+ENDIF;
+IF(DIMIX('Merch Plan Reporting Measure', pTargetMeasure) = 0);
+  LogOutput('ERROR', cProcessName | ' | Target measure missing: ' | pTargetMeasure, 1);
+  ProcessError;
+ENDIF;
+
+nLCP = ATTRN(cVerDim, pVersion, cAttrLCP);
+nWritten = 0;
+nRecs = 0;
+
+sFirstOpen = '';
+nBest = 0;
+nTPsz = DIMSIZ(cTP);
+nI = 1;
+WHILE(nI <= nTPsz);
+  sWk = DIMNM(cTP, nI);
+  IF(ELLEV(cTP, sWk) = 0);
+    nSer = ATTRN(cTP, sWk, cAttrSerial);
+    IF(nSer >= nLCP & (sFirstOpen @= '' % nSer < nBest));
+      sFirstOpen = sWk;
+      nBest = nSer;
+    ENDIF;
+  ENDIF;
+  nI = nI + 1;
+END;
+IF(sFirstOpen @= '');
+  LogOutput('ERROR', cProcessName | ' | No forward week >= LCP found', 1);
+  ProcessError;
+ENDIF;
+
+IF(pSKU @<> '');
+  sSkuSet = '{[Merch SKU].[Merch SKU].[' | pSKU | ']}';
+ELSE;
+  IF(pSKUElement @<> '');
+    sSkuSet = '{TM1FILTERBYLEVEL({DESCENDANTS([Merch SKU].[Roles].[' | pSKUElement | '])},0)}';
+  ELSE;
+    sSkuSet = '{TM1FILTERBYLEVEL({TM1SUBSETALL([Merch SKU].[Merch SKU])},0)}';
+  ENDIF;
+ENDIF;
+sChanSet = '{TM1FILTERBYLEVEL({TM1SUBSETALL([Merch Channel])},0)}';
+sLcSet = '{TM1FILTERBYLEVEL({TM1SUBSETALL([Merch Lifecycle])},0)}';
+
+sView = 'TI_PRWOS_' | TRIM(STR(pPartIdx, 10, 0));
+sMDX = 'SELECT {[Merch Plan Reporting Measure].[Merch Plan Reporting Measure].[' | cMeasOI | ']} ON COLUMNS, '
+  | 'NON EMPTY ' | sSkuSet | ' * ' | sChanSet | ' * ' | sLcSet | ' ON ROWS '
+  | 'FROM [Merch Plan Reporting] WHERE ([Merch Version].[Merch Version].[' | pVersion | '], [Merch Time Period].[Merch Time Period].[' | sFirstOpen | '])';
+IF(ViewExists(cDst, sView) = 1); ViewDestroy(cDst, sView); ENDIF;
+ViewCreateByMDX(cDst, sView, sMDX, 1);
+ViewExtractSkipCalcsSet(cDst, sView, 1);
+ViewExtractSkipZeroesSet(cDst, sView, 1);
+DatasourceType = 'VIEW';
+DatasourceNameForServer = cDst;
+DatasourceCubeview = sView;
+LogOutput('INFO', 'START ' | cProcessName | ' V=' | pVersion | ' Tgt=' | pTargetMeasure | ' Part=' | TRIM(STR(pPartIdx,10,0)) | ' FirstOpen=' | sFirstOpen, 1);
+
+#endregion
+#region Metadata
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+
+#endregion
+#region Data
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+nRecs = nRecs + 1;
+sSKU = vMerch_SKU;
+sCh = vMerch_Channel;
+sLc = vMerch_Lifecycle;
+IF(sSKU @= '' % sCh @= '' % sLc @= '');
+  ItemReject('empty key');
+ENDIF;
+
+nRunningOI = CellGetN(cDst, pVersion, sFirstOpen, sSKU, sCh, sLc, cMeasOI);
+sTP = sFirstOpen;
+WHILE(sTP @<> '');
+  nUnitsTP = CellGetN(cDst, pVersion, sTP, sSKU, sCh, sLc, cMeasUnits);
+  nOnOrderTP = CellGetN(cDst, pVersion, sTP, sSKU, sCh, sLc, cMeasOnOrder);
+  nReceiptTP = CellGetN(cDst, pVersion, sTP, sSKU, sCh, sLc, cMeasReceipts);
+
+  sFwd = sTP;
+  nRemaining = nRunningOI;
+  nWOS = 0;
+  nGuard = 0;
+  WHILE(sFwd @<> '' & nRemaining > 0 & nGuard < 520);
+    nRemaining = nRemaining + CellGetN(cDst, pVersion, sFwd, sSKU, sCh, sLc, cMeasOnOrder);
+    nUnitsFwd = CellGetN(cDst, pVersion, sFwd, sSKU, sCh, sLc, cMeasUnits);
+    IF(nUnitsFwd <= 0);
+      nWOS = nWOS + 1;
+    ELSE;
+      IF(nRemaining >= nUnitsFwd);
+        nRemaining = nRemaining - nUnitsFwd;
+        nWOS = nWOS + 1;
+      ELSE;
+        nWOS = nWOS + (nRemaining \ nUnitsFwd);
+        nRemaining = 0;
+      ENDIF;
+    ENDIF;
+    IF(nRemaining <= 0);
+      sFwd = '';
+    ELSE;
+      sFwd = ATTRS(cTP, sFwd, cAttrNext);
+    ENDIF;
+    nGuard = nGuard + 1;
+  END;
+
+  IF(CellIsUpdateable(cDst, pVersion, sTP, sSKU, sCh, sLc, pTargetMeasure) = 1);
+    CellPutN(nWOS, cDst, pVersion, sTP, sSKU, sCh, sLc, pTargetMeasure);
+    nWritten = nWritten + 1;
+  ENDIF;
+
+  nConsumed = nUnitsTP;
+  IF(nConsumed > nRunningOI + nOnOrderTP + nReceiptTP);
+    nConsumed = nRunningOI + nOnOrderTP + nReceiptTP;
+  ENDIF;
+  nRunningOI = nRunningOI + nOnOrderTP + nReceiptTP - nConsumed;
+  IF(nRunningOI < 0);
+    nRunningOI = 0;
+  ENDIF;
+
+  sTP = ATTRS(cTP, sTP, cAttrNext);
+END;
+
+#endregion
+#region Epilog
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+IF(ViewExists(cDst, sView) = 1); ViewDestroy(cDst, sView); ENDIF;
+LogOutput('INFO', 'END ' | cProcessName | ' Part=' | TRIM(STR(pPartIdx,10,0)) | ' Recs=' | TRIM(STR(nRecs, 10, 0)) | ' Written=' | TRIM(STR(nWritten, 10, 0)), 1);
+
+#endregion

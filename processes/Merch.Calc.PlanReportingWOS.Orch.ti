@@ -1,0 +1,122 @@
+#region Prolog
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+#Region : Process Header
+# DEVELOPER : Steve Waterbury
+# CREATED ON : 2026-06-19
+# LAST UPDATE: 2026-06-19
+# CHANGED BY : Steve Waterbury
+# COMMENTS: ORCHESTRATOR for stored WOS. Dispatch is DATASOURCE-driven: a TM1DimensionSubset over
+#  Merch SKU:Roles (Roles-L4 subset built here in Prolog) - the Data tab iterates the nodes and
+#  RunProcess-es Merch.Calc.PlanReportingWOS per node with a unique pPartIdx (row counter).
+#  pUseRunProcess=1 -> parallel; 0 -> serial. Epilog joins via WaitForInternalJobs.
+#### CHANGE HISTORY:
+### 2026-06-19  Steve Waterbury  Initial Epilog-loop version. Design plan 908774392cf2.
+### 2026-06-19  Steve Waterbury  REWRITE: datasource-driven dispatch (TM1DimensionSubset Roles-L4) per standard; row-counter pPartIdx. Design plan 908774392cf2.
+#EndRegion
+cProcessName = GetProcessName();
+sLogLevel = CellGetS('ProcessControl', cProcessName, 'LoggingLevel');
+IF(sLogLevel @= '');
+  sLogLevel = 'OFF';
+ENDIF;
+bLogInfo = 0;
+IF(sLogLevel @= 'INFO' % sLogLevel @= 'DEBUG');
+  bLogInfo = 1;
+ENDIF;
+
+nUseRun = NUMBR(pUseRunProcess);
+sJobIDs = '';
+IF(pVersion @= '');
+  LogOutput('ERROR', cProcessName | ' | pVersion required', 1);
+  ProcessError;
+ENDIF;
+IF(DIMIX('Merch Version', pVersion) = 0);
+  LogOutput('ERROR', cProcessName | ' | Invalid pVersion: ' | pVersion, 1);
+  ProcessError;
+ENDIF;
+sTgt = pTargetMeasure;
+IF(sTgt @= '');
+  sTgt = 'WOS';
+ENDIF;
+sRoot = pSKUElement;
+IF(sRoot @= '');
+  sRoot = 'Director';
+ENDIF;
+IF(HierarchyElementExists('Merch SKU', 'Roles', sRoot) = 0);
+  LogOutput('ERROR', cProcessName | ' | Invalid pSKUElement (not in Roles hier): ' | sRoot, 1);
+  ProcessError;
+ENDIF;
+
+nPartIdx = 0;
+nDispatched = 0;
+
+sSub = 'TI_WOSOrchSub_' | TRIM(STR(NOW, 15, 0));
+IF(HierarchySubsetExists('Merch SKU', 'Roles', sSub) = 1);
+  HierarchySubsetDestroy('Merch SKU', 'Roles', sSub);
+ENDIF;
+sMDX = '{FILTER({DESCENDANTS([Merch SKU].[Roles].[' | sRoot | '])}, [Merch SKU].[Roles].CurrentMember.LEVEL.ORDINAL = 4)}';
+SubsetCreateByMDX(sSub, sMDX);
+
+DatasourceType = 'SUBSET';
+DatasourceNameForServer = 'Merch SKU:Roles';
+DatasourceDimensionSubset = sSub;
+IF(bLogInfo = 1);
+  LogOutput('INFO', 'START ' | cProcessName | ' V=' | pVersion | ' Root=' | sRoot | ' Parallel=' | TRIM(STR(nUseRun,1,0)), 1);
+ENDIF;
+
+#endregion
+#region Metadata
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+
+#endregion
+#region Data
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+nPartIdx = nPartIdx + 1;
+sNode = vMerch_SKU;
+IF(sNode @= '');
+  ItemReject('empty node');
+ENDIF;
+IF(nUseRun = 1);
+  sJobId = RunProcess('Merch.Calc.PlanReportingWOS', 'pVersion', pVersion, 'pSKUElement', sNode, 'pSKU', '', 'pTargetMeasure', sTgt, 'pPartIdx', nPartIdx);
+  IF(sJobIDs @= '');
+    sJobIDs = sJobId;
+  ELSE;
+    sJobIDs = sJobIDs | ',' | sJobId;
+  ENDIF;
+ELSE;
+  nRC = ExecuteProcess('Merch.Calc.PlanReportingWOS', 'pVersion', pVersion, 'pSKUElement', sNode, 'pSKU', '', 'pTargetMeasure', sTgt, 'pPartIdx', nPartIdx);
+ENDIF;
+nDispatched = nDispatched + 1;
+
+#endregion
+#region Epilog
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+IF(nDispatched = 0);
+  IF(nUseRun = 1);
+    sJobId = RunProcess('Merch.Calc.PlanReportingWOS', 'pVersion', pVersion, 'pSKUElement', sRoot, 'pSKU', '', 'pTargetMeasure', sTgt, 'pPartIdx', 1);
+    IF(sJobIDs @= '');
+      sJobIDs = sJobId;
+    ELSE;
+      sJobIDs = sJobIDs | ',' | sJobId;
+    ENDIF;
+  ELSE;
+    nRC = ExecuteProcess('Merch.Calc.PlanReportingWOS', 'pVersion', pVersion, 'pSKUElement', sRoot, 'pSKU', '', 'pTargetMeasure', sTgt, 'pPartIdx', 1);
+  ENDIF;
+  nDispatched = 1;
+ENDIF;
+IF(nUseRun = 1);
+  IF(sJobIDs @<> '');
+    WaitForAllJobs(sJobIDs);
+  ENDIF;
+ENDIF;
+IF(HierarchySubsetExists('Merch SKU', 'Roles', sSub) = 1);
+  HierarchySubsetDestroy('Merch SKU', 'Roles', sSub);
+ENDIF;
+IF(bLogInfo = 1);
+  LogOutput('INFO', 'END ' | cProcessName | ' Root=' | sRoot | ' Dispatched=' | TRIM(STR(nDispatched,10,0)), 1);
+ENDIF;
+
+#endregion
