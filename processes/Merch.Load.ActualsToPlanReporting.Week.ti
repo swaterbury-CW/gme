@@ -1,0 +1,175 @@
+#region Prolog
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+#Region : Process Header
+# DEVELOPER : Steve Waterbury
+# CREATED ON : 2026-06-24
+# LAST UPDATE: 2026-06-24
+# CHANGED BY : Steve Waterbury
+# COMMENTS: Per-week worker for week-parallel ActualsToPlanReporting. Loads Merch Actuals -> Merch Plan
+#  Reporting (Actual) for ONE week (pTimePeriod) with an attribute-driven native-view clear of that week's
+#  mapped-measure footprint. pPartIdx makes view/subset names collision-free under parallel dispatch.
+#  Light: NO WOS, NO calc-version copy (the orchestrator runs those once). Design plan bb17626fc2af.
+#### CHANGE HISTORY:
+###   2026-06-24 | Steve Waterbury | Initial. Design plan bb17626fc2af.
+#EndRegion
+
+cProcessName = GetProcessName();
+sLogLevel = CellGetS('ProcessControl', cProcessName, 'LoggingLevel');
+IF(sLogLevel @= ''); sLogLevel = 'OFF'; ENDIF;
+bLogInfo = 0;
+IF(sLogLevel @= 'INFO' % sLogLevel @= 'DEBUG'); bLogInfo = 1; ENDIF;
+
+IF(pTimePeriod @= '');
+  LogOutput('ERROR', cProcessName | ' | pTimePeriod required', 1);
+  ProcessError;
+ENDIF;
+IF(DIMIX('Merch Time Period', pTimePeriod) = 0);
+  LogOutput('ERROR', cProcessName | ' | Time period not found: ' | pTimePeriod, 1);
+  ProcessError;
+ENDIF;
+
+nPartIdx = pPartIdx;
+IF(nPartIdx <= 0); nPartIdx = 1; ENDIF;
+sSfx = TRIM(STR(nPartIdx, 15, 0));
+
+cSrcCube = 'Merch Actuals';
+cDstCube = 'Merch Plan Reporting';
+cVersion = 'Actual';
+cMeasDim = 'Merch Actuals Measure';
+cTgtMeasDim = 'Merch Plan Reporting Measure';
+cLifecycleDim = 'Merch Lifecycle';
+cSKUDim = 'Merch SKU';
+cDefaultLifecycle = 'Active';
+cMapAttribute = 'Forecast Measure Map';
+cLifecycleAttr = 'Lifecycle_Status_Description';
+nCellsWritten = 0;
+nSkipped = 0;
+nRecordCount = 0;
+
+# Clear-before-load: mapped target-measure list from Forecast Measure Map (leaf actuals only), then native-view ViewZeroOut the Actual footprint for THIS week. No crossjoin -> sparse-walk, OOM-safe.
+sMeMembers = '';
+nAMsz = DIMSIZ(cMeasDim);
+iAM = 1;
+WHILE(iAM <= nAMsz);
+  sAMe = DIMNM(cMeasDim, iAM);
+  IF(ELLEV(cMeasDim, sAMe) = 0);
+    sTgt = ATTRS(cMeasDim, sAMe, cMapAttribute);
+    IF(sTgt @<> '' & DIMIX(cTgtMeasDim, sTgt) > 0);
+      sMbr = '[' | cTgtMeasDim | '].[' | cTgtMeasDim | '].[' | sTgt | ']';
+      IF(SCAN(sMbr, sMeMembers) = 0);
+        IF(sMeMembers @= ''); sMeMembers = sMbr; ELSE; sMeMembers = sMeMembers | ',' | sMbr; ENDIF;
+      ENDIF;
+    ENDIF;
+  ENDIF;
+  iAM = iAM + 1;
+END;
+
+IF(sMeMembers @<> '');
+  sClrV = 'TI_ATPRwk_clr_' | sSfx;
+  sCSv = sClrV | '_ver';
+  sCSt = sClrV | '_tp';
+  sCSs = sClrV | '_sku';
+  sCSc = sClrV | '_ch';
+  sCSl = sClrV | '_lc';
+  sCSm = sClrV | '_me';
+  IF(SubsetExists('Merch Version', sCSv) = 1); SubsetDestroy('Merch Version', sCSv); ENDIF;
+  SubsetCreateByMDX(sCSv, '{[Merch Version].[Merch Version].[' | cVersion | ']}');
+  IF(SubsetExists('Merch Time Period', sCSt) = 1); SubsetDestroy('Merch Time Period', sCSt); ENDIF;
+  SubsetCreateByMDX(sCSt, '{TM1FILTERBYLEVEL({DESCENDANTS([Merch Time Period].[Merch Time Period].[' | pTimePeriod | '])}, 0)}');
+  IF(SubsetExists(cSKUDim, sCSs) = 1); SubsetDestroy(cSKUDim, sCSs); ENDIF;
+  SubsetCreateByMDX(sCSs, '{TM1FILTERBYLEVEL({TM1SUBSETALL([Merch SKU].[Merch SKU])}, 0)}');
+  IF(SubsetExists('Merch Channel', sCSc) = 1); SubsetDestroy('Merch Channel', sCSc); ENDIF;
+  SubsetCreateByMDX(sCSc, '{TM1FILTERBYLEVEL({TM1SUBSETALL([Merch Channel].[Merch Channel])}, 0)}');
+  IF(SubsetExists(cLifecycleDim, sCSl) = 1); SubsetDestroy(cLifecycleDim, sCSl); ENDIF;
+  SubsetCreateByMDX(sCSl, '{TM1FILTERBYLEVEL({TM1SUBSETALL([Merch Lifecycle].[Merch Lifecycle])}, 0)}');
+  IF(SubsetExists(cTgtMeasDim, sCSm) = 1); SubsetDestroy(cTgtMeasDim, sCSm); ENDIF;
+  SubsetCreateByMDX(sCSm, '{' | sMeMembers | '}');
+  IF(ViewExists(cDstCube, sClrV) = 1); ViewDestroy(cDstCube, sClrV); ENDIF;
+  ViewCreate(cDstCube, sClrV);
+  ViewSubsetAssign(cDstCube, sClrV, 'Merch Version', sCSv);
+  ViewSubsetAssign(cDstCube, sClrV, 'Merch Time Period', sCSt);
+  ViewSubsetAssign(cDstCube, sClrV, 'Merch SKU', sCSs);
+  ViewSubsetAssign(cDstCube, sClrV, 'Merch Channel', sCSc);
+  ViewSubsetAssign(cDstCube, sClrV, 'Merch Lifecycle', sCSl);
+  ViewSubsetAssign(cDstCube, sClrV, cTgtMeasDim, sCSm);
+  ViewExtractSkipCalcsSet(cDstCube, sClrV, 1);
+  ViewSuppressZeroesSet(cDstCube, sClrV, 1);
+  ViewZeroOut(cDstCube, sClrV);
+  IF(ViewExists(cDstCube, sClrV) = 1); ViewDestroy(cDstCube, sClrV); ENDIF;
+  IF(SubsetExists('Merch Version', sCSv) = 1); SubsetDestroy('Merch Version', sCSv); ENDIF;
+  IF(SubsetExists('Merch Time Period', sCSt) = 1); SubsetDestroy('Merch Time Period', sCSt); ENDIF;
+  IF(SubsetExists(cSKUDim, sCSs) = 1); SubsetDestroy(cSKUDim, sCSs); ENDIF;
+  IF(SubsetExists('Merch Channel', sCSc) = 1); SubsetDestroy('Merch Channel', sCSc); ENDIF;
+  IF(SubsetExists(cLifecycleDim, sCSl) = 1); SubsetDestroy(cLifecycleDim, sCSl); ENDIF;
+  IF(SubsetExists(cTgtMeasDim, sCSm) = 1); SubsetDestroy(cTgtMeasDim, sCSm); ENDIF;
+ENDIF;
+
+sView = 'TI_ATPRwk_' | sSfx;
+sMDX = 'SELECT {TM1FILTERBYLEVEL({TM1SUBSETALL([Merch Actuals Measure])}, 0)} ON COLUMNS, '
+  | 'NON EMPTY {TM1FILTERBYLEVEL({DESCENDANTS([Merch Time Period].[' | pTimePeriod | '])}, 0)} '
+  | '* {TM1FILTERBYLEVEL({TM1SUBSETALL([Merch SKU].[Merch SKU])}, 0)} '
+  | '* {TM1FILTERBYLEVEL({TM1SUBSETALL([Merch Channel])}, 0)} ON ROWS '
+  | 'FROM [Merch Actuals]';
+ViewCreateByMDX(cSrcCube, sView, sMDX, 1);
+ViewExtractSkipCalcsSet(cSrcCube, sView, 0);
+ViewExtractSkipZeroesSet(cSrcCube, sView, 1);
+DatasourceType = 'VIEW';
+DatasourceNameForServer = cSrcCube;
+DatasourceCubeview = sView;
+
+#endregion
+#region Metadata
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+
+#endregion
+#region Data
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+nRecordCount = nRecordCount + 1;
+
+sMeasure = ATTRS(cMeasDim, vMerch_Actuals_Measure, cMapAttribute);
+IF(sMeasure @= '');
+  ItemSkip;
+ENDIF;
+IF(DIMIX(cTgtMeasDim, sMeasure) = 0);
+  ItemReject('Mapped measure not in target dim: ' | sMeasure);
+ENDIF;
+
+sLifecycle = ATTRS(cSKUDim, vMerch_SKU, cLifecycleAttr);
+IF(sLifecycle @= '');
+  sLifecycle = cDefaultLifecycle;
+ENDIF;
+IF(DIMIX(cLifecycleDim, sLifecycle) = 0);
+  sLifecycle = cDefaultLifecycle;
+ENDIF;
+IF(DTYPE(cLifecycleDim, sLifecycle) @<> 'N');
+  sLifecycle = cDefaultLifecycle;
+ENDIF;
+
+nVal = Value;
+IF(nVal = 0);
+  ItemSkip;
+ENDIF;
+
+IF(CellIsUpdateable(cDstCube, cVersion, vMerch_Time_Period, vMerch_SKU, vMerch_Channel, sLifecycle, sMeasure) = 0);
+  nSkipped = nSkipped + 1;
+  ItemSkip;
+ENDIF;
+
+CellPutN(nVal, cDstCube, cVersion, vMerch_Time_Period, vMerch_SKU, vMerch_Channel, sLifecycle, sMeasure);
+nCellsWritten = nCellsWritten + 1;
+
+#endregion
+#region Epilog
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+IF(ViewExists(cSrcCube, sView) = 1);
+  ViewDestroy(cSrcCube, sView);
+ENDIF;
+IF(bLogInfo = 1);
+  LogOutput('INFO', 'END.Week: ' | cProcessName | ' | TP=' | pTimePeriod | ' | Records=' | TRIM(STR(nRecordCount, 10, 0)) | ' | Written=' | TRIM(STR(nCellsWritten, 10, 0)) | ' | Skipped=' | TRIM(STR(nSkipped, 10, 0)), 1);
+ENDIF;
+
+#endregion

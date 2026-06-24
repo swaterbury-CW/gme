@@ -6,11 +6,11 @@
 # CREATED ON : 2026-06-19
 # LAST UPDATE: 2026-06-24
 # CHANGED BY : Steve Waterbury
-# COMMENTS: Version copy for the 6-dim Merch Plan Reporting cube (Actual/calc versions). Native view
-#  (one subset per dimension, NO crossjoin MDX). Data tab reads SOURCE via CellGetN/CellGetS, writes TARGET.
+# COMMENTS: Version copy for the 6-dim Merch Plan Reporting cube. Native view (one subset per dimension, NO crossjoin).
 #### CHANGE HISTORY:
 ### 2026-06-19  Steve Waterbury  Initial native-view PR version copy. Design plan 908774392cf2.
-### 2026-06-24  Steve Waterbury  Add pClear (default 1): clear-before-load of the target version footprint (KB Clear-Before-Load Pattern). Design plan 8f6ff1437676.
+### 2026-06-24  Steve Waterbury  Add pClear (default 1) clear-before-load. Design plan 8f6ff1437676.
+### 2026-06-24  Steve Waterbury  Add pPartIdx for collision-free view names under parallel fan-out. Design plan bb17626fc2af.
 #EndRegion
 cProcessName = GetProcessName();
 sLogLevel = CellGetS('ProcessControl', cProcessName, 'LoggingLevel');
@@ -33,6 +33,12 @@ IF(DIMIX('Merch Version', pSourceVersion) = 0 % DIMIX('Merch Version', pTargetVe
 ENDIF;
 
 nClear = pClear;
+nPartIdx = pPartIdx;
+IF(nPartIdx > 0);
+  sSfx = TRIM(STR(nPartIdx, 15, 0));
+ELSE;
+  sSfx = TRIM(STR(NOW, 15, 0));
+ENDIF;
 sTargetVersionType = ATTRS('Merch Version', pTargetVersion, 'Version_Type');
 nSkipRuleCalcs = 1;
 IF(sTargetVersionType @= 'Static');
@@ -40,7 +46,7 @@ IF(sTargetVersionType @= 'Static');
 ENDIF;
 
 cCube = 'Merch Plan Reporting';
-sView = 'TI_CopyPR_' | TRIM(STR(NOW, 15, 0));
+sView = 'TI_CopyPR_' | sSfx;
 sSubVer = sView | '_ver';
 sSubTP = sView | '_tp';
 sSubSKU = sView | '_sku';
@@ -77,7 +83,7 @@ IF(SubsetExists('Merch Plan Reporting Measure', sSubMe) = 1);
 ENDIF;
 SubsetCreateByMDX(sSubMe, '{TM1FILTERBYLEVEL({TM1SUBSETALL([Merch Plan Reporting Measure].[Merch Plan Reporting Measure])}, 0)}');
 
-# Clear-before-load: zero the TARGET version footprint (native subsets, no crossjoin) so stale cells the source no longer covers are removed. KB: Clear-Before-Load Pattern + View Construction.
+# Clear-before-load: zero the TARGET version footprint (native subsets, no crossjoin). KB Clear-Before-Load Pattern.
 IF(nClear >= 1);
   sClrView = sView | '_clr';
   sSubVerT = sView | '_vert';
@@ -120,7 +126,7 @@ DatasourceType = 'VIEW';
 DatasourceNameForServer = cCube;
 DatasourceCubeview = sView;
 IF(bLogInfo = 1);
-  LogOutput('INFO', 'START ' | cProcessName | ' | ' | pSourceVersion | ' -> ' | pTargetVersion | ' | Clear=' | TRIM(STR(nClear, 3, 0)), 1);
+  LogOutput('INFO', 'START ' | cProcessName | ' | ' | pSourceVersion | ' -> ' | pTargetVersion | ' | Clear=' | TRIM(STR(nClear, 3, 0)) | ' | Part=' | sSfx, 1);
 ENDIF;
 
 #endregion

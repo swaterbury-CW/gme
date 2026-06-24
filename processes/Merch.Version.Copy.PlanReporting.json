@@ -29,6 +29,12 @@
 			"Prompt":"Clear target first (1=yes)",
 			"Value":1,
 			"Type":"Numeric"
+		},
+		{
+			"Name":"pPartIdx",
+			"Prompt":"Parallel part index (0=use NOW)",
+			"Value":0,
+			"Type":"Numeric"
 		}
 	],
 	"Variables":
