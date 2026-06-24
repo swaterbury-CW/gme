@@ -1,46 +1,34 @@
 {
 	"@type":"Process",
-	"Name":"Merch.Load.BudgetToForecast",
+	"Name":"Merch.Version.Copy.PlanReporting",
 	"HasSecurityAccess":false,
-	"Code@Code.link":"Merch.Load.BudgetToForecast.ti",
+	"Code@Code.link":"Merch.Version.Copy.PlanReporting.ti",
 	"DataSource":
 	{
 		"Type":"TM1CubeView",
-		"dataSourceNameForServer":"Merch Budget Staging",
-		"dataSourceNameForClient":"Merch Budget Staging",
-		"view":"TI_BudgetToFcst_bootstrap"
+		"dataSourceNameForServer":"Merch Plan Reporting",
+		"dataSourceNameForClient":"Merch Plan Reporting",
+		"view":"TI_CopyPR_placeholder"
 	},
 	"Parameters":
 	[
 		{
 			"Name":"pSourceVersion",
-			"Prompt":"Source Version",
-			"Value":"Budget",
+			"Prompt":"Source version",
+			"Value":"Actual",
 			"Type":"String"
 		},
 		{
 			"Name":"pTargetVersion",
-			"Prompt":"Target Version",
-			"Value":"Budget",
-			"Type":"String"
-		},
-		{
-			"Name":"pTimePeriod",
-			"Prompt":"Time Period",
-			"Value":"",
-			"Type":"String"
-		},
-		{
-			"Name":"pLifecycle",
-			"Prompt":"Lifecycle",
-			"Value":"Active",
+			"Prompt":"Target version",
+			"Value":"Forecast",
 			"Type":"String"
 		}
 	],
 	"Variables":
 	[
 		{
-			"Name":"vMerch_Budget_Measure",
+			"Name":"vMerch_Version",
 			"Type":"String",
 			"Position":1,
 			"StartByte":0,
@@ -61,16 +49,31 @@
 			"EndByte":0
 		},
 		{
-			"Name":"vMerch_Version",
+			"Name":"vMerch_Channel",
 			"Type":"String",
 			"Position":4,
 			"StartByte":0,
 			"EndByte":0
+		},
+		{
+			"Name":"vMerch_Lifecycle",
+			"Type":"String",
+			"Position":5,
+			"StartByte":0,
+			"EndByte":0
+		},
+		{
+			"Name":"vMerch_Plan_Reporting_Measure",
+			"Type":"String",
+			"Position":6,
+			"StartByte":0,
+			"EndByte":0
 		}
 	],
-	"UID": "17785081350003",
 	"UIData": "CubeAction=1511\fDataAction=1503\fCubeLogChanges=0\f",
 	"VariablesUIData": [
+		"VarType=32\fColType=827\f",
+		"VarType=32\fColType=827\f",
 		"VarType=32\fColType=827\f",
 		"VarType=32\fColType=827\f",
 		"VarType=32\fColType=827\f",

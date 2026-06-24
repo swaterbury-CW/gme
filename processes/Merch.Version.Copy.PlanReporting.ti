@@ -1,0 +1,147 @@
+#region Prolog
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+#Region : Process Header
+# DEVELOPER : Steve Waterbury
+# CREATED ON : 2026-06-19
+# LAST UPDATE: 2026-06-19
+# CHANGED BY : Steve Waterbury
+# COMMENTS: Version copy for the 6-dim Merch Plan Reporting cube (Actual/calc versions). Uses a NATIVE
+#  view (one subset per dimension, NO crossjoin MDX) so TM1 sparse-walks populated cells - avoids the
+#  row-axis crossjoin OOM. Data tab reads the SOURCE cell via CellGetN/CellGetS (no Value-binding) and
+#  writes the TARGET. Version subset pinned to pSourceVersion; other 5 dims all-leaf subsets; SkipZeroes.
+#### CHANGE HISTORY:
+### 2026-06-19  Steve Waterbury  Initial native-view PR version copy. Design plan 908774392cf2.
+#EndRegion
+cProcessName = GetProcessName();
+sLogLevel = CellGetS('ProcessControl', cProcessName, 'LoggingLevel');
+IF(sLogLevel @= '');
+  sLogLevel = 'OFF';
+ENDIF;
+bLogInfo = 0;
+IF(sLogLevel @= 'INFO' % sLogLevel @= 'DEBUG');
+  bLogInfo = 1;
+ENDIF;
+nCellsCopied = 0;
+
+IF(pSourceVersion @= '' % pTargetVersion @= '');
+  LogOutput('ERROR', cProcessName | ' | Missing version param', 1);
+  ProcessError;
+ENDIF;
+IF(DIMIX('Merch Version', pSourceVersion) = 0 % DIMIX('Merch Version', pTargetVersion) = 0);
+  LogOutput('ERROR', cProcessName | ' | Bad version', 1);
+  ProcessError;
+ENDIF;
+
+sTargetVersionType = ATTRS('Merch Version', pTargetVersion, 'Version_Type');
+nSkipRuleCalcs = 1;
+IF(sTargetVersionType @= 'Static');
+  nSkipRuleCalcs = 0;
+ENDIF;
+
+cCube = 'Merch Plan Reporting';
+sView = 'TI_CopyPR_' | TRIM(STR(NOW, 15, 0));
+sSubVer = sView | '_ver';
+sSubTP = sView | '_tp';
+sSubSKU = sView | '_sku';
+sSubCh = sView | '_ch';
+sSubLC = sView | '_lc';
+sSubMe = sView | '_me';
+
+IF(ViewExists(cCube, sView) = 1);
+  ViewDestroy(cCube, sView);
+ENDIF;
+
+IF(SubsetExists('Merch Version', sSubVer) = 1);
+  SubsetDestroy('Merch Version', sSubVer);
+ENDIF;
+SubsetCreateByMDX(sSubVer, '{[Merch Version].[Merch Version].[' | pSourceVersion | ']}');
+IF(SubsetExists('Merch Time Period', sSubTP) = 1);
+  SubsetDestroy('Merch Time Period', sSubTP);
+ENDIF;
+SubsetCreateByMDX(sSubTP, '{TM1FILTERBYLEVEL({TM1SUBSETALL([Merch Time Period].[Merch Time Period])}, 0)}');
+IF(SubsetExists('Merch SKU', sSubSKU) = 1);
+  SubsetDestroy('Merch SKU', sSubSKU);
+ENDIF;
+SubsetCreateByMDX(sSubSKU, '{TM1FILTERBYLEVEL({TM1SUBSETALL([Merch SKU].[Merch SKU])}, 0)}');
+IF(SubsetExists('Merch Channel', sSubCh) = 1);
+  SubsetDestroy('Merch Channel', sSubCh);
+ENDIF;
+SubsetCreateByMDX(sSubCh, '{TM1FILTERBYLEVEL({TM1SUBSETALL([Merch Channel].[Merch Channel])}, 0)}');
+IF(SubsetExists('Merch Lifecycle', sSubLC) = 1);
+  SubsetDestroy('Merch Lifecycle', sSubLC);
+ENDIF;
+SubsetCreateByMDX(sSubLC, '{TM1FILTERBYLEVEL({TM1SUBSETALL([Merch Lifecycle].[Merch Lifecycle])}, 0)}');
+IF(SubsetExists('Merch Plan Reporting Measure', sSubMe) = 1);
+  SubsetDestroy('Merch Plan Reporting Measure', sSubMe);
+ENDIF;
+SubsetCreateByMDX(sSubMe, '{TM1FILTERBYLEVEL({TM1SUBSETALL([Merch Plan Reporting Measure].[Merch Plan Reporting Measure])}, 0)}');
+
+ViewCreate(cCube, sView);
+ViewSubsetAssign(cCube, sView, 'Merch Version', sSubVer);
+ViewSubsetAssign(cCube, sView, 'Merch Time Period', sSubTP);
+ViewSubsetAssign(cCube, sView, 'Merch SKU', sSubSKU);
+ViewSubsetAssign(cCube, sView, 'Merch Channel', sSubCh);
+ViewSubsetAssign(cCube, sView, 'Merch Lifecycle', sSubLC);
+ViewSubsetAssign(cCube, sView, 'Merch Plan Reporting Measure', sSubMe);
+ViewExtractSkipCalcsSet(cCube, sView, nSkipRuleCalcs);
+ViewExtractSkipZeroesSet(cCube, sView, 1);
+
+DatasourceType = 'VIEW';
+DatasourceNameForServer = cCube;
+DatasourceCubeview = sView;
+IF(bLogInfo = 1);
+  LogOutput('INFO', 'START ' | cProcessName | ' | ' | pSourceVersion | ' -> ' | pTargetVersion, 1);
+ENDIF;
+
+#endregion
+#region Metadata
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+
+#endregion
+#region Data
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+sMeasType = DTYPE('Merch Plan Reporting Measure', vMerch_Plan_Reporting_Measure);
+IF(sMeasType @= 'S');
+  sV = CellGetS(cCube, pSourceVersion, vMerch_Time_Period, vMerch_SKU, vMerch_Channel, vMerch_Lifecycle, vMerch_Plan_Reporting_Measure);
+  IF(sV @= '');
+    ItemSkip;
+  ENDIF;
+  IF(CellIsUpdateable(cCube, pTargetVersion, vMerch_Time_Period, vMerch_SKU, vMerch_Channel, vMerch_Lifecycle, vMerch_Plan_Reporting_Measure) = 0);
+    ItemSkip;
+  ENDIF;
+  CellPutS(sV, cCube, pTargetVersion, vMerch_Time_Period, vMerch_SKU, vMerch_Channel, vMerch_Lifecycle, vMerch_Plan_Reporting_Measure);
+  nCellsCopied = nCellsCopied + 1;
+  ItemSkip;
+ENDIF;
+
+nV = CellGetN(cCube, pSourceVersion, vMerch_Time_Period, vMerch_SKU, vMerch_Channel, vMerch_Lifecycle, vMerch_Plan_Reporting_Measure);
+IF(nV = 0);
+  ItemSkip;
+ENDIF;
+IF(CellIsUpdateable(cCube, pTargetVersion, vMerch_Time_Period, vMerch_SKU, vMerch_Channel, vMerch_Lifecycle, vMerch_Plan_Reporting_Measure) = 0);
+  ItemSkip;
+ENDIF;
+CellPutN(nV, cCube, pTargetVersion, vMerch_Time_Period, vMerch_SKU, vMerch_Channel, vMerch_Lifecycle, vMerch_Plan_Reporting_Measure);
+nCellsCopied = nCellsCopied + 1;
+
+#endregion
+#region Epilog
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+IF(ViewExists(cCube, sView) = 1);
+  ViewDestroy(cCube, sView);
+ENDIF;
+IF(SubsetExists('Merch Version', sSubVer) = 1); SubsetDestroy('Merch Version', sSubVer); ENDIF;
+IF(SubsetExists('Merch Time Period', sSubTP) = 1); SubsetDestroy('Merch Time Period', sSubTP); ENDIF;
+IF(SubsetExists('Merch SKU', sSubSKU) = 1); SubsetDestroy('Merch SKU', sSubSKU); ENDIF;
+IF(SubsetExists('Merch Channel', sSubCh) = 1); SubsetDestroy('Merch Channel', sSubCh); ENDIF;
+IF(SubsetExists('Merch Lifecycle', sSubLC) = 1); SubsetDestroy('Merch Lifecycle', sSubLC); ENDIF;
+IF(SubsetExists('Merch Plan Reporting Measure', sSubMe) = 1); SubsetDestroy('Merch Plan Reporting Measure', sSubMe); ENDIF;
+IF(bLogInfo = 1);
+  LogOutput('INFO', 'END ' | cProcessName | ' | Cells=' | TRIM(STR(nCellsCopied, 12, 0)), 1);
+ENDIF;
+
+#endregion
