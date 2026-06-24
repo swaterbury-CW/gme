@@ -1,40 +1,28 @@
 {
 	"@type":"Process",
-	"Name":"Merch.Version.Copy.PlanReporting",
+	"Name":"Merch.Load.ActualsToPlanReporting",
 	"HasSecurityAccess":false,
-	"Code@Code.link":"Merch.Version.Copy.PlanReporting.ti",
+	"Code@Code.link":"Merch.Load.ActualsToPlanReporting.ti",
 	"DataSource":
 	{
 		"Type":"TM1CubeView",
-		"dataSourceNameForServer":"Merch Plan Reporting",
-		"dataSourceNameForClient":"Merch Plan Reporting",
-		"view":"TI_CopyPR_placeholder"
+		"dataSourceNameForServer":"Merch Actuals",
+		"dataSourceNameForClient":"Merch Actuals",
+		"view":"TI_ActToPR_placeholder"
 	},
 	"Parameters":
 	[
 		{
-			"Name":"pSourceVersion",
-			"Prompt":"Source version",
-			"Value":"Actual",
+			"Name":"pTimePeriod",
+			"Prompt":"Time Period",
+			"Value":"",
 			"Type":"String"
-		},
-		{
-			"Name":"pTargetVersion",
-			"Prompt":"Target version",
-			"Value":"Forecast",
-			"Type":"String"
-		},
-		{
-			"Name":"pClear",
-			"Prompt":"Clear target first (1=yes)",
-			"Value":1,
-			"Type":"Numeric"
 		}
 	],
 	"Variables":
 	[
 		{
-			"Name":"vMerch_Version",
+			"Name":"vMerch_Actuals_Measure",
 			"Type":"String",
 			"Position":1,
 			"StartByte":0,
@@ -62,27 +50,20 @@
 			"EndByte":0
 		},
 		{
-			"Name":"vMerch_Lifecycle",
-			"Type":"String",
+			"Name":"Value",
+			"Type":"Numeric",
 			"Position":5,
-			"StartByte":0,
-			"EndByte":0
-		},
-		{
-			"Name":"vMerch_Plan_Reporting_Measure",
-			"Type":"String",
-			"Position":6,
 			"StartByte":0,
 			"EndByte":0
 		}
 	],
+	"UID": "1776708920000",
 	"UIData": "CubeAction=1511\fDataAction=1503\fCubeLogChanges=0\f",
 	"VariablesUIData": [
 		"VarType=32\fColType=827\f",
 		"VarType=32\fColType=827\f",
 		"VarType=32\fColType=827\f",
 		"VarType=32\fColType=827\f",
-		"VarType=32\fColType=827\f",
-		"VarType=32\fColType=827\f"
+		"VarType=33\fColType=827\f"
 	]
 }

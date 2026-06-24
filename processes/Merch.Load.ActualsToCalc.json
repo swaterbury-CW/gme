@@ -1,40 +1,40 @@
 {
 	"@type":"Process",
-	"Name":"Merch.Version.Copy.PlanReporting",
+	"Name":"Merch.Load.ActualsToCalc",
 	"HasSecurityAccess":false,
-	"Code@Code.link":"Merch.Version.Copy.PlanReporting.ti",
+	"Code@Code.link":"Merch.Load.ActualsToCalc.ti",
 	"DataSource":
 	{
 		"Type":"TM1CubeView",
-		"dataSourceNameForServer":"Merch Plan Reporting",
-		"dataSourceNameForClient":"Merch Plan Reporting",
-		"view":"TI_CopyPR_placeholder"
+		"dataSourceNameForServer":"Merch Forecast",
+		"dataSourceNameForClient":"Merch Forecast",
+		"view":"TI_CopyTPSKU_placeholder"
 	},
 	"Parameters":
 	[
 		{
-			"Name":"pSourceVersion",
-			"Prompt":"Source version",
-			"Value":"Actual",
+			"Name":"pCubeName",
+			"Prompt":"Cube",
+			"Value":"Merch Forecast",
 			"Type":"String"
 		},
 		{
 			"Name":"pTargetVersion",
-			"Prompt":"Target version",
-			"Value":"Forecast",
+			"Prompt":"Target calc version",
+			"Value":"",
 			"Type":"String"
 		},
 		{
-			"Name":"pClear",
-			"Prompt":"Clear target first (1=yes)",
-			"Value":1,
-			"Type":"Numeric"
+			"Name":"pTimePeriod",
+			"Prompt":"Time period",
+			"Value":"",
+			"Type":"String"
 		}
 	],
 	"Variables":
 	[
 		{
-			"Name":"vMerch_Version",
+			"Name":"vMerch_Forecast_Measure",
 			"Type":"String",
 			"Position":1,
 			"StartByte":0,
@@ -55,34 +55,27 @@
 			"EndByte":0
 		},
 		{
-			"Name":"vMerch_Channel",
+			"Name":"vMerch_Version",
 			"Type":"String",
 			"Position":4,
 			"StartByte":0,
 			"EndByte":0
 		},
 		{
-			"Name":"vMerch_Lifecycle",
-			"Type":"String",
+			"Name":"Value",
+			"Type":"Numeric",
 			"Position":5,
-			"StartByte":0,
-			"EndByte":0
-		},
-		{
-			"Name":"vMerch_Plan_Reporting_Measure",
-			"Type":"String",
-			"Position":6,
 			"StartByte":0,
 			"EndByte":0
 		}
 	],
+	"UID": "1775226332000",
 	"UIData": "CubeAction=1511\fDataAction=1503\fCubeLogChanges=0\f",
 	"VariablesUIData": [
 		"VarType=32\fColType=827\f",
 		"VarType=32\fColType=827\f",
 		"VarType=32\fColType=827\f",
 		"VarType=32\fColType=827\f",
-		"VarType=32\fColType=827\f",
-		"VarType=32\fColType=827\f"
+		"VarType=33\fColType=827\f"
 	]
 }

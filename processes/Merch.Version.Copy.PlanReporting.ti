@@ -4,14 +4,13 @@
 #Region : Process Header
 # DEVELOPER : Steve Waterbury
 # CREATED ON : 2026-06-19
-# LAST UPDATE: 2026-06-19
+# LAST UPDATE: 2026-06-24
 # CHANGED BY : Steve Waterbury
-# COMMENTS: Version copy for the 6-dim Merch Plan Reporting cube (Actual/calc versions). Uses a NATIVE
-#  view (one subset per dimension, NO crossjoin MDX) so TM1 sparse-walks populated cells - avoids the
-#  row-axis crossjoin OOM. Data tab reads the SOURCE cell via CellGetN/CellGetS (no Value-binding) and
-#  writes the TARGET. Version subset pinned to pSourceVersion; other 5 dims all-leaf subsets; SkipZeroes.
+# COMMENTS: Version copy for the 6-dim Merch Plan Reporting cube (Actual/calc versions). Native view
+#  (one subset per dimension, NO crossjoin MDX). Data tab reads SOURCE via CellGetN/CellGetS, writes TARGET.
 #### CHANGE HISTORY:
 ### 2026-06-19  Steve Waterbury  Initial native-view PR version copy. Design plan 908774392cf2.
+### 2026-06-24  Steve Waterbury  Add pClear (default 1): clear-before-load of the target version footprint (KB Clear-Before-Load Pattern). Design plan 8f6ff1437676.
 #EndRegion
 cProcessName = GetProcessName();
 sLogLevel = CellGetS('ProcessControl', cProcessName, 'LoggingLevel');
@@ -33,6 +32,7 @@ IF(DIMIX('Merch Version', pSourceVersion) = 0 % DIMIX('Merch Version', pTargetVe
   ProcessError;
 ENDIF;
 
+nClear = pClear;
 sTargetVersionType = ATTRS('Merch Version', pTargetVersion, 'Version_Type');
 nSkipRuleCalcs = 1;
 IF(sTargetVersionType @= 'Static');
@@ -77,6 +77,35 @@ IF(SubsetExists('Merch Plan Reporting Measure', sSubMe) = 1);
 ENDIF;
 SubsetCreateByMDX(sSubMe, '{TM1FILTERBYLEVEL({TM1SUBSETALL([Merch Plan Reporting Measure].[Merch Plan Reporting Measure])}, 0)}');
 
+# Clear-before-load: zero the TARGET version footprint (native subsets, no crossjoin) so stale cells the source no longer covers are removed. KB: Clear-Before-Load Pattern + View Construction.
+IF(nClear >= 1);
+  sClrView = sView | '_clr';
+  sSubVerT = sView | '_vert';
+  IF(SubsetExists('Merch Version', sSubVerT) = 1);
+    SubsetDestroy('Merch Version', sSubVerT);
+  ENDIF;
+  SubsetCreateByMDX(sSubVerT, '{[Merch Version].[Merch Version].[' | pTargetVersion | ']}');
+  IF(ViewExists(cCube, sClrView) = 1);
+    ViewDestroy(cCube, sClrView);
+  ENDIF;
+  ViewCreate(cCube, sClrView);
+  ViewSubsetAssign(cCube, sClrView, 'Merch Version', sSubVerT);
+  ViewSubsetAssign(cCube, sClrView, 'Merch Time Period', sSubTP);
+  ViewSubsetAssign(cCube, sClrView, 'Merch SKU', sSubSKU);
+  ViewSubsetAssign(cCube, sClrView, 'Merch Channel', sSubCh);
+  ViewSubsetAssign(cCube, sClrView, 'Merch Lifecycle', sSubLC);
+  ViewSubsetAssign(cCube, sClrView, 'Merch Plan Reporting Measure', sSubMe);
+  ViewExtractSkipCalcsSet(cCube, sClrView, nSkipRuleCalcs);
+  ViewSuppressZeroesSet(cCube, sClrView, 1);
+  ViewZeroOut(cCube, sClrView);
+  IF(ViewExists(cCube, sClrView) = 1);
+    ViewDestroy(cCube, sClrView);
+  ENDIF;
+  IF(SubsetExists('Merch Version', sSubVerT) = 1);
+    SubsetDestroy('Merch Version', sSubVerT);
+  ENDIF;
+ENDIF;
+
 ViewCreate(cCube, sView);
 ViewSubsetAssign(cCube, sView, 'Merch Version', sSubVer);
 ViewSubsetAssign(cCube, sView, 'Merch Time Period', sSubTP);
@@ -91,7 +120,7 @@ DatasourceType = 'VIEW';
 DatasourceNameForServer = cCube;
 DatasourceCubeview = sView;
 IF(bLogInfo = 1);
-  LogOutput('INFO', 'START ' | cProcessName | ' | ' | pSourceVersion | ' -> ' | pTargetVersion, 1);
+  LogOutput('INFO', 'START ' | cProcessName | ' | ' | pSourceVersion | ' -> ' | pTargetVersion | ' | Clear=' | TRIM(STR(nClear, 3, 0)), 1);
 ENDIF;
 
 #endregion
