@@ -7,16 +7,13 @@
 # LAST UPDATE: 2026-06-24
 # CHANGED BY : Steve Waterbury
 # COMMENTS:
-# Week-parallel orchestrator: dispatches Merch.Load.ActualsToPlanReporting.Week per leaf week under
-#  pTimePeriod (RunProcess + WaitForAllJobs), then recomputes Actual WOS (Merch.Calc.PlanReportingWOS.Orch)
-#  and propagates Actual -> all Calculated versions in parallel (Merch.Version.Copy.PlanReporting.ToCalc).
-#  No datasource; dispatch + joins live in the Epilog. Each week worker gets a unique pPartIdx.
+# Week-parallel orchestrator. Per week (under pTimePeriod) builds the clear MDX (all leaf PR measures) +
+#  load MDX and passes them to Merch.Load.ActualsToPlanReporting.Week (RunProcess + WaitForAllJobs) so the
+#  workers do NO measure iteration / NO shared-dim subset creation. Then WOS.Orch(Actual) + .ToCalc(Actual).
 #### CHANGE HISTORY:
 ###   2026-04-20 | Steve Waterbury | Initial creation
-###   2026-06-19 | Steve Waterbury | Epilog: Actual->calc PR copy loop; 3-arg LogOutput. Plan 908774392cf2.
-###   2026-06-20 | Steve Waterbury | Epilog: WOS recompute before copy. Plan 908774392cf2.
-###   2026-06-24 | Steve Waterbury | Attribute-driven clear-before-load. Plan 8f6ff1437676.
-###   2026-06-24 | Steve Waterbury | REWRITE: week-parallel orchestrator (.Week workers + parallel .ToCalc). Plan bb17626fc2af.
+###   2026-06-24 | Steve Waterbury | Week-parallel orchestrator (.Week workers + .ToCalc). Plan bb17626fc2af.
+###   2026-06-24 | Steve Waterbury | Build/pass per-week clear+load MDX so workers are subset-free; no Prolog dim loop. Plan 2ad6c3e4230e.
 #EndRegion
 
 cProcessName = GetProcessName();
@@ -35,6 +32,7 @@ IF(DIMIX('Merch Time Period', pTimePeriod) = 0);
 ENDIF;
 
 cTimeDim = 'Merch Time Period';
+cVersion = 'Actual';
 sJobIDs = '';
 nPartIdx = 0;
 IF(bLogInfo = 1);
@@ -55,14 +53,16 @@ ENDIF;
 #region Epilog
 #****Begin: Generated Statements***
 #****End: Generated Statements****
-# Fan out one per-week worker per leaf week under pTimePeriod (parallel direct load into PR Actual; each worker clears its own week-slice first).
+# Fan out one worker per leaf week under pTimePeriod, passing prebuilt clear+load MDX (subset-free worker).
 nTimeSize = DIMSIZ(cTimeDim);
 iT = 1;
 WHILE(iT <= nTimeSize);
   sWk = DIMNM(cTimeDim, iT);
   IF(ELLEV(cTimeDim, sWk) = 0 & (sWk @= pTimePeriod % ELISANC(cTimeDim, pTimePeriod, sWk) = 1));
     nPartIdx = nPartIdx + 1;
-    sJobId = RunProcess('Merch.Load.ActualsToPlanReporting.Week', 'pTimePeriod', sWk, 'pPartIdx', nPartIdx);
+    sClrMDX = 'SELECT {TM1FILTERBYLEVEL({TM1SUBSETALL([Merch Plan Reporting Measure].[Merch Plan Reporting Measure])}, 0)} ON COLUMNS, NON EMPTY CROSSJOIN({TM1FILTERBYLEVEL({TM1SUBSETALL([Merch SKU].[Merch SKU])}, 0)}, CROSSJOIN({TM1FILTERBYLEVEL({TM1SUBSETALL([Merch Channel].[Merch Channel])}, 0)}, {TM1FILTERBYLEVEL({TM1SUBSETALL([Merch Lifecycle].[Merch Lifecycle])}, 0)})) ON ROWS FROM [Merch Plan Reporting] WHERE ([Merch Version].[Merch Version].[' | cVersion | '], [Merch Time Period].[Merch Time Period].[' | sWk | '])';
+    sLoadMDX = 'SELECT {TM1FILTERBYLEVEL({TM1SUBSETALL([Merch Actuals Measure])}, 0)} ON COLUMNS, NON EMPTY {TM1FILTERBYLEVEL({DESCENDANTS([Merch Time Period].[' | sWk | '])}, 0)} * {TM1FILTERBYLEVEL({TM1SUBSETALL([Merch SKU].[Merch SKU])}, 0)} * {TM1FILTERBYLEVEL({TM1SUBSETALL([Merch Channel])}, 0)} ON ROWS FROM [Merch Actuals]';
+    sJobId = RunProcess('Merch.Load.ActualsToPlanReporting.Week', 'pPartIdx', nPartIdx, 'pClearMDX', sClrMDX, 'pLoadMDX', sLoadMDX);
     IF(sJobIDs @= '');
       sJobIDs = sJobId;
     ELSE;
@@ -75,7 +75,7 @@ IF(sJobIDs @<> '');
   WaitForAllJobs(sJobIDs);
 ENDIF;
 
-# Recompute Actual WOS across the full tree (parallel), then propagate Actual -> all Calculated versions in parallel.
+# Recompute Actual WOS once (parallel), then propagate Actual -> all Calculated versions in parallel.
 ExecuteProcess('Merch.Calc.PlanReportingWOS.Orch', 'pVersion', 'Actual', 'pSKUElement', 'Director', 'pSKU', '', 'pTargetMeasure', 'WOS', 'pUseRunProcess', '1');
 ExecuteProcess('Merch.Version.Copy.PlanReporting.ToCalc', 'pSourceVersion', 'Actual', 'pClear', 1);
 

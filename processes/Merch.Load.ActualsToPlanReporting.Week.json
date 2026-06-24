@@ -13,16 +13,28 @@
 	"Parameters":
 	[
 		{
+			"Name":"pPartIdx",
+			"Prompt":"Parallel part index",
+			"Value":1,
+			"Type":"Numeric"
+		},
+		{
 			"Name":"pTimePeriod",
-			"Prompt":"Time Period (one week)",
+			"Prompt":"Week (fallback only)",
 			"Value":"",
 			"Type":"String"
 		},
 		{
-			"Name":"pPartIdx",
-			"Prompt":"Parallel part index (unique per worker)",
-			"Value":1,
-			"Type":"Numeric"
+			"Name":"pClearMDX",
+			"Prompt":"Prebuilt clear MDX",
+			"Value":"",
+			"Type":"String"
+		},
+		{
+			"Name":"pLoadMDX",
+			"Prompt":"Prebuilt load MDX",
+			"Value":"",
+			"Type":"String"
 		}
 	],
 	"Variables":
