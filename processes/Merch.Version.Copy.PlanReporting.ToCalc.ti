@@ -1,0 +1,92 @@
+#region Prolog
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+#Region : Process Header
+# DEVELOPER : Steve Waterbury
+# CREATED ON : 2026-06-24
+# LAST UPDATE: 2026-06-24
+# CHANGED BY : Steve Waterbury
+# COMMENTS: Fan-out orchestrator: copy pSourceVersion (default Actual) -> Calculated Merch Versions in Merch
+#  Plan Reporting IN PARALLEL, one subset-free worker per (target version x leaf week). Optional scope:
+#  pTargetVersion (one version) / pTimePeriod (one period). Reads worker LoggingLevel ONCE, passes pLogLevel.
+#### CHANGE HISTORY:
+###   2026-06-24 | Steve Waterbury | Initial. Design plan bb17626fc2af.
+###   2026-06-24 | Steve Waterbury | Per-(version,week) subset-free fan-out + pLogLevel + scope params. Plan a9c50221d826.
+#EndRegion
+
+cProcessName = GetProcessName();
+sLogLevel = CellGetS('ProcessControl', cProcessName, 'LoggingLevel');
+IF(sLogLevel @= '');
+  sLogLevel = 'OFF';
+ENDIF;
+bLogInfo = 0;
+IF(sLogLevel @= 'INFO' % sLogLevel @= 'DEBUG');
+  bLogInfo = 1;
+ENDIF;
+
+sWorkerLog = CellGetS('ProcessControl', 'Merch.Version.Copy.PlanReporting.Week', 'LoggingLevel');
+
+sSrc = pSourceVersion;
+IF(sSrc @= '');
+  sSrc = 'Actual';
+ENDIF;
+IF(DIMIX('Merch Version', sSrc) = 0);
+  LogOutput('ERROR', cProcessName | ' | Invalid pSourceVersion: ' | sSrc, 1);
+  ProcessError;
+ENDIF;
+nClear = pClear;
+sJobIDs = '';
+nPartIdx = 0;
+IF(bLogInfo = 1);
+  LogOutput('INFO', 'START ' | cProcessName | ' | Source=' | sSrc | ' | Clear=' | TRIM(STR(nClear, 3, 0)), 1);
+ENDIF;
+
+#endregion
+#region Metadata
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+
+#endregion
+#region Data
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+
+#endregion
+#region Epilog
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+cCube = 'Merch Plan Reporting';
+cTimeDim = 'Merch Time Period';
+nVerDim = DIMSIZ('Merch Version');
+nTimeSz = DIMSIZ(cTimeDim);
+iVer = 1;
+WHILE(iVer <= nVerDim);
+  sVer = DIMNM('Merch Version', iVer);
+  IF(ELLEV('Merch Version', sVer) = 0 & ATTRS('Merch Version', sVer, 'Version_Type') @= 'Calculated' & sVer @<> sSrc & (pTargetVersion @= '' % sVer @= pTargetVersion));
+    iT = 1;
+    WHILE(iT <= nTimeSz);
+      sWk = DIMNM(cTimeDim, iT);
+      IF(ELLEV(cTimeDim, sWk) = 0 & (pTimePeriod @= '' % sWk @= pTimePeriod % ELISANC(cTimeDim, pTimePeriod, sWk) = 1));
+        sLoadMDX = 'SELECT {TM1FILTERBYLEVEL({TM1SUBSETALL([Merch Plan Reporting Measure].[Merch Plan Reporting Measure])}, 0)} ON COLUMNS, NON EMPTY {[Merch Time Period].[Merch Time Period].[' | sWk | ']} * {TM1FILTERBYLEVEL({TM1SUBSETALL([Merch SKU].[Merch SKU])}, 0)} * {TM1FILTERBYLEVEL({TM1SUBSETALL([Merch Channel].[Merch Channel])}, 0)} * {TM1FILTERBYLEVEL({TM1SUBSETALL([Merch Lifecycle].[Merch Lifecycle])}, 0)} ON ROWS FROM [Merch Plan Reporting] WHERE ([Merch Version].[Merch Version].[' | sSrc | '])';
+        sClrMDX = 'SELECT {TM1FILTERBYLEVEL({TM1SUBSETALL([Merch Plan Reporting Measure].[Merch Plan Reporting Measure])}, 0)} ON COLUMNS, NON EMPTY {[Merch Time Period].[Merch Time Period].[' | sWk | ']} * {TM1FILTERBYLEVEL({TM1SUBSETALL([Merch SKU].[Merch SKU])}, 0)} * {TM1FILTERBYLEVEL({TM1SUBSETALL([Merch Channel].[Merch Channel])}, 0)} * {TM1FILTERBYLEVEL({TM1SUBSETALL([Merch Lifecycle].[Merch Lifecycle])}, 0)} ON ROWS FROM [Merch Plan Reporting] WHERE ([Merch Version].[Merch Version].[' | sVer | '])';
+        nPartIdx = nPartIdx + 1;
+        sJobId = RunProcess('Merch.Version.Copy.PlanReporting.Week', 'pSourceVersion', sSrc, 'pTargetVersion', sVer, 'pClearMDX', sClrMDX, 'pLoadMDX', sLoadMDX, 'pPartIdx', nPartIdx, 'pLogLevel', sWorkerLog, 'pClear', nClear);
+        IF(sJobIDs @= '');
+          sJobIDs = sJobId;
+        ELSE;
+          sJobIDs = sJobIDs | ',' | sJobId;
+        ENDIF;
+      ENDIF;
+      iT = iT + 1;
+    END;
+  ENDIF;
+  iVer = iVer + 1;
+END;
+IF(sJobIDs @<> '');
+  WaitForAllJobs(sJobIDs);
+ENDIF;
+IF(bLogInfo = 1);
+  LogOutput('INFO', 'END ' | cProcessName | ' | Dispatched=' | TRIM(STR(nPartIdx, 10, 0)), 1);
+ENDIF;
+
+#endregion

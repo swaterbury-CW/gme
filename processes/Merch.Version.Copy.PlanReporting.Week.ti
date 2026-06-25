@@ -1,0 +1,131 @@
+#region Prolog
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+#Region : Process Header
+# DEVELOPER : Steve Waterbury
+# CREATED ON : 2026-06-24
+# LAST UPDATE: 2026-06-24
+# CHANGED BY : Steve Waterbury
+# COMMENTS: Subset-free per-(version,week) PR version-copy worker for the parallel ToCalc fan-out. Receives
+#  prebuilt source-read MDX (pLoadMDX) + target-clear MDX (pClearMDX) from the orchestrator -> creates NO
+#  shared-dim subsets (kills metadata-lock contention) and reads NO shared ProcessControl cell (pLogLevel
+#  passed in). Each view is bounded to ONE week (NON EMPTY crossjoin) -> OOM-safe. DS has 7 vars incl
+#  vMerch_Version (the WHERE dim is emitted as a trailing field before Value).
+#### CHANGE HISTORY:
+###   2026-06-24 | Steve Waterbury | Initial subset-free copy worker. Plan a9c50221d826.
+#EndRegion
+
+cProcessName = GetProcessName();
+sLogLevel = pLogLevel;
+IF(sLogLevel @= '');
+  sLogLevel = CellGetS('ProcessControl', cProcessName, 'LoggingLevel');
+ENDIF;
+IF(sLogLevel @= '');
+  sLogLevel = 'OFF';
+ENDIF;
+bLogInfo = 0;
+IF(sLogLevel @= 'INFO' % sLogLevel @= 'DEBUG');
+  bLogInfo = 1;
+ENDIF;
+nCellsCopied = 0;
+
+IF(pSourceVersion @= '' % pTargetVersion @= '');
+  LogOutput('ERROR', cProcessName | ' | Missing version param', 1);
+  ProcessError;
+ENDIF;
+IF(DIMIX('Merch Version', pSourceVersion) = 0 % DIMIX('Merch Version', pTargetVersion) = 0);
+  LogOutput('ERROR', cProcessName | ' | Bad version', 1);
+  ProcessError;
+ENDIF;
+IF(pLoadMDX @= '');
+  LogOutput('ERROR', cProcessName | ' | pLoadMDX required (subset-free worker)', 1);
+  ProcessError;
+ENDIF;
+
+nClear = pClear;
+nPartIdx = pPartIdx;
+IF(nPartIdx <= 0);
+  nPartIdx = 1;
+ENDIF;
+sSfx = TRIM(STR(nPartIdx, 15, 0));
+
+cCube = 'Merch Plan Reporting';
+sTargetVersionType = ATTRS('Merch Version', pTargetVersion, 'Version_Type');
+nSkipRuleCalcs = 1;
+IF(sTargetVersionType @= 'Static');
+  nSkipRuleCalcs = 0;
+ENDIF;
+
+IF(nClear >= 1 & pClearMDX @<> '');
+  sClrV = 'TI_CopyPRwk_clr_' | sSfx;
+  IF(ViewExists(cCube, sClrV) = 1);
+    ViewDestroy(cCube, sClrV);
+  ENDIF;
+  ViewCreateByMDX(cCube, sClrV, pClearMDX, 1);
+  ViewExtractSkipCalcsSet(cCube, sClrV, nSkipRuleCalcs);
+  ViewExtractSkipZeroesSet(cCube, sClrV, 1);
+  ViewZeroOut(cCube, sClrV);
+  IF(ViewExists(cCube, sClrV) = 1);
+    ViewDestroy(cCube, sClrV);
+  ENDIF;
+ENDIF;
+
+sView = 'TI_CopyPRwk_' | sSfx;
+IF(ViewExists(cCube, sView) = 1);
+  ViewDestroy(cCube, sView);
+ENDIF;
+ViewCreateByMDX(cCube, sView, pLoadMDX, 1);
+ViewExtractSkipCalcsSet(cCube, sView, nSkipRuleCalcs);
+ViewExtractSkipZeroesSet(cCube, sView, 1);
+
+DatasourceType = 'VIEW';
+DatasourceNameForServer = cCube;
+DatasourceCubeview = sView;
+IF(bLogInfo = 1);
+  LogOutput('INFO', 'START ' | cProcessName | ' | ' | pSourceVersion | ' -> ' | pTargetVersion | ' | Part=' | sSfx, 1);
+ENDIF;
+
+#endregion
+#region Metadata
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+
+#endregion
+#region Data
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+sMeasType = DTYPE('Merch Plan Reporting Measure', vMerch_Plan_Reporting_Measure);
+IF(sMeasType @= 'S');
+  sV = CellGetS(cCube, pSourceVersion, vMerch_Time_Period, vMerch_SKU, vMerch_Channel, vMerch_Lifecycle, vMerch_Plan_Reporting_Measure);
+  IF(sV @= '');
+    ItemSkip;
+  ENDIF;
+  IF(CellIsUpdateable(cCube, pTargetVersion, vMerch_Time_Period, vMerch_SKU, vMerch_Channel, vMerch_Lifecycle, vMerch_Plan_Reporting_Measure) = 0);
+    ItemSkip;
+  ENDIF;
+  CellPutS(sV, cCube, pTargetVersion, vMerch_Time_Period, vMerch_SKU, vMerch_Channel, vMerch_Lifecycle, vMerch_Plan_Reporting_Measure);
+  nCellsCopied = nCellsCopied + 1;
+  ItemSkip;
+ENDIF;
+nV = CellGetN(cCube, pSourceVersion, vMerch_Time_Period, vMerch_SKU, vMerch_Channel, vMerch_Lifecycle, vMerch_Plan_Reporting_Measure);
+IF(nV = 0);
+  ItemSkip;
+ENDIF;
+IF(CellIsUpdateable(cCube, pTargetVersion, vMerch_Time_Period, vMerch_SKU, vMerch_Channel, vMerch_Lifecycle, vMerch_Plan_Reporting_Measure) = 0);
+  ItemSkip;
+ENDIF;
+CellPutN(nV, cCube, pTargetVersion, vMerch_Time_Period, vMerch_SKU, vMerch_Channel, vMerch_Lifecycle, vMerch_Plan_Reporting_Measure);
+nCellsCopied = nCellsCopied + 1;
+
+#endregion
+#region Epilog
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+IF(ViewExists(cCube, sView) = 1);
+  ViewDestroy(cCube, sView);
+ENDIF;
+IF(bLogInfo = 1);
+  LogOutput('INFO', 'END ' | cProcessName | ' | Cells=' | TRIM(STR(nCellsCopied, 12, 0)), 1);
+ENDIF;
+
+#endregion

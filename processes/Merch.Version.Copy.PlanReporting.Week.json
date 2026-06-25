@@ -1,0 +1,120 @@
+{
+	"@type":"Process",
+	"Name":"Merch.Version.Copy.PlanReporting.Week",
+	"HasSecurityAccess":false,
+	"Code@Code.link":"Merch.Version.Copy.PlanReporting.Week.ti",
+	"DataSource":
+	{
+		"Type":"TM1CubeView",
+		"dataSourceNameForServer":"Merch Plan Reporting",
+		"dataSourceNameForClient":"Merch Plan Reporting",
+		"view":"TI_CopyPR_placeholder"
+	},
+	"Parameters":
+	[
+		{
+			"Name":"pSourceVersion",
+			"Prompt":"Source version",
+			"Value":"Actual",
+			"Type":"String"
+		},
+		{
+			"Name":"pTargetVersion",
+			"Prompt":"Target version",
+			"Value":"Forecast",
+			"Type":"String"
+		},
+		{
+			"Name":"pClearMDX",
+			"Prompt":"Prebuilt target clear MDX",
+			"Value":"",
+			"Type":"String"
+		},
+		{
+			"Name":"pLoadMDX",
+			"Prompt":"Prebuilt source read MDX",
+			"Value":"",
+			"Type":"String"
+		},
+		{
+			"Name":"pPartIdx",
+			"Prompt":"Parallel part index",
+			"Value":1,
+			"Type":"Numeric"
+		},
+		{
+			"Name":"pLogLevel",
+			"Prompt":"Logging level passed by orchestrator",
+			"Value":"",
+			"Type":"String"
+		},
+		{
+			"Name":"pClear",
+			"Prompt":"Clear target week-slice first (1=yes)",
+			"Value":1,
+			"Type":"Numeric"
+		}
+	],
+	"Variables":
+	[
+		{
+			"Name":"vMerch_Plan_Reporting_Measure",
+			"Type":"String",
+			"Position":1,
+			"StartByte":0,
+			"EndByte":0
+		},
+		{
+			"Name":"vMerch_Time_Period",
+			"Type":"String",
+			"Position":2,
+			"StartByte":0,
+			"EndByte":0
+		},
+		{
+			"Name":"vMerch_SKU",
+			"Type":"String",
+			"Position":3,
+			"StartByte":0,
+			"EndByte":0
+		},
+		{
+			"Name":"vMerch_Channel",
+			"Type":"String",
+			"Position":4,
+			"StartByte":0,
+			"EndByte":0
+		},
+		{
+			"Name":"vMerch_Lifecycle",
+			"Type":"String",
+			"Position":5,
+			"StartByte":0,
+			"EndByte":0
+		},
+		{
+			"Name":"vMerch_Version",
+			"Type":"String",
+			"Position":6,
+			"StartByte":0,
+			"EndByte":0
+		},
+		{
+			"Name":"Value",
+			"Type":"Numeric",
+			"Position":7,
+			"StartByte":0,
+			"EndByte":0
+		}
+	],
+	"UIData": "CubeAction=1511\fDataAction=1503\fCubeLogChanges=0\f",
+	"VariablesUIData": [
+		"VarType=32\fColType=827\f",
+		"VarType=32\fColType=827\f",
+		"VarType=32\fColType=827\f",
+		"VarType=32\fColType=827\f",
+		"VarType=32\fColType=827\f",
+		"VarType=32\fColType=827\f",
+		"VarType=33\fColType=827\f"
+	]
+}
