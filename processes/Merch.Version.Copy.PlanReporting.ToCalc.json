@@ -5,7 +5,10 @@
 	"Code@Code.link":"Merch.Version.Copy.PlanReporting.ToCalc.ti",
 	"DataSource":
 	{
-		"Type":"None"
+		"Type":"TM1DimensionSubset",
+		"dataSourceNameForServer":"Merch Version",
+		"dataSourceNameForClient":"Merch Version",
+		"subset":"TI_CopyPRToCalc_placeholder"
 	},
 	"Parameters":
 	[
@@ -34,7 +37,18 @@
 			"Type":"Numeric"
 		}
 	],
-	"Variables":[],
+	"Variables":
+	[
+		{
+			"Name":"vMerch_Version",
+			"Type":"String",
+			"Position":1,
+			"StartByte":0,
+			"EndByte":0
+		}
+	],
 	"UIData": "CubeAction=1511\fDataAction=1503\fCubeLogChanges=0\f",
-	"VariablesUIData": []
+	"VariablesUIData": [
+		"VarType=32\fColType=827\f"
+	]
 }

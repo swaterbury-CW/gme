@@ -1,8 +1,8 @@
 {
 	"@type":"Process",
-	"Name":"Merch.Version.Copy.PlanReporting.Week",
+	"Name":"Merch.Version.Copy.PlanReporting",
 	"HasSecurityAccess":false,
-	"Code@Code.link":"Merch.Version.Copy.PlanReporting.Week.ti",
+	"Code@Code.link":"Merch.Version.Copy.PlanReporting.ti",
 	"DataSource":
 	{
 		"Type":"TM1CubeView",
@@ -25,40 +25,28 @@
 			"Type":"String"
 		},
 		{
-			"Name":"pClearMDX",
-			"Prompt":"Prebuilt target clear MDX",
-			"Value":"",
-			"Type":"String"
-		},
-		{
-			"Name":"pLoadMDX",
-			"Prompt":"Prebuilt source read MDX",
-			"Value":"",
-			"Type":"String"
+			"Name":"pClear",
+			"Prompt":"Clear target first (1=yes)",
+			"Value":1,
+			"Type":"Numeric"
 		},
 		{
 			"Name":"pPartIdx",
-			"Prompt":"Parallel part index",
-			"Value":1,
+			"Prompt":"Parallel part index (0=use NOW)",
+			"Value":0,
 			"Type":"Numeric"
 		},
 		{
-			"Name":"pLogLevel",
-			"Prompt":"Logging level passed by orchestrator",
+			"Name":"pTimePeriod",
+			"Prompt":"Scope to period (blank=all weeks)",
 			"Value":"",
 			"Type":"String"
-		},
-		{
-			"Name":"pClear",
-			"Prompt":"Clear target week-slice first (1=yes)",
-			"Value":1,
-			"Type":"Numeric"
 		}
 	],
 	"Variables":
 	[
 		{
-			"Name":"vMerch_Plan_Reporting_Measure",
+			"Name":"vMerch_Version",
 			"Type":"String",
 			"Position":1,
 			"StartByte":0,
@@ -93,16 +81,9 @@
 			"EndByte":0
 		},
 		{
-			"Name":"vMerch_Version",
+			"Name":"vMerch_Plan_Reporting_Measure",
 			"Type":"String",
 			"Position":6,
-			"StartByte":0,
-			"EndByte":0
-		},
-		{
-			"Name":"Value",
-			"Type":"Numeric",
-			"Position":7,
 			"StartByte":0,
 			"EndByte":0
 		}
@@ -114,7 +95,6 @@
 		"VarType=32\fColType=827\f",
 		"VarType=32\fColType=827\f",
 		"VarType=32\fColType=827\f",
-		"VarType=32\fColType=827\f",
-		"VarType=33\fColType=827\f"
+		"VarType=32\fColType=827\f"
 	]
 }
