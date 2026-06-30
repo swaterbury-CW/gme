@@ -6,9 +6,9 @@
 	"DataSource":
 	{
 		"Type":"TM1DimensionSubset",
-		"dataSourceNameForServer":"Merch Version",
-		"dataSourceNameForClient":"Merch Version",
-		"subset":"TI_CopyPRToCalc_placeholder"
+		"dataSourceNameForServer":"Merch Time Period",
+		"dataSourceNameForClient":"Merch Time Period",
+		"subset":"TI_CopyPRToCalc_TP_placeholder"
 	},
 	"Parameters":
 	[
@@ -40,7 +40,7 @@
 	"Variables":
 	[
 		{
-			"Name":"vMerch_Version",
+			"Name":"vMerch_Time_Period",
 			"Type":"String",
 			"Position":1,
 			"StartByte":0,
