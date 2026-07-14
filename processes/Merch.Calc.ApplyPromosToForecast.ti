@@ -1,0 +1,168 @@
+#region Prolog
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+#Region : Process Header
+# DEVELOPER : Steve Waterbury
+# CREATED ON : 2026-04-20
+# LAST UPDATE: 2026-07-13
+# CHANGED BY : Steve Waterbury
+# COMMENTS: Phase 1 of promo->forecast push. NO STACKING: keeps the single lowest per-promo effective week AUR per SKU/week. Pre-reset delegated to .Reset. pSKU any Merch SKU Roles node; blank = all Roles leaves.
+# CHANGE HISTORY:
+#   2026-06-19 | Steve Waterbury | NO STACKING: lowest per-promo effective week AUR wins (MIN off marked-down base)
+#   2026-07-13 | Steve Waterbury | pSKU any Merch SKU Roles node -> leaf DESCENDANTS; blank pSKU scopes all Roles leaves (whole engine on Roles hierarchy)
+#EndRegion
+
+cProcessName = GetProcessName();
+sLogLevel = CellGetS('ProcessControl', cProcessName, 'LoggingLevel');
+IF(sLogLevel @= '');
+  sLogLevel = 'OFF';
+ENDIF;
+bLogInfo = 0;
+IF(sLogLevel @= 'INFO' % sLogLevel @= 'DEBUG');
+  bLogInfo = 1;
+ENDIF;
+IF(bLogInfo = 1);
+  LogOutput('INFO', 'START: ' | cProcessName | ' | Version=' | pVersion | ' | SKU=' | pSKU, 1);
+ENDIF;
+
+IF(pVersion @= '');
+  LogOutput('ERROR', cProcessName | ' | pVersion required', 1);
+  ProcessError;
+ENDIF;
+IF(DIMIX('Merch Version', pVersion) = 0);
+  LogOutput('ERROR', cProcessName | ' | Version not found: ' | pVersion, 1);
+  ProcessError;
+ENDIF;
+IF(DTYPE('Merch Version', pVersion) @<> 'N');
+  LogOutput('ERROR', cProcessName | ' | Version must be a leaf element: ' | pVersion, 1);
+  ProcessError;
+ENDIF;
+IF(pSKU @<> '');
+  IF(HierarchyElementExists('Merch SKU', 'Roles', pSKU) = 0);
+    LogOutput('ERROR', cProcessName | ' | SKU node not found in Merch SKU Roles hierarchy: ' | pSKU, 1);
+    ProcessError;
+  ENDIF;
+ENDIF;
+
+cCalendar = 'Merch Promo Calendar';
+cScratch = 'Merch Promo Winner Scratch';
+cForecast = 'Merch Forecast';
+nRowsProcessed = 0;
+nWinnersAssigned = 0;
+nSkippedLock = 0;
+
+IF(pSKU @= '');
+  sSKUSet = 'TM1FILTERBYLEVEL({TM1SUBSETALL([Merch SKU].[Roles])}, 0)';
+ELSE;
+  sSKUSet = 'TM1FILTERBYLEVEL({DESCENDANTS([Merch SKU].[Roles].[' | pSKU | '])}, 0)';
+ENDIF;
+
+nRC = ExecuteProcess('Merch.Calc.ApplyPromosToForecast.Reset', 'pVersion', pVersion, 'pSKU', pSKU);
+IF(nRC <> 0);
+  LogOutput('ERROR', cProcessName | ' | Reset chain failed RC=' | TRIM(STR(nRC, 10, 0)), 1);
+ENDIF;
+
+sZeroView = 'TI_PromoAF_Zero_' | TRIM(STR(NOW, 15, 0));
+sZeroMDX = 'SELECT {TM1FILTERBYLEVEL({TM1SUBSETALL([Merch Promo Winner Measure])}, 0)} ON COLUMNS, '
+  | 'NON EMPTY {TM1FILTERBYLEVEL({TM1SUBSETALL([Merch Time Period])}, 0)} '
+  | '* ' | sSKUSet | ' ON ROWS '
+  | 'FROM [' | cScratch | '] '
+  | 'WHERE ([Merch Version].[Merch Version].[' | pVersion | '])';
+IF(ViewExists(cScratch, sZeroView) = 1);
+  ViewDestroy(cScratch, sZeroView);
+ENDIF;
+ViewCreateByMDX(cScratch, sZeroView, sZeroMDX, 1);
+ViewZeroOut(cScratch, sZeroView);
+ViewDestroy(cScratch, sZeroView);
+
+sView = 'TI_PromoAF_Src_' | TRIM(STR(NOW, 15, 0));
+sMDX = 'SELECT {[Merch Promo Calendar Measure].[Active]} ON COLUMNS, '
+  | 'NON EMPTY {TM1FILTERBYLEVEL({TM1SUBSETALL([Merch Time Period])}, 0)} '
+  | '* ' | sSKUSet | ' '
+  | '* {TM1FILTERBYLEVEL({TM1SUBSETALL([Merch Promo ID])}, 0)} ON ROWS '
+  | 'FROM [' | cCalendar | '] '
+  | 'WHERE ([Merch Version].[Merch Version].[' | pVersion | '])';
+ViewCreateByMDX(cCalendar, sView, sMDX, 1);
+ViewExtractSkipCalcsSet(cCalendar, sView, 0);
+ViewExtractSkipZeroesSet(cCalendar, sView, 1);
+DatasourceType = 'VIEW';
+DatasourceNameForServer = cCalendar;
+DatasourceCubeview = sView;
+
+#endregion
+#region Metadata
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+
+#endregion
+#region Data
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+IF(Value = 0);
+  ItemSkip;
+ENDIF;
+
+sSKU = vMerch_SKU;
+sTime = vMerch_Time_Period;
+sPromo = vMerch_Promo_ID;
+
+IF(DIMIX('Merch SKU', sSKU) = 0);
+  ItemReject('Source SKU not found: ' | sSKU);
+ENDIF;
+IF(DIMIX('Merch Time Period', sTime) = 0);
+  ItemReject('Source Time Period not found: ' | sTime);
+ENDIF;
+
+IF(CellIsUpdateable(cScratch, pVersion, sTime, sSKU, 'Has Winner') = 0);
+  nSkippedLock = nSkippedLock + 1;
+  ItemSkip;
+ENDIF;
+
+nRowsProcessed = nRowsProcessed + 1;
+
+nPct = CellGetN(cCalendar, pVersion, sTime, sSKU, sPromo, 'Pct of Week');
+nBlended = CellGetN(cCalendar, pVersion, sTime, sSKU, sPromo, 'Blended AUR');
+nBaseP = CellGetN(cCalendar, pVersion, sTime, sSKU, sPromo, 'Base AUR');
+IF(nBaseP = 0);
+  nM = 1;
+ELSE;
+  nM = 1 - nPct * (1 - nBlended \ nBaseP);
+ENDIF;
+
+nFPAUR = CellGetN(cForecast, pVersion, sTime, sSKU, 'Full Price AUR');
+nMd = CellGetN(cForecast, pVersion, sTime, sSKU, 'Markdown %');
+nMDBase = nFPAUR * (1 - nMd);
+nEffAUR = nMDBase * nM;
+
+nBERc = CellGetN(cCalendar, pVersion, sTime, sSKU, sPromo, 'Weighted BER Contribution');
+nLiftc = CellGetN(cCalendar, pVersion, sTime, sSKU, sPromo, 'Weighted Lift Contribution');
+
+nHas = CellGetN(cScratch, pVersion, sTime, sSKU, 'Has Winner');
+nCur = CellGetN(cScratch, pVersion, sTime, sSKU, 'Min Blended AUR');
+IF(nHas = 0 % nEffAUR < nCur);
+  CellPutN(nEffAUR, cScratch, pVersion, sTime, sSKU, 'Min Blended AUR');
+  CellPutN(1, cScratch, pVersion, sTime, sSKU, 'Winner Pct of Week');
+  CellPutN(nBERc, cScratch, pVersion, sTime, sSKU, 'Winner BER');
+  CellPutN(nLiftc, cScratch, pVersion, sTime, sSKU, 'Winner Effective Lift');
+  CellPutN(1, cScratch, pVersion, sTime, sSKU, 'Has Winner');
+  nWinnersAssigned = nWinnersAssigned + 1;
+ENDIF;
+
+#endregion
+#region Epilog
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+IF(ViewExists(cCalendar, sView) = 1);
+  ViewDestroy(cCalendar, sView);
+ENDIF;
+
+nRC = ExecuteProcess('Merch.Calc.ApplyPromosToForecast.Finalize', 'pVersion', pVersion, 'pSKU', pSKU);
+IF(nRC <> 0);
+  LogOutput('ERROR', cProcessName | ' | Finalize chain failed RC=' | TRIM(STR(nRC, 10, 0)), 1);
+ENDIF;
+
+IF(bLogInfo = 1);
+  LogOutput('INFO', 'END: ' | cProcessName | ' | Winners=' | TRIM(STR(nWinnersAssigned, 10, 0)), 1);
+ENDIF;
+
+#endregion
