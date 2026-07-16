@@ -1,40 +1,52 @@
 {
 	"@type":"Process",
-	"Name":"Merch.Calc.ApplyPromos",
+	"Name":"Merch.Calc.ForecastWOS",
 	"HasSecurityAccess":false,
-	"Code@Code.link":"Merch.Calc.ApplyPromos.ti",
+	"Code@Code.link":"Merch.Calc.ForecastWOS.ti",
 	"DataSource":
 	{
 		"Type":"TM1CubeView",
-		"dataSourceNameForServer":"Merch Promo Settings",
-		"dataSourceNameForClient":"Merch Promo Settings",
-		"view":"TI_ApplyPromos_bootstrap"
+		"dataSourceNameForServer":"Merch Forecast",
+		"dataSourceNameForClient":"Merch Forecast",
+		"view":"TI_FcstWOS_placeholder"
 	},
 	"Parameters":
 	[
 		{
 			"Name":"pVersion",
-			"Prompt":"Version",
-			"Value":"",
+			"Prompt":"Merch Version",
+			"Value":"Forecast",
 			"Type":"String"
 		},
 		{
-			"Name":"pPromoID",
-			"Prompt":"Promo ID (blank=all)",
+			"Name":"pSKUElement",
+			"Prompt":"Roles scope element (optional)",
 			"Value":"",
 			"Type":"String"
 		},
 		{
 			"Name":"pSKU",
-			"Prompt":"SKU node (blank=all Roles)",
+			"Prompt":"Single Merch SKU leaf (optional)",
 			"Value":"",
 			"Type":"String"
+		},
+		{
+			"Name":"pTargetMeasure",
+			"Prompt":"Target measure (default WOS)",
+			"Value":"WOS",
+			"Type":"String"
+		},
+		{
+			"Name":"pPartIdx",
+			"Prompt":"Partition index (unique view name)",
+			"Value":1,
+			"Type":"Numeric"
 		}
 	],
 	"Variables":
 	[
 		{
-			"Name":"vMerch_Promo_Settings_Measure",
+			"Name":"vMerch_Forecast_Measure",
 			"Type":"String",
 			"Position":1,
 			"StartByte":0,
@@ -48,34 +60,25 @@
 			"EndByte":0
 		},
 		{
-			"Name":"vMerch_Promo_ID",
+			"Name":"vMerch_Version",
 			"Type":"String",
 			"Position":3,
 			"StartByte":0,
 			"EndByte":0
 		},
 		{
-			"Name":"vMerch_Version",
+			"Name":"vMerch_Time_Period",
 			"Type":"String",
 			"Position":4,
 			"StartByte":0,
 			"EndByte":0
-		},
-		{
-			"Name":"Value",
-			"Type":"Numeric",
-			"Position":5,
-			"StartByte":0,
-			"EndByte":0
 		}
 	],
-	"UID": "1775679537000",
 	"UIData": "CubeAction=1511\fDataAction=1503\fCubeLogChanges=0\f",
 	"VariablesUIData": [
 		"VarType=32\fColType=827\f",
 		"VarType=32\fColType=827\f",
 		"VarType=32\fColType=827\f",
-		"VarType=32\fColType=827\f",
-		"VarType=33\fColType=827\f"
+		"VarType=32\fColType=827\f"
 	]
 }

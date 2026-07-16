@@ -1,0 +1,41 @@
+{
+	"@type":"Process",
+	"Name":"Merch.Calc.SeedReceiptsByTargetWOS.Hierarchy",
+	"HasSecurityAccess":false,
+	"Code@Code.link":"Merch.Calc.SeedReceiptsByTargetWOS.Hierarchy.ti",
+	"DataSource":
+	{
+		"Type":"None"
+	},
+	"Parameters":
+	[
+		{
+			"Name":"pVersion",
+			"Prompt":"Merch Version",
+			"Value":"",
+			"Type":"String"
+		},
+		{
+			"Name":"pNode",
+			"Prompt":"Roles element",
+			"Value":"",
+			"Type":"String"
+		},
+		{
+			"Name":"pHierarchy",
+			"Prompt":"hierarchy",
+			"Value":"Roles",
+			"Type":"String"
+		},
+		{
+			"Name":"pOverwrite",
+			"Prompt":"Y/N",
+			"Value":"N",
+			"Type":"String"
+		}
+	],
+	"Variables":[],
+	"UID": "17779292750001",
+	"UIData": "CubeAction=1511\fDataAction=1503\fCubeLogChanges=0\f",
+	"VariablesUIData": []
+}
