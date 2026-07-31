@@ -1,0 +1,81 @@
+{
+	"@type":"Process",
+	"Name":"Merch.Calc.ApplyPromos",
+	"HasSecurityAccess":false,
+	"Code@Code.link":"Merch.Calc.ApplyPromos.ti",
+	"DataSource":
+	{
+		"Type":"TM1CubeView",
+		"dataSourceNameForServer":"Merch Promo Settings",
+		"dataSourceNameForClient":"Merch Promo Settings",
+		"view":"TI_ApplyPromos_bootstrap"
+	},
+	"Parameters":
+	[
+		{
+			"Name":"pVersion",
+			"Prompt":"Version",
+			"Value":"",
+			"Type":"String"
+		},
+		{
+			"Name":"pPromoID",
+			"Prompt":"Promo ID (blank=all)",
+			"Value":"",
+			"Type":"String"
+		},
+		{
+			"Name":"pSKU",
+			"Prompt":"SKU node (blank=all Roles)",
+			"Value":"",
+			"Type":"String"
+		}
+	],
+	"Variables":
+	[
+		{
+			"Name":"vMerch_Promo_Settings_Measure",
+			"Type":"String",
+			"Position":1,
+			"StartByte":0,
+			"EndByte":0
+		},
+		{
+			"Name":"vMerch_SKU",
+			"Type":"String",
+			"Position":2,
+			"StartByte":0,
+			"EndByte":0
+		},
+		{
+			"Name":"vMerch_Promo_ID",
+			"Type":"String",
+			"Position":3,
+			"StartByte":0,
+			"EndByte":0
+		},
+		{
+			"Name":"vMerch_Version",
+			"Type":"String",
+			"Position":4,
+			"StartByte":0,
+			"EndByte":0
+		},
+		{
+			"Name":"Value",
+			"Type":"Numeric",
+			"Position":5,
+			"StartByte":0,
+			"EndByte":0
+		}
+	],
+	"UID": "1775679537000",
+	"UIData": "CubeAction=1511\fDataAction=1503\fCubeLogChanges=0\f",
+	"VariablesUIData": [
+		"VarType=32\fColType=827\f",
+		"VarType=32\fColType=827\f",
+		"VarType=32\fColType=827\f",
+		"VarType=32\fColType=827\f",
+		"VarType=33\fColType=827\f"
+	]
+}

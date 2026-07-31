@@ -1,0 +1,267 @@
+#region Prolog
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+#Region : Process Header
+# DEVELOPER : Steve Waterbury
+# CREATED ON : 2026-06-09
+# LAST UPDATE: 2026-07-23
+# CHANGED BY : Rose Morgan
+# COMMENTS: Per-Roles-node WORKER for forecast -> Plan Reporting submission. Submits ALL leaf measures common to PR via Channel_Split attr. Now includes a scoped clear-before-write pass.
+#### CHANGE HISTORY:
+### 2026-06-09  Steve Waterbury  Creation as .Cat worker. Design plan 24d10f22516f.
+### 2026-06-12  Steve Waterbury  FIX view name from pPartIdx. Design plan 256a1f584537.
+### 2026-06-17  Steve Waterbury  PERF caches.
+### 2026-06-19  Steve Waterbury  Submit ALL measures common to PR (set from Channel_Split<>''; split if Y else copy). Design plan 908774392cf2.
+### 2026-07-22  Rose Morgan  Sync Prod hotfix: comment out Channel_Split gates (prolog measure-set gate, data-tab bApplySplit gate) so Dev matches Prod ahead of eventual migration. Design plan 5f6820b384ed.
+### 2026-07-23  Rose Morgan  Package B: added scoped clear-before-write pass (sMeasSetPR/sTpOpenSet/sChMdxSet/sLifecycleMdxSet + ViewZeroOut on Merch Plan Reporting, scoped to descendants of pSKUElement and open periods per Last_Closed_Period+7) so stale cells with no matching source row this run get cleared instead of persisting indefinitely. Design plan 5f6820b384ed.
+#EndRegion
+cProcessName = GetProcessName();
+# sLogLevel = CellGetS('ProcessControl', cProcessName, 'LoggingLevel');
+IF(sLogLevel @= ''); sLogLevel = 'OFF'; ENDIF;
+bLogInfo = 0;
+IF(sLogLevel @= 'INFO' % sLogLevel @= 'DEBUG'); bLogInfo = 1; ENDIF;
+IF(bLogInfo = 1); LogOutput('INFO', 'START ' | cProcessName | ' V=' | pVersion | ' SKU=' | pSKUElement | ' Idx=' | TRIM(STR(pPartIdx,10,0)), 1); ENDIF;
+
+# IF(DIMIX('Merch Version', pVersion) = 0);
+#   LogOutput('ERROR', cProcessName | ' | Invalid pVersion: ' | pVersion, 1);
+#   ProcessError;
+# ENDIF;
+# IF(pSKUElement @= '' % HierarchyElementExists('Merch SKU','Roles', pSKUElement) = 0);
+#   LogOutput('ERROR', cProcessName | ' | Invalid pSKUElement: ' | pSKUElement, 1);
+#   ProcessError;
+# ENDIF;
+
+sSrcCube = 'Merch Forecast';
+sDstCube = 'Merch Plan Reporting';
+sCubeSplit = 'Merch Channel Split';
+sMeasDim = 'Merch Forecast Measure';
+sViewName = 'TI_SubmitFC_' | TRIM(STR(pPartIdx, 10, 0));
+
+sMeasSet = '{';
+nFirst = 1;
+nMeasSz = DIMSIZ(sMeasDim);
+iMs = 1;
+WHILE(iMs <= nMeasSz);
+  sMs = DIMNM(sMeasDim, iMs);
+  IF(ELLEV(sMeasDim, sMs) = 0);
+    # IF(ATTRS(sMeasDim, sMs, 'Channel_Split') @<> '');
+      IF(nFirst = 0); sMeasSet = sMeasSet | ','; ENDIF;
+      sMeasSet = sMeasSet | '[Merch Forecast Measure].[Merch Forecast Measure].[' | sMs | ']';
+      nFirst = 0;
+    # ENDIF;
+  ENDIF;
+  iMs = iMs + 1;
+END;
+sMeasSet = sMeasSet | '}';
+
+sMDX = 'SELECT NON EMPTY ' | sMeasSet | ' ON COLUMNS, NON EMPTY {TM1FILTERBYLEVEL({DESCENDANTS([Merch SKU].[Roles].[' | pSKUElement | '])},0)} * {TM1FILTERBYLEVEL({TM1SUBSETALL([Merch Time Period].[Merch Time Period])},0)} ON ROWS FROM [Merch Forecast] WHERE ([Merch Version].[Merch Version].[' | pVersion | '])';
+
+# IF(ViewExists(sSrcCube, sViewName) = 1); ViewDestroy(sSrcCube, sViewName); ENDIF;
+ViewCreateByMDX(sSrcCube, sViewName, sMDX,1);
+ViewExtractSkipZeroesSet( sSrcCube, sViewName, 1 );
+
+DatasourceType = 'VIEW';
+DatasourceNameForServer = sSrcCube;
+DatasourceCubeview = sViewName;
+nWritten = 0;
+nSkipped = 0;
+
+sChLeaves = '';
+nChDim = DIMSIZ('Merch Channel');
+i = 1;
+WHILE(i <= nChDim);
+  sCh = DIMNM('Merch Channel', i);
+  IF(ELLEV('Merch Channel', sCh) = 0);
+    sChLeaves = sChLeaves | sCh | '|';
+  ENDIF;
+  i = i + 1;
+END;
+
+sCacheSKU = '*UNSET*';
+sCacheLifecycle = 'Active';
+sCacheCategory = '';
+bCacheSkuValid = 0;
+sCacheSplitKey = '*UNSET*';
+sCacheSplitVals = '';
+
+# --- Package B: scoped clear-before-write pass (design plan 5f6820b384ed) ---
+sDstMeasDim = 'Merch Plan Reporting Measure';
+sMeasSetPR = '{';
+nFirstPR = 1;
+iMsPR = 1;
+WHILE(iMsPR <= nMeasSz);
+  sMsPR = DIMNM(sMeasDim, iMsPR);
+  IF(ELLEV(sMeasDim, sMsPR) = 0);
+    IF(DIMIX(sDstMeasDim, sMsPR) <> 0);
+      IF(ELLEV(sDstMeasDim, sMsPR) = 0);
+        IF(nFirstPR = 0); sMeasSetPR = sMeasSetPR | ','; ENDIF;
+        sMeasSetPR = sMeasSetPR | '[Merch Plan Reporting Measure].[Merch Plan Reporting Measure].[' | sMsPR | ']';
+        nFirstPR = 0;
+      ENDIF;
+    ENDIF;
+  ENDIF;
+  iMsPR = iMsPR + 1;
+END;
+sMeasSetPR = sMeasSetPR | '}';
+
+nLCPClear = ATTRN('Merch Version', pVersion, 'Last_Closed_Period');
+IF(nLCPClear > 0);
+  nFloorSerial = nLCPClear + 7;
+ELSE;
+  nFloorSerial = 0;
+ENDIF;
+
+sTpOpenSet = '';
+nFirstTp = 1;
+nTpSz = DIMSIZ('Merch Time Period');
+iTp = 1;
+WHILE(iTp <= nTpSz);
+  sTp = DIMNM('Merch Time Period', iTp);
+  IF(ELLEV('Merch Time Period', sTp) = 0);
+    IF(ATTRN('Merch Time Period', sTp, 'Start_Date') >= nFloorSerial);
+      IF(nFirstTp = 0); sTpOpenSet = sTpOpenSet | ','; ENDIF;
+      sTpOpenSet = sTpOpenSet | '[Merch Time Period].[Merch Time Period].[' | sTp | ']';
+      nFirstTp = 0;
+    ENDIF;
+  ENDIF;
+  iTp = iTp + 1;
+END;
+
+sChMdxSet = '';
+nFirstChM = 1;
+iChM = 1;
+WHILE(iChM <= nChDim);
+  sChM = DIMNM('Merch Channel', iChM);
+  IF(ELLEV('Merch Channel', sChM) = 0);
+    IF(nFirstChM = 0); sChMdxSet = sChMdxSet | ','; ENDIF;
+    sChMdxSet = sChMdxSet | '[Merch Channel].[Merch Channel].[' | sChM | ']';
+    nFirstChM = 0;
+  ENDIF;
+  iChM = iChM + 1;
+END;
+
+sLifecycleMdxSet = '';
+nFirstLc = 1;
+nLcDim = DIMSIZ('Merch Lifecycle');
+iLc = 1;
+WHILE(iLc <= nLcDim);
+  sLc = DIMNM('Merch Lifecycle', iLc);
+  IF(ELLEV('Merch Lifecycle', sLc) = 0);
+    IF(nFirstLc = 0); sLifecycleMdxSet = sLifecycleMdxSet | ','; ENDIF;
+    sLifecycleMdxSet = sLifecycleMdxSet | '[Merch Lifecycle].[Merch Lifecycle].[' | sLc | ']';
+    nFirstLc = 0;
+  ENDIF;
+  iLc = iLc + 1;
+END;
+
+sClearViewName = '';
+IF(sMeasSetPR @<> '{}' & sTpOpenSet @<> '');
+  sClearViewName = 'TI_ClearPR_' | TRIM(STR(pPartIdx, 10, 0));
+  sSkuDescMdx = 'TM1FILTERBYLEVEL({DESCENDANTS([Merch SKU].[Roles].[' | pSKUElement | '])},0)';
+  sClearMDX = 'SELECT NON EMPTY ' | sMeasSetPR |
+    ' ON COLUMNS, NON EMPTY {' | sSkuDescMdx | '} * {' | sTpOpenSet |
+    '} * {' | sChMdxSet | '} * {' | sLifecycleMdxSet |
+    '} ON ROWS FROM [Merch Plan Reporting] WHERE ([Merch Version].[Merch Version].[' | pVersion | '])';
+  IF(ViewExists(sDstCube, sClearViewName) = 1); ViewDestroy(sDstCube, sClearViewName); ENDIF;
+  ViewCreateByMDX(sDstCube, sClearViewName, sClearMDX, 1);
+  ViewZeroOut(sDstCube, sClearViewName);
+  IF(bLogInfo = 1);
+    LogOutput('INFO', cProcessName | ' | Cleared scope V=' | pVersion | ' Node=' | pSKUElement | ' via ' | sClearViewName, 1);
+  ENDIF;
+ELSE;
+  IF(bLogInfo = 1);
+    LogOutput('INFO', cProcessName | ' | Clear step SKIPPED (empty measure/period scope) V=' | pVersion | ' Node=' | pSKUElement, 1);
+  ENDIF;
+ENDIF;
+
+#endregion
+#region Metadata
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+
+#endregion
+#region Data
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+IF(Value = 0); ItemSkip; ENDIF;
+
+sMeas = vMerch_Forecast_Measure;
+
+IF(vMerch_SKU @<> sCacheSKU);
+  sCacheSKU = vMerch_SKU;
+  sCacheLifecycle = ATTRS('Merch SKU', vMerch_SKU, 'Lifecycle_Status_Description');
+  IF(DIMIX('Merch Lifecycle', sCacheLifecycle) = 0); sCacheLifecycle = 'Active'; ENDIF;
+  sCacheCategory = ATTRS('Merch SKU', vMerch_SKU, 'SGM_Category');
+  bCacheSkuValid = 1;
+  IF(sCacheCategory @= '' % DIMIX('Merch Category', sCacheCategory) = 0);
+    bCacheSkuValid = 0;
+    nSkipped = nSkipped + 1;
+    LogOutput('INFO', cProcessName | ' | SKIP SKU ' | vMerch_SKU | ' - no valid SGM_Category (not submitted to Plan Reporting)', 1);
+  ENDIF;
+ENDIF;
+
+IF(bCacheSkuValid = 0);
+  ItemSkip;
+ENDIF;
+
+sLifecycle = sCacheLifecycle;
+sCategory = sCacheCategory;
+
+bApplySplit = 1;
+#IF(ATTRS('Merch Forecast Measure', sMeas, 'Channel_Split') @<> 'Y'); bApplySplit = 0; ENDIF;
+
+sSplitKey = sCategory | '|' | vMerch_Time_Period;
+IF(sSplitKey @<> sCacheSplitKey);
+  sCacheSplitKey = sSplitKey;
+  sCacheSplitVals = '';
+  sScan = sChLeaves;
+  WHILE(LONG(sScan) > 0);
+    nP = SCAN('|', sScan);
+    sCh = SUBST(sScan, 1, nP - 1);
+    sScan = SUBST(sScan, nP + 1, LONG(sScan));
+    nSplit = CellGetN(sCubeSplit, pVersion, vMerch_Time_Period, sCategory, sCh, 'Split Pct');
+    sCacheSplitVals = sCacheSplitVals | TRIM(STR(nSplit, 30, 15)) | '|';
+  END;
+ENDIF;
+
+sScanCh = sChLeaves;
+sScanSp = sCacheSplitVals;
+WHILE(LONG(sScanCh) > 0);
+  nPc = SCAN('|', sScanCh);
+  sCh = SUBST(sScanCh, 1, nPc - 1);
+  sScanCh = SUBST(sScanCh, nPc + 1, LONG(sScanCh));
+  nPs = SCAN('|', sScanSp);
+  nSplit = NUMBR(SUBST(sScanSp, 1, nPs - 1));
+  sScanSp = SUBST(sScanSp, nPs + 1, LONG(sScanSp));
+
+  IF(nSplit <> 0);
+    IF(bApplySplit = 1);
+      nOut = Value * nSplit;
+    ELSE;
+      nOut = Value;
+    ENDIF;
+    IF(CellIsUpdateable(sDstCube, pVersion, vMerch_Time_Period, vMerch_SKU, sCh, sLifecycle, sMeas) = 1);
+      CellPutN(nOut, sDstCube, pVersion, vMerch_Time_Period, vMerch_SKU, sCh, sLifecycle, sMeas);
+      nWritten = nWritten + 1;
+    ENDIF;
+  ENDIF;
+END;
+
+#endregion
+#region Epilog
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+# IF(ViewExists(sSrcCube, sViewName) = 1);
+#   ViewDestroy(sSrcCube, sViewName);
+# ENDIF;
+IF(sClearViewName @<> '');
+  IF(ViewExists(sDstCube, sClearViewName) = 1);
+    ViewDestroy(sDstCube, sClearViewName);
+  ENDIF;
+ENDIF;
+runProcess('Merch.Calc.PlanReportingWOS', 'pVersion', pVersion, 'pSKUElement', pSKUElement, 'pSKU', '', 'pTargetMeasure', 'WOS', 'pPartIdx', pPartIdx);
+IF(bLogInfo = 1);
+  LogOutput('INFO', 'END ' | cProcessName | ' Written=' | TRIM(STR(nWritten, 10, 0)) | ' Skipped=' | TRIM(STR(nSkipped, 10, 0)), 1);
+ENDIF;
+
+#endregion

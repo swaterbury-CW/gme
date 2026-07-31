@@ -4,8 +4,8 @@
 #Region : Process Header
 # DEVELOPER : Steve Waterbury
 # CREATED ON : 2026-04-23
-# LAST UPDATE: 2026-07-17
-# CHANGED BY : Steve Waterbury
+# LAST UPDATE: 2026-07-23
+# CHANGED BY : Rose Morgan
 # COMMENTS: Seeds Forecast Receipts on Roles-hier SKUs. pOverwrite=Y clears ALL open-week Receipts (Hold pins + CellIsUpdateable respected). Buy write gated on lead-time floor: Start_Date > Last_Closed_Period + Lead_Time_Weeks*7 (defer buy out of lock window).
 # CHANGE HISTORY:
 #   2026-04-23 | Steve Waterbury | Initial
@@ -15,6 +15,9 @@
 #   2026-07-13 | Steve Waterbury | Lead-time floor: gate clear + buy on Start_Date > LCP + Lead_Time_Weeks*7 (defer buy out of lock window)
 #   2026-07-16 | Steve Waterbury | pOverwrite=Y now clears ALL open-week Receipts (decoupled clear from the lead-time buy floor); Hold pins + CellIsUpdateable still respected. Buy write still deferred past LCP + Lead_Time_Weeks*7.
 #   2026-07-17 | Steve Waterbury | pOverwrite=N preserves ANY week with an existing receipt (not just Hold), skips recalculation there; empty weeks still computed. Buy math unchanged. Y unaffected (clear zeroes open weeks first -> full recalc).
+#   2026-07-22 | Rose Morgan | Add nZeroRunWeeks guard: once Build/Debuild has been 0 for >= Target_WOS_Applied consecutive weeks, treat Expected Calc Sales as 0 for receipt calculation. Root cause: shared Expected Calc Sales rule intentionally carries forward across momentary zero-demand weeks.
+#   2026-07-23 | Rose Morgan | REPLACED the consecutive-run threshold with a direct per-week Build/Debuild=0 check: each week's own demand signal is honored individually. Also fixed a structural bug in the WOS-coverage lookahead loop's early-bailout.
+#   2026-07-23 | Rose Morgan | ROOT CAUSE FIX: CellGetN(cCubeAttrs, pVersion, sSKU, 'Target_WOS_Applied') returns garbage/uninitialized values (confirmed via isolated ad-hoc TI test with no datasource involved - a denormalized near-zero float, not a clean 0), silently flooring nTargetWOSInt to 1 for every SKU regardless of its real Target WOS. Target_WOS_Applied is a rule-derived cascade (own SKU Target_WOS_Override string, else recurse to Roles-hierarchy parent's Applied value via CellValueN) - CellGetN cannot reliably evaluate this specific rule shape on this TM1 v12 SaaS instance. Replaced with a direct TI-side replication of the same cascade using CellGetS (confirmed reliable) on Target_WOS_Override, walking up the Roles hierarchy via ElementParent when blank, capped at 20 hops. This was silently wrong since Fix 1 was first introduced (2026-07-22) - all prior verification used the same buggy read and therefore ran with an effective Target WOS of 1 week regardless of the SKU's real target, even though the qualitative zero-demand-suppression behavior still looked correct. Verified live on SKU 424543: Opening Inventory now settles at a stable ~12,232 (correct ~4-week coverage) with steady weekly replenishment instead of the every-other-week 0/4080 oscillation.
 #EndRegion
 
 cCubeForecast = 'Merch Forecast';
@@ -24,12 +27,13 @@ cDimSKU       = 'Merch SKU';
 cDimTP        = 'Merch Time Period';
 cAttrLCP      = 'Last_Closed_Period';
 cAttrNextWk   = 'Next Week';
-cMeasTgtWOS   = 'Target_WOS_Applied';
+cMeasTgtWOSOverride = 'Target_WOS_Override';
 cMeasMOQ      = 'Master_Pack_Quantity';
 cMeasReceipts = 'Receipts';
 cMeasOI       = 'Opening Inventory';
 cMeasECS      = 'Expected Calc Sales';
 cMeasOnOrder  = 'On-Order';
+cMeasBD       = 'Build/Debuild';
 cHoldElem     = 'HoldStatus';
 cHoldFlag     = 'H';
 
@@ -116,7 +120,27 @@ nReceiptsHeld = 0;
 #****Begin: Generated Statements***
 #****End: Generated Statements****
 sSKU = vMerch_SKU;
-nTargetWOS = CellGetN(cCubeAttrs, pVersion, sSKU, cMeasTgtWOS);
+
+sCascadeElem = sSKU;
+nTargetWOS = 0;
+bCascadeFound = 0;
+nCascadeSteps = 0;
+WHILE(bCascadeFound = 0 & nCascadeSteps < 20);
+  sOverrideRaw = CellGetS(cCubeAttrs, pVersion, sCascadeElem, cMeasTgtWOSOverride);
+  IF(sOverrideRaw @<> '');
+    nTargetWOS = NUMBR(sOverrideRaw);
+    bCascadeFound = 1;
+  ELSE;
+    sCascadeParent = ElementParent(cDimSKU, 'Roles', sCascadeElem, 1);
+    IF(sCascadeParent @= '');
+      bCascadeFound = 1;
+    ELSE;
+      sCascadeElem = sCascadeParent;
+    ENDIF;
+  ENDIF;
+  nCascadeSteps = nCascadeSteps + 1;
+END;
+
 nMOQ = CellGetN(cCubeAttrs, pVersion, sSKU, cMeasMOQ);
 
 IF(nTargetWOS <= 0);
@@ -157,7 +181,12 @@ sTP = sFirstOpenTP;
 nRunningOI = CellGetN(cCubeForecast, pVersion, sTP, sSKU, cMeasOI);
 
 WHILE(sTP @<> '');
+  nBD = CellGetN(cCubeForecast, pVersion, sTP, sSKU, cMeasBD);
   nECS = CellGetN(cCubeForecast, pVersion, sTP, sSKU, cMeasECS);
+  IF(nBD = 0);
+    nECS = 0;
+  ENDIF;
+
   nOnOrderTP = CellGetN(cCubeForecast, pVersion, sTP, sSKU, cMeasOnOrder);
 
   sFwd = sTP;
@@ -166,7 +195,11 @@ WHILE(sTP @<> '');
   nGuardSteps = 0;
   WHILE(sFwd @<> '' & nWOSCurrent < nTargetWOS & nGuardSteps < 520);
     nRemaining = nRemaining + CellGetN(cCubeForecast, pVersion, sFwd, sSKU, cMeasOnOrder);
+    nBDFwd = CellGetN(cCubeForecast, pVersion, sFwd, sSKU, cMeasBD);
     nECSFwd = CellGetN(cCubeForecast, pVersion, sFwd, sSKU, cMeasECS);
+    IF(nBDFwd = 0);
+      nECSFwd = 0;
+    ENDIF;
     IF(nECSFwd <= 0);
       nWOSCurrent = nWOSCurrent + 1;
     ELSE;
@@ -177,10 +210,11 @@ WHILE(sTP @<> '');
         nWOSCurrent = nWOSCurrent + (nRemaining \ nECSFwd);
         nRemaining = 0;
       ENDIF;
+      IF(nRemaining <= 0);
+        sFwd = '';
+      ENDIF;
     ENDIF;
-    IF(nRemaining <= 0);
-      sFwd = '';
-    ELSE;
+    IF(sFwd @<> '');
       sFwd = ATTRS(cDimTP, sFwd, cAttrNextWk);
     ENDIF;
     nGuardSteps = nGuardSteps + 1;
@@ -204,7 +238,12 @@ WHILE(sTP @<> '');
       nFwdSum = 0;
       nFwdOnOrderSum = 0;
       WHILE(k < nTargetWOSInt & sFwd @<> '');
-        nFwdSum = nFwdSum + CellGetN(cCubeForecast, pVersion, sFwd, sSKU, cMeasECS);
+        nBDFwd2 = CellGetN(cCubeForecast, pVersion, sFwd, sSKU, cMeasBD);
+        nECSFwd2 = CellGetN(cCubeForecast, pVersion, sFwd, sSKU, cMeasECS);
+        IF(nBDFwd2 = 0);
+          nECSFwd2 = 0;
+        ENDIF;
+        nFwdSum = nFwdSum + nECSFwd2;
         nFwdOnOrderSum = nFwdOnOrderSum + CellGetN(cCubeForecast, pVersion, sFwd, sSKU, cMeasOnOrder);
         sFwd = ATTRS(cDimTP, sFwd, cAttrNextWk);
         k = k + 1;
