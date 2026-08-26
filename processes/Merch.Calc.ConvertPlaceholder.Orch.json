@@ -1,0 +1,101 @@
+{
+	"@type":"Process",
+	"Name":"Merch.Calc.ConvertPlaceholder.Orch",
+	"HasSecurityAccess":false,
+	"Code@Code.link":"Merch.Calc.ConvertPlaceholder.Orch.ti",
+	"DataSource":
+	{
+		"Type":"TM1CubeView",
+		"dataSourceNameForServer":"Merch Placeholder Mapping",
+		"dataSourceNameForClient":"Merch Placeholder Mapping",
+		"view":"TI_ConvPHOrch"
+	},
+	"Parameters":
+	[
+		{
+			"Name":"pVersion",
+			"Prompt":"Version (must be Calculated)",
+			"Value":"Forecast",
+			"Type":"String"
+		},
+		{
+			"Name":"pCategory",
+			"Prompt":"Merch Category leaf, blank for all",
+			"Value":"",
+			"Type":"String"
+		},
+		{
+			"Name":"pGroup",
+			"Prompt":"Group, blank for all",
+			"Value":"",
+			"Type":"String"
+		},
+		{
+			"Name":"pClearStaging",
+			"Prompt":"1 clears this run's staging region first",
+			"Value":1,
+			"Type":"Numeric"
+		},
+		{
+			"Name":"pUseRunProcess",
+			"Prompt":"1 dispatches in parallel with RunProcess, 0 serially",
+			"Value":"1",
+			"Type":"String"
+		}
+	],
+	"Variables":
+	[
+		{
+			"Name":"vVer",
+			"Type":"String",
+			"Position":1,
+			"StartByte":0,
+			"EndByte":0
+		},
+		{
+			"Name":"vCat",
+			"Type":"String",
+			"Position":2,
+			"StartByte":0,
+			"EndByte":0
+		},
+		{
+			"Name":"vPH",
+			"Type":"String",
+			"Position":3,
+			"StartByte":0,
+			"EndByte":0
+		},
+		{
+			"Name":"vGrp",
+			"Type":"String",
+			"Position":4,
+			"StartByte":0,
+			"EndByte":0
+		},
+		{
+			"Name":"vMsr",
+			"Type":"String",
+			"Position":5,
+			"StartByte":0,
+			"EndByte":0
+		},
+		{
+			"Name":"vTgtValue",
+			"Type":"String",
+			"Position":6,
+			"StartByte":0,
+			"EndByte":0
+		}
+	],
+	"UID": "17872904290003",
+	"UIData": "CubeAction=1511\fDataAction=1503\fCubeLogChanges=0\f",
+	"VariablesUIData": [
+		"VarType=32\fColType=827\f",
+		"VarType=32\fColType=827\f",
+		"VarType=32\fColType=827\f",
+		"VarType=32\fColType=827\f",
+		"VarType=32\fColType=827\f",
+		"VarType=32\fColType=827\f"
+	]
+}

@@ -1,38 +1,56 @@
 {
 	"@type":"Process",
-	"Name":"Merch.Calc.ClearPlaceholderForecast",
+	"Name":"Merch.Calc.StagePlaceholderConversion",
 	"HasSecurityAccess":false,
-	"Code@Code.link":"Merch.Calc.ClearPlaceholderForecast.ti",
+	"Code@Code.link":"Merch.Calc.StagePlaceholderConversion.ti",
 	"DataSource":
 	{
 		"Type":"TM1CubeView",
 		"dataSourceNameForServer":"Merch Placeholder Forecast",
 		"dataSourceNameForClient":"Merch Placeholder Forecast",
-		"view":"TI_ClearPH"
+		"view":"TI_StagePH_0"
 	},
 	"Parameters":
 	[
 		{
 			"Name":"pVersion",
-			"Prompt":"Version",
+			"Prompt":"Version (must be Calculated)",
+			"Value":"Forecast",
+			"Type":"String"
+		},
+		{
+			"Name":"pCategory",
+			"Prompt":"Merch Category leaf",
 			"Value":"",
 			"Type":"String"
 		},
 		{
 			"Name":"pPlaceholderSKU",
-			"Prompt":"Placeholder SKU",
-			"Value":"",
-			"Type":"String"
-		},
-		{
-			"Name":"pCategory",
-			"Prompt":"Category (blank=all)",
+			"Prompt":"Merch Placeholder SKU leaf",
 			"Value":"",
 			"Type":"String"
 		},
 		{
 			"Name":"pGroup",
-			"Prompt":"Group (blank=user)",
+			"Prompt":"Group",
+			"Value":"",
+			"Type":"String"
+		},
+		{
+			"Name":"pTargetSKU",
+			"Prompt":"Target SKU (blank reads it from the mapping cube)",
+			"Value":"",
+			"Type":"String"
+		},
+		{
+			"Name":"pPartIdx",
+			"Prompt":"Partition index, makes this worker's object names unique",
+			"Value":0,
+			"Type":"Numeric"
+		},
+		{
+			"Name":"pLogLevel",
+			"Prompt":"Logging level from the caller, blank reads ProcessControl",
 			"Value":"",
 			"Type":"String"
 		}
@@ -40,56 +58,56 @@
 	"Variables":
 	[
 		{
-			"Name":"vMeasure",
+			"Name":"vVer",
 			"Type":"String",
 			"Position":1,
 			"StartByte":0,
 			"EndByte":0
 		},
 		{
-			"Name":"vTimePeriod",
+			"Name":"vTime",
 			"Type":"String",
 			"Position":2,
 			"StartByte":0,
 			"EndByte":0
 		},
 		{
-			"Name":"vCategory",
+			"Name":"vCat",
 			"Type":"String",
 			"Position":3,
 			"StartByte":0,
 			"EndByte":0
 		},
 		{
-			"Name":"vVersion",
+			"Name":"vPH",
 			"Type":"String",
 			"Position":4,
 			"StartByte":0,
 			"EndByte":0
 		},
 		{
-			"Name":"vPHSKU",
+			"Name":"vGrp",
 			"Type":"String",
 			"Position":5,
 			"StartByte":0,
 			"EndByte":0
 		},
 		{
-			"Name":"vGroup",
+			"Name":"vMsr",
 			"Type":"String",
 			"Position":6,
 			"StartByte":0,
 			"EndByte":0
 		},
 		{
-			"Name":"Value",
+			"Name":"vValue",
 			"Type":"Numeric",
 			"Position":7,
 			"StartByte":0,
 			"EndByte":0
 		}
 	],
-	"UID": "17743918250002",
+	"UID": "1787288267000",
 	"UIData": "CubeAction=1511\fDataAction=1503\fCubeLogChanges=0\f",
 	"VariablesUIData": [
 		"VarType=32\fColType=827\f",

@@ -1,0 +1,43 @@
+{
+	"@type":"Process",
+	"Name":"Merch.Calc.ConvertPlaceholder.ClearTargets",
+	"HasSecurityAccess":false,
+	"Code@Code.link":"Merch.Calc.ConvertPlaceholder.ClearTargets.ti",
+	"DataSource":
+	{
+		"Type":"TM1DimensionSubset",
+		"dataSourceNameForServer":"Merch Time Period",
+		"dataSourceNameForClient":"Merch Time Period",
+		"subset":"ForecastTPLookup_bootstrap"
+	},
+	"Parameters":
+	[
+		{
+			"Name":"pVersion",
+			"Prompt":"pVersion",
+			"Value":"Forecast",
+			"Type":"String"
+		},
+		{
+			"Name":"pTargetSKUs",
+			"Prompt":"pTargetSKUs",
+			"Value":"",
+			"Type":"String"
+		}
+	],
+	"Variables":
+	[
+		{
+			"Name":"vMerch_Time_Period",
+			"Type":"String",
+			"Position":1,
+			"StartByte":0,
+			"EndByte":0
+		}
+	],
+	"UID": "1787611615000",
+	"UIData": "CubeAction=1511\fDataAction=1503\fCubeLogChanges=0\f",
+	"VariablesUIData": [
+		"VarType=32\fColType=827\f"
+	]
+}

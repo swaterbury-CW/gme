@@ -1,0 +1,119 @@
+#region Prolog
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+#Region : Process Header
+#############################
+##~~ Start Process ~~##
+#############################
+# DEVELOPER : Steve Waterbury
+# CREATED ON : 2026-08-21
+# LAST UPDATE: 2026-08-24
+# CHANGED BY : Steve Waterbury
+# COMMENTS:
+# Clears the region of }Merch Placeholder Conversion that a conversion run is about to
+# rebuild - one version, optionally narrowed to one category and one group. Runs as its own
+# job so the clear COMMITS before the parallel workers start.
+#
+#### CHANGE HISTORY:
+### MODIFICATION DATE  CHANGED BY         COMMENT
+### 2026-08-21         Steve Waterbury    Initial creation
+### 2026-08-24         Steve Waterbury    Clear scoped to category and group; temporary objects; pLogLevel
+#
+#EndRegion
+
+#Region : Logging
+cProcessName = GetProcessName();
+sLogLevel = pLogLevel;
+IF(sLogLevel @= '');
+  sLogLevel = CellGetS('ProcessControl', cProcessName, 'LoggingLevel');
+ENDIF;
+IF(sLogLevel @= '');
+  sLogLevel = 'INFO';
+ENDIF;
+bLogInfo = 0;
+IF(sLogLevel @= 'INFO' % sLogLevel @= 'DEBUG');
+  bLogInfo = 1;
+ENDIF;
+#EndRegion
+
+#Region : Constants
+sStgCube = '}Merch Placeholder Conversion';
+sDimVer = 'Merch Version';
+sDimCat = 'Merch Category';
+sDimGrp = '}Groups';
+sClearView = 'TI_ConvPHClear';
+sSubVer = 'TI_ConvPHClear_Ver';
+sSubCat = 'TI_ConvPHClear_Cat';
+sSubGrp = 'TI_ConvPHClear_Grp';
+#EndRegion
+
+#Region : Validation - before any view or subset exists, so ProcessError is safe
+IF(pVersion @= '');
+  LogOutput('ERROR', cProcessName | ' | pVersion is required', 1);
+  ProcessError;
+ENDIF;
+IF(DIMIX(sDimVer, pVersion) = 0);
+  LogOutput('ERROR', cProcessName | ' | version not found: ' | pVersion, 1);
+  ProcessError;
+ENDIF;
+IF(pCategory @<> '');
+  IF(DIMIX(sDimCat, pCategory) = 0);
+    LogOutput('ERROR', cProcessName | ' | category not found: ' | pCategory, 1);
+    ProcessError;
+  ENDIF;
+ENDIF;
+IF(pGroup @<> '');
+  IF(DIMIX(sDimGrp, pGroup) = 0);
+    LogOutput('ERROR', cProcessName | ' | group not found: ' | pGroup, 1);
+    ProcessError;
+  ENDIF;
+ENDIF;
+#EndRegion
+
+#Region : Clear the region this run will rebuild
+# Same version/category/group scope as the orchestrator's mapping walk; every other dimension
+# is left full, so a row deleted or re-pointed since the last run leaves nothing orphaned.
+# Temporary view and subsets - private to this thread, dropped at process end.
+ViewCreate(sStgCube, sClearView, 1);
+
+SubsetCreateByMDX(sSubVer, '{[' | sDimVer | '].[' | sDimVer | '].[' | pVersion | ']}', 1);
+ViewSubsetAssign(sStgCube, sClearView, sDimVer, sSubVer);
+
+IF(pCategory @<> '');
+  SubsetCreateByMDX(sSubCat, '{[' | sDimCat | '].[' | sDimCat | '].[' | pCategory | ']}', 1);
+ELSE;
+  SubsetCreateByMDX(sSubCat, '{TM1FILTERBYLEVEL({TM1SUBSETALL([' | sDimCat | '].[' | sDimCat | '])}, 0)}', 1);
+ENDIF;
+ViewSubsetAssign(sStgCube, sClearView, sDimCat, sSubCat);
+
+IF(pGroup @<> '');
+  SubsetCreateByMDX(sSubGrp, '{[' | sDimGrp | '].[' | sDimGrp | '].[' | pGroup | ']}', 1);
+ELSE;
+  SubsetCreateByMDX(sSubGrp, '{TM1SUBSETALL([' | sDimGrp | '].[' | sDimGrp | '])}', 1);
+ENDIF;
+ViewSubsetAssign(sStgCube, sClearView, sDimGrp, sSubGrp);
+
+ViewSuppressZeroesSet(sStgCube, sClearView, 1);
+ViewZeroOut(sStgCube, sClearView);
+#EndRegion
+
+IF(bLogInfo = 1);
+  LogOutput('INFO', cProcessName | ' | END | cleared ' | sStgCube | ' | version=' | pVersion | ' | category=' | pCategory | ' | group=' | pGroup, 1);
+ENDIF;
+
+#endregion
+#region Metadata
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+
+#endregion
+#region Data
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+
+#endregion
+#region Epilog
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+
+#endregion

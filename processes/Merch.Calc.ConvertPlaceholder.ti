@@ -1,0 +1,554 @@
+#region Prolog
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+#Region : Process Header
+#############################
+##~~ Start Process ~~##
+#############################
+# DEVELOPER : Steve Waterbury
+# CREATED ON : 2026-03-22
+# LAST UPDATE: 2026-08-23
+# CHANGED BY : Steve Waterbury
+# COMMENTS:
+# Converts every placeholder mapped to ONE target SKU into that target's Merch Forecast row,
+# blended mathematically instead of last-in-wins.
+#
+# Merch.Calc.StagePlaceholderConversion first stages each placeholder's additive components
+# and Build/Debuild chain into }Merch Placeholder Conversion keyed by target SKU. This worker
+# then, for each OPEN leaf week, sums every numerator and denominator across the contributing
+# groups and divides ONCE, so a rate is never summed or arithmetically averaged. }Groups is a
+# flat control dimension with no consolidation, which is why the group blend happens here
+# rather than in the cube.
+#
+# CLOSED WEEKS ARE NEVER TOUCHED. Closed periods belong to the actuals and period-close
+# machinery, which wipes and rebuilds them; a forecast-side writer must stay out. See the
+# guard at the top of the Data tab for why this is not merely cosmetic.
+#
+# The four blended rates land on Full Price AUR Override, Base AUC Override, Sales AUC
+# Override and Receipt AUC Override. They CANNOT be written to the rates themselves: on a
+# Calculated version those are derived from Merch Version SKU Attributes, so the previous
+# blanket CellPutN silently no-opped on all four.
+#
+# Units use Replace semantics - the blended total goes to Adjustment Units and the existing
+# rule forces Calc Units to 0 while that is non-zero. Note the write ORDER below: the
+# Adjustment Units rule gates on Opening Inventory + Receipts + On-Order > 0, so the supply
+# inputs have to land before the units or the cell refuses the write on an empty target.
+#
+# Opening Inventory is NOT written. Merch Forecast derives it as a cumulative roll-forward on
+# every open week past the closed period, so it is not an input, and a placeholder's own
+# opening inventory must never be forced onto the target.
+#
+# Promo % is zeroed on every converted week. The placeholder cube computes Promo as
+# Full Price AUR * Markdown % with no Promo % term while Merch Forecast uses the compound
+# form, so a stale Promo % would compound the discount a second time.
+#
+# The four drivers are written as blended values rather than zeroed, because the staging
+# ratios telescope: Seasonality * Velocity * Regime * Promo Build = BD W_SVRP / BD Weight.
+# The existing driver-product rule then recomputes the combined Build/Debuild unaided.
+#
+# Per-week scope is deliberately narrow. An open week is written when the staging cube shows a
+# contribution. It is zeroed only when it shows none AND one of the four Override leaves is
+# still non-zero, which is a self-describing marker that this chain converted that week on an
+# earlier run. Every other week is left completely alone, so the target keeps forecasting
+# organically outside the placeholder window and a re-run with a narrower window cleans up
+# after itself without ever touching a week the chain did not own.
+#
+# Receipts, On-Order, On-Order Dollars, Inv Adjustment Dollars, Inventory Adjustment and
+# Reservations are shared with the receipt and WOS seeders, so they are written when the
+# placeholder actually planned them and are never cleared here.
+#
+#### CHANGE HISTORY:
+### MODIFICATION DATE  CHANGED BY         COMMENT
+### 2026-04-21         Steve Waterbury    Added pGroup
+### 2026-05-20         Steve Waterbury    Roles guard on the target SKU
+### 2026-08-21         Steve Waterbury    Rewrite: blend all mapped placeholders via the staging cube
+### 2026-08-23         Steve Waterbury    Closed-period guard: never write or revert a closed week
+#
+#EndRegion
+
+#Region : Logging
+cProcessName = GetProcessName();
+sLogLevel = CellGetS('ProcessControl', cProcessName, 'LoggingLevel');
+IF(sLogLevel @= '');
+  sLogLevel = 'INFO';
+ENDIF;
+bLogInfo = 0;
+IF(sLogLevel @= 'INFO' % sLogLevel @= 'DEBUG');
+  bLogInfo = 1;
+ENDIF;
+#EndRegion
+
+#Region : Constants
+sStgCube = '}Merch Placeholder Conversion';
+sTgtCube = 'Merch Forecast';
+sMapCube = 'Merch Placeholder Mapping';
+sDimVer = 'Merch Version';
+sDimTP = 'Merch Time Period';
+sDimSKU = 'Merch SKU';
+sDimCat = 'Merch Category';
+sDimPH = 'Merch Placeholder SKU';
+sDimGrp = '}Groups';
+cRolesHier = 'Roles';
+cAllCat = 'All Categories';
+cAllPH = 'All Placeholder SKUs';
+
+nPartIdx = pPartIdx;
+sSubName = 'TI_ConvPH_' | TRIM(STR(nPartIdx, 12, 0));
+
+nWeeks = 0;
+nConverted = 0;
+nReverted = 0;
+nSkipped = 0;
+nNoUnits = 0;
+nClosedSkipped = 0;
+#EndRegion
+
+#Region : Validation - all of it BEFORE the temp subset exists, so ProcessError is safe
+IF(pVersion @= '');
+  LogOutput('ERROR', cProcessName | ' | pVersion is required', 1);
+  ProcessError;
+ENDIF;
+IF(DIMIX(sDimVer, pVersion) = 0);
+  LogOutput('ERROR', cProcessName | ' | version not found: ' | pVersion, 1);
+  ProcessError;
+ENDIF;
+sVersionType = ATTRS(sDimVer, pVersion, 'Version_Type');
+IF(sVersionType @<> 'Calculated');
+  LogOutput('ERROR', cProcessName | ' | version is not Calculated so the target rates would not respond: ' | pVersion | ' is ' | sVersionType, 1);
+  ProcessError;
+ENDIF;
+
+# The closed-period boundary for this version. Read once; every week is tested against it,
+# using the same End_Date comparison every Merch Forecast rule gate uses.
+nLastClosed = ATTRN(sDimVer, pVersion, 'Last_Closed_Period');
+
+# Target resolution. An explicit pTargetSKU is the multi-placeholder path; the original
+# single-placeholder signature still resolves its target from the mapping row.
+sTarget = pTargetSKU;
+IF(sTarget @= '');
+  IF(pCategory @= '' % pPlaceholderSKU @= '' % pGroup @= '');
+    LogOutput('ERROR', cProcessName | ' | pTargetSKU is empty and pCategory / pPlaceholderSKU / pGroup were not all supplied, so no target can be resolved', 1);
+    ProcessError;
+  ENDIF;
+  IF(DIMIX(sDimCat, pCategory) = 0);
+    LogOutput('ERROR', cProcessName | ' | category not found: ' | pCategory, 1);
+    ProcessError;
+  ENDIF;
+  IF(DIMIX(sDimPH, pPlaceholderSKU) = 0);
+    LogOutput('ERROR', cProcessName | ' | placeholder SKU not found: ' | pPlaceholderSKU, 1);
+    ProcessError;
+  ENDIF;
+  IF(DIMIX(sDimGrp, pGroup) = 0);
+    LogOutput('ERROR', cProcessName | ' | group not found: ' | pGroup, 1);
+    ProcessError;
+  ENDIF;
+  sTarget = CellGetS(sMapCube, pVersion, pCategory, pPlaceholderSKU, pGroup, 'Target SKU');
+ENDIF;
+IF(sTarget @= '');
+  LogOutput('ERROR', cProcessName | ' | no target SKU to convert into', 1);
+  ProcessError;
+ENDIF;
+
+# MULTI-HIERARCHY VALIDATION. Merch SKU carries many hierarchies and DIMIX reports on the
+# dimension as a whole, so it is not sufficient on its own. Report the two failure modes
+# distinctly: absent from the dimension, versus present but outside the Roles rollup that the
+# conversion chain requires.
+nTgtAnywhere = DIMIX(sDimSKU, sTarget);
+nTgtInRoles = HierarchyElementExists(sDimSKU, cRolesHier, sTarget);
+IF(nTgtInRoles = 0);
+  IF(nTgtAnywhere = 0);
+    LogOutput('ERROR', cProcessName | ' | target SKU not found in ' | sDimSKU | ': ' | sTarget, 1);
+  ELSE;
+    LogOutput('ERROR', cProcessName | ' | target SKU ' | sTarget | ' exists in ' | sDimSKU | ' but NOT in the ' | cRolesHier | ' hierarchy, so it cannot be converted into', 1);
+  ENDIF;
+  ProcessError;
+ENDIF;
+
+# Contributing groups: the orchestrator supplies the full comma-delimited list, a
+# single-placeholder caller supplies its own group, and an interactive caller falls back to
+# the functional group resolved from }ClientGroups.
+sGroups = pGroups;
+IF(sGroups @= '');
+  sGroups = pGroup;
+ENDIF;
+IF(sGroups @= '');
+  sUser = TM1User();
+  nG = 1;
+  nGroupCount = DIMSIZ(sDimGrp);
+  WHILE(nG <= nGroupCount);
+    sG = DIMNM(sDimGrp, nG);
+    IF(sG @<> 'ADMIN' & sG @<> 'SecurityAdmin' & sG @<> 'DataAdmin' & sG @<> 'OperationsAdmin' & sG @<> 'Read Only');
+      IF(CellGetN('}ClientGroups', sUser, sG) = 1);
+        sGroups = sG;
+        nG = nGroupCount;
+      ENDIF;
+    ENDIF;
+    nG = nG + 1;
+  END;
+ENDIF;
+IF(sGroups @= '');
+  LogOutput('ERROR', cProcessName | ' | no contributing group supplied and none resolved for the caller', 1);
+  ProcessError;
+ENDIF;
+
+# Validate every name in the list before a single cell is written.
+sChk = sGroups;
+WHILE(LONG(sChk) > 0);
+  nCommaChk = SCAN(',', sChk);
+  IF(nCommaChk > 0);
+    sOneChk = TRIM(SUBST(sChk, 1, nCommaChk - 1));
+    sChk = TRIM(SUBST(sChk, nCommaChk + 1, LONG(sChk) - nCommaChk));
+  ELSE;
+    sOneChk = TRIM(sChk);
+    sChk = '';
+  ENDIF;
+  IF(sOneChk @<> '');
+    IF(DIMIX(sDimGrp, sOneChk) = 0);
+      LogOutput('ERROR', cProcessName | ' | group not found in ' | sDimGrp | ': ' | sOneChk, 1);
+      ProcessError;
+    ENDIF;
+  ENDIF;
+END;
+#EndRegion
+
+#Region : Iterate every leaf week through a dimension subset datasource
+IF(SubsetExists(sDimTP, sSubName) = 1);
+  SubsetDestroy(sDimTP, sSubName);
+ENDIF;
+sSubMDX = '{TM1FILTERBYLEVEL({TM1SUBSETALL([' | sDimTP | '].[' | sDimTP | '])}, 0)}';
+SubsetCreateByMDX(sSubName, sSubMDX);
+DatasourceType = 'SUBSET';
+DatasourceNameForServer = sDimTP;
+DatasourceDimensionSubset = sSubName;
+#EndRegion
+
+#endregion
+#region Metadata
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+
+#endregion
+#region Data
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+sWk = vMerch_Time_Period;
+IF(sWk @= '');
+  ItemSkip;
+ENDIF;
+IF(DTYPE(sDimTP, sWk) @<> 'N');
+  ItemSkip;
+ENDIF;
+nWeeks = nWeeks + 1;
+
+#Region : CLOSED PERIOD GUARD
+# Nothing in this chain may modify a closed week. The rate gates on Merch Forecast already
+# STET there, so the four Override leaves and the rate inputs would be inert - but Adjustment
+# Units is a raw INPUT consolidated into Units, so writing it into a closed week silently
+# changes reported history. Closed periods belong to the actuals and period-close machinery,
+# which wipes and rebuilds them from actuals; a forecast-side writer must stay out entirely.
+# The test is the same one every Merch Forecast rule gate uses. The guard sits BEFORE the
+# contribution gate, so a closed week is never written AND never handed back either - history
+# is left exactly as the close left it.
+IF(nLastClosed <> 0);
+  IF(ATTRN(sDimTP, sWk, 'End_Date') <= nLastClosed);
+    nClosedSkipped = nClosedSkipped + 1;
+    ItemSkip;
+  ENDIF;
+ENDIF;
+#EndRegion
+
+#Region : Cheap contribution gate - three reads per group across a nine year calendar
+nUnits = 0;
+nBDW = 0;
+nReceipts = 0;
+sRemain = sGroups;
+WHILE(LONG(sRemain) > 0);
+  nComma = SCAN(',', sRemain);
+  IF(nComma > 0);
+    sGrp = TRIM(SUBST(sRemain, 1, nComma - 1));
+    sRemain = TRIM(SUBST(sRemain, nComma + 1, LONG(sRemain) - nComma));
+  ELSE;
+    sGrp = TRIM(sRemain);
+    sRemain = '';
+  ENDIF;
+  IF(sGrp @<> '');
+    nUnits = nUnits + CellGetN(sStgCube, pVersion, sWk, sTarget, cAllCat, cAllPH, sGrp, 'Units');
+    nBDW = nBDW + CellGetN(sStgCube, pVersion, sWk, sTarget, cAllCat, cAllPH, sGrp, 'BD Weight');
+    nReceipts = nReceipts + CellGetN(sStgCube, pVersion, sWk, sTarget, cAllCat, cAllPH, sGrp, 'Receipts');
+  ENDIF;
+END;
+
+nHasContribution = 0;
+IF(nUnits <> 0 % nBDW <> 0 % nReceipts <> 0);
+  nHasContribution = 1;
+ENDIF;
+
+# A week with no contribution is only touched if one of the four Override leaves is still
+# non-zero, which means this chain converted it on an earlier run and now has to hand it back.
+nWasConverted = 0;
+IF(nHasContribution = 0);
+  IF(CellGetN(sTgtCube, pVersion, sWk, sTarget, 'Full Price AUR Override') <> 0 % CellGetN(sTgtCube, pVersion, sWk, sTarget, 'Base AUC Override') <> 0 % CellGetN(sTgtCube, pVersion, sWk, sTarget, 'Sales AUC Override') <> 0 % CellGetN(sTgtCube, pVersion, sWk, sTarget, 'Receipt AUC Override') <> 0);
+    nWasConverted = 1;
+  ENDIF;
+  IF(nWasConverted = 0);
+    ItemSkip;
+  ENDIF;
+ENDIF;
+#EndRegion
+
+#Region : Writability guard per PAT-001. The Override leaves and the drivers are plain inputs
+# or STET cells on a Calculated version, so they are writable; the guard turns any future rule
+# change into a counted skip instead of a minor error storm. Adjustment Units is deliberately
+# NOT checked here - its rule gates on Opening Inventory + Receipts + On-Order > 0, so a
+# target that only becomes writable once its receipts land would be skipped wrongly. It is
+# guarded at its own write instead.
+IF(CellIsUpdateable(sTgtCube, pVersion, sWk, sTarget, 'Full Price AUR Override') = 0 % CellIsUpdateable(sTgtCube, pVersion, sWk, sTarget, 'Seasonality') = 0);
+  nSkipped = nSkipped + 1;
+  ItemSkip;
+ENDIF;
+#EndRegion
+
+#Region : Previously converted, no contribution left - hand the week back to the planner
+IF(nHasContribution = 0);
+  CellPutN(0, sTgtCube, pVersion, sWk, sTarget, 'Full Price AUR Override');
+  CellPutN(0, sTgtCube, pVersion, sWk, sTarget, 'Base AUC Override');
+  CellPutN(0, sTgtCube, pVersion, sWk, sTarget, 'Sales AUC Override');
+  CellPutN(0, sTgtCube, pVersion, sWk, sTarget, 'Receipt AUC Override');
+  IF(CellIsUpdateable(sTgtCube, pVersion, sWk, sTarget, 'Adjustment Units') = 1);
+    CellPutN(0, sTgtCube, pVersion, sWk, sTarget, 'Adjustment Units');
+  ENDIF;
+  CellPutN(0, sTgtCube, pVersion, sWk, sTarget, 'Markdown %');
+  CellPutN(0, sTgtCube, pVersion, sWk, sTarget, 'Promo %');
+  CellPutN(0, sTgtCube, pVersion, sWk, sTarget, 'Rate Adjustment');
+  CellPutN(0, sTgtCube, pVersion, sWk, sTarget, 'Price Adjustment');
+  CellPutN(0, sTgtCube, pVersion, sWk, sTarget, 'Backend Adjustment');
+  CellPutN(0, sTgtCube, pVersion, sWk, sTarget, 'Other AUC Adjustment');
+  CellPutN(0, sTgtCube, pVersion, sWk, sTarget, 'Seasonality');
+  CellPutN(0, sTgtCube, pVersion, sWk, sTarget, 'Velocity');
+  CellPutN(0, sTgtCube, pVersion, sWk, sTarget, 'Regime');
+  CellPutN(0, sTgtCube, pVersion, sWk, sTarget, 'Promo Build');
+  nReverted = nReverted + 1;
+  ItemSkip;
+ENDIF;
+#EndRegion
+
+#Region : Accumulate every numerator and denominator across the contributing groups
+# Opening Inventory is staged for audit but deliberately not accumulated here: it is
+# rule-derived on Merch Forecast and must not be pushed onto the target.
+nBaseRev = 0;
+nBaseCost = 0;
+nCost = 0;
+nMdRev = 0;
+nBackCost = 0;
+nOtherCost = 0;
+nPriceAdjDlr = 0;
+nRevAdj = 0;
+nRcptDlr = 0;
+nCalcU = 0;
+nCBW = 0;
+nWS = 0;
+nWSV = 0;
+nWSVR = 0;
+nWSVRP = 0;
+nOO = 0;
+nOOD = 0;
+nInvAdjD = 0;
+nInvAdj = 0;
+nRes = 0;
+sRemain2 = sGroups;
+WHILE(LONG(sRemain2) > 0);
+  nComma2 = SCAN(',', sRemain2);
+  IF(nComma2 > 0);
+    sGrp2 = TRIM(SUBST(sRemain2, 1, nComma2 - 1));
+    sRemain2 = TRIM(SUBST(sRemain2, nComma2 + 1, LONG(sRemain2) - nComma2));
+  ELSE;
+    sGrp2 = TRIM(sRemain2);
+    sRemain2 = '';
+  ENDIF;
+  IF(sGrp2 @<> '');
+    nBaseRev = nBaseRev + CellGetN(sStgCube, pVersion, sWk, sTarget, cAllCat, cAllPH, sGrp2, 'Base Revenue');
+    nBaseCost = nBaseCost + CellGetN(sStgCube, pVersion, sWk, sTarget, cAllCat, cAllPH, sGrp2, 'Base Cost');
+    nCost = nCost + CellGetN(sStgCube, pVersion, sWk, sTarget, cAllCat, cAllPH, sGrp2, 'Cost');
+    nMdRev = nMdRev + CellGetN(sStgCube, pVersion, sWk, sTarget, cAllCat, cAllPH, sGrp2, 'Markdown Revenue');
+    nBackCost = nBackCost + CellGetN(sStgCube, pVersion, sWk, sTarget, cAllCat, cAllPH, sGrp2, 'Backend Cost');
+    nOtherCost = nOtherCost + CellGetN(sStgCube, pVersion, sWk, sTarget, cAllCat, cAllPH, sGrp2, 'Other Cost Adjustment');
+    nPriceAdjDlr = nPriceAdjDlr + CellGetN(sStgCube, pVersion, sWk, sTarget, cAllCat, cAllPH, sGrp2, 'Price Adj Dollars');
+    nRevAdj = nRevAdj + CellGetN(sStgCube, pVersion, sWk, sTarget, cAllCat, cAllPH, sGrp2, 'Revenue Adjustment');
+    nRcptDlr = nRcptDlr + CellGetN(sStgCube, pVersion, sWk, sTarget, cAllCat, cAllPH, sGrp2, 'Receipt Dollars');
+    nCalcU = nCalcU + CellGetN(sStgCube, pVersion, sWk, sTarget, cAllCat, cAllPH, sGrp2, 'Calc Units');
+    nCBW = nCBW + CellGetN(sStgCube, pVersion, sWk, sTarget, cAllCat, cAllPH, sGrp2, 'CB Weighted Calc');
+    nWS = nWS + CellGetN(sStgCube, pVersion, sWk, sTarget, cAllCat, cAllPH, sGrp2, 'BD W_S');
+    nWSV = nWSV + CellGetN(sStgCube, pVersion, sWk, sTarget, cAllCat, cAllPH, sGrp2, 'BD W_SV');
+    nWSVR = nWSVR + CellGetN(sStgCube, pVersion, sWk, sTarget, cAllCat, cAllPH, sGrp2, 'BD W_SVR');
+    nWSVRP = nWSVRP + CellGetN(sStgCube, pVersion, sWk, sTarget, cAllCat, cAllPH, sGrp2, 'BD W_SVRP');
+    nOO = nOO + CellGetN(sStgCube, pVersion, sWk, sTarget, cAllCat, cAllPH, sGrp2, 'On-Order');
+    nOOD = nOOD + CellGetN(sStgCube, pVersion, sWk, sTarget, cAllCat, cAllPH, sGrp2, 'On-Order Dollars');
+    nInvAdjD = nInvAdjD + CellGetN(sStgCube, pVersion, sWk, sTarget, cAllCat, cAllPH, sGrp2, 'Inv Adjustment Dollars');
+    nInvAdj = nInvAdj + CellGetN(sStgCube, pVersion, sWk, sTarget, cAllCat, cAllPH, sGrp2, 'Inventory Adjustment');
+    nRes = nRes + CellGetN(sStgCube, pVersion, sWk, sTarget, cAllCat, cAllPH, sGrp2, 'Reservations');
+  ENDIF;
+END;
+#EndRegion
+
+#Region : Divide ONCE. TI division is not zero-safe - the forgiving backslash operator is
+# rules-only - so every denominator is tested. Sums across contributors can also cancel, so
+# no mid-chain denominator can be assumed non-zero.
+nFPAUR = 0;
+nBaseAUC = 0;
+nSalesAUC = 0;
+nPromo = 0;
+nBackAdj = 0;
+nOtherAdj = 0;
+nPriceAdj = 0;
+nRateAmt = 0;
+IF(nUnits <> 0);
+  nFPAUR = nBaseRev / nUnits;
+  nBaseAUC = nBaseCost / nUnits;
+  nSalesAUC = nCost / nUnits;
+  nPromo = nMdRev / nUnits;
+  nBackAdj = nBackCost / nUnits;
+  nOtherAdj = nOtherCost / nUnits;
+  nPriceAdj = nPriceAdjDlr / nUnits;
+  nRateAmt = (nRevAdj - nPriceAdjDlr) / nUnits;
+ENDIF;
+
+nRcptAUC = 0;
+IF(nReceipts <> 0);
+  nRcptAUC = nRcptDlr / nReceipts;
+ENDIF;
+
+nMdPct = 0;
+IF(nBaseRev <> 0);
+  nMdPct = nMdRev / nBaseRev;
+ENDIF;
+
+nCatBuild = 0;
+IF(nCalcU <> 0);
+  nCatBuild = nCBW / nCalcU;
+ENDIF;
+
+nRateAdj = 0;
+nRateDen = nFPAUR - nPromo;
+IF(nRateDen <> 0);
+  nRateAdj = nRateAmt / nRateDen;
+ENDIF;
+
+# Drivers telescope out of the staged chain. When BD W_S is zero every contributor had all
+# four drivers zero, so all four stay zero here - the forecast rule reads all-four-zero as
+# Build/Debuild 0, which is the correct 'no build' answer rather than a neutral 1.
+nSeas = 0;
+nVel = 0;
+nReg = 0;
+nPB = 0;
+IF(nBDW <> 0);
+  nSeas = nWS / nBDW;
+  IF(nWS <> 0);
+    nVel = nWSV / nWS;
+  ENDIF;
+  IF(nWSV <> 0);
+    nReg = nWSVR / nWSV;
+  ENDIF;
+  IF(nWSVR <> 0);
+    nPB = nWSVRP / nWSVR;
+  ENDIF;
+ENDIF;
+#EndRegion
+
+#Region : Write the converted week - supply inputs FIRST
+# The Adjustment Units rule gates on Opening Inventory + Receipts + On-Order > 0, so receipts
+# have to land before the units or the cell refuses the write on an empty target. Each of
+# these is shared with the receipt and WOS seeders, so it is written only where the
+# placeholder actually planned it and is never cleared by this worker.
+IF(nReceipts <> 0);
+  IF(CellIsUpdateable(sTgtCube, pVersion, sWk, sTarget, 'Receipts') = 1);
+    CellPutN(nReceipts, sTgtCube, pVersion, sWk, sTarget, 'Receipts');
+  ENDIF;
+ENDIF;
+IF(nOO <> 0);
+  IF(CellIsUpdateable(sTgtCube, pVersion, sWk, sTarget, 'On-Order') = 1);
+    CellPutN(nOO, sTgtCube, pVersion, sWk, sTarget, 'On-Order');
+  ENDIF;
+ENDIF;
+IF(nOOD <> 0);
+  IF(CellIsUpdateable(sTgtCube, pVersion, sWk, sTarget, 'On-Order Dollars') = 1);
+    CellPutN(nOOD, sTgtCube, pVersion, sWk, sTarget, 'On-Order Dollars');
+  ENDIF;
+ENDIF;
+IF(nInvAdjD <> 0);
+  IF(CellIsUpdateable(sTgtCube, pVersion, sWk, sTarget, 'Inv Adjustment Dollars') = 1);
+    CellPutN(nInvAdjD, sTgtCube, pVersion, sWk, sTarget, 'Inv Adjustment Dollars');
+  ENDIF;
+ENDIF;
+IF(nInvAdj <> 0);
+  IF(CellIsUpdateable(sTgtCube, pVersion, sWk, sTarget, 'Inventory Adjustment') = 1);
+    CellPutN(nInvAdj, sTgtCube, pVersion, sWk, sTarget, 'Inventory Adjustment');
+  ENDIF;
+ENDIF;
+IF(nRes <> 0);
+  IF(CellIsUpdateable(sTgtCube, pVersion, sWk, sTarget, 'Reservations') = 1);
+    CellPutN(nRes, sTgtCube, pVersion, sWk, sTarget, 'Reservations');
+  ENDIF;
+ENDIF;
+#EndRegion
+
+#Region : Blended rates via their Override leaves, then the units, then the direct inputs
+CellPutN(nFPAUR, sTgtCube, pVersion, sWk, sTarget, 'Full Price AUR Override');
+CellPutN(nBaseAUC, sTgtCube, pVersion, sWk, sTarget, 'Base AUC Override');
+CellPutN(nSalesAUC, sTgtCube, pVersion, sWk, sTarget, 'Sales AUC Override');
+CellPutN(nRcptAUC, sTgtCube, pVersion, sWk, sTarget, 'Receipt AUC Override');
+
+IF(CellIsUpdateable(sTgtCube, pVersion, sWk, sTarget, 'Adjustment Units') = 1);
+  CellPutN(nUnits, sTgtCube, pVersion, sWk, sTarget, 'Adjustment Units');
+ELSE;
+  nNoUnits = nNoUnits + 1;
+ENDIF;
+
+CellPutN(nMdPct, sTgtCube, pVersion, sWk, sTarget, 'Markdown %');
+CellPutN(0, sTgtCube, pVersion, sWk, sTarget, 'Promo %');
+CellPutN(nRateAdj, sTgtCube, pVersion, sWk, sTarget, 'Rate Adjustment');
+CellPutN(nPriceAdj, sTgtCube, pVersion, sWk, sTarget, 'Price Adjustment');
+CellPutN(nBackAdj, sTgtCube, pVersion, sWk, sTarget, 'Backend Adjustment');
+CellPutN(nOtherAdj, sTgtCube, pVersion, sWk, sTarget, 'Other AUC Adjustment');
+CellPutN(nSeas, sTgtCube, pVersion, sWk, sTarget, 'Seasonality');
+CellPutN(nVel, sTgtCube, pVersion, sWk, sTarget, 'Velocity');
+CellPutN(nReg, sTgtCube, pVersion, sWk, sTarget, 'Regime');
+CellPutN(nPB, sTgtCube, pVersion, sWk, sTarget, 'Promo Build');
+IF(nCalcU <> 0);
+  CellPutN(nCatBuild, sTgtCube, pVersion, sWk, sTarget, 'Category Build');
+ENDIF;
+nConverted = nConverted + 1;
+#EndRegion
+
+#endregion
+#region Epilog
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+IF(SubsetExists(sDimTP, sSubName) = 1);
+  SubsetDestroy(sDimTP, sSubName);
+ENDIF;
+
+#Region : Stamp the mapping row for a single-placeholder call. When the orchestrator drives
+# this worker it stamps every contributing row itself, because it is the component that knows
+# which rows fed which target.
+IF(pCategory @<> '' & pPlaceholderSKU @<> '' & pGroup @<> '' & nConverted > 0);
+  IF(CellIsUpdateable(sMapCube, pVersion, pCategory, pPlaceholderSKU, pGroup, 'Conversion Status') = 1);
+    CellPutS('Converted', sMapCube, pVersion, pCategory, pPlaceholderSKU, pGroup, 'Conversion Status');
+  ENDIF;
+  IF(CellIsUpdateable(sMapCube, pVersion, pCategory, pPlaceholderSKU, pGroup, 'Conversion Date') = 1);
+    CellPutN(DAYNO(TODAY(1)), sMapCube, pVersion, pCategory, pPlaceholderSKU, pGroup, 'Conversion Date');
+  ENDIF;
+  AttrPutS('N', sDimPH, pPlaceholderSKU, 'Active');
+ENDIF;
+#EndRegion
+
+IF(nSkipped > 0);
+  LogOutput('ERROR', cProcessName | ' | SKIPPED ' | TRIM(STR(nSkipped, 12, 0)) | ' week(s): the target Override or driver cells were not updateable', 1);
+ENDIF;
+IF(nNoUnits > 0);
+  LogOutput('ERROR', cProcessName | ' | ' | TRIM(STR(nNoUnits, 12, 0)) | ' week(s) took rates and drivers but NOT units: Adjustment Units was not updateable, which means the target had no inventory, receipts or on-order in that week', 1);
+ENDIF;
+IF(bLogInfo = 1);
+  LogOutput('INFO', cProcessName | ' | END | version=' | pVersion | ' | target=' | sTarget | ' | groups=' | sGroups | ' | lastClosed=' | TRIM(STR(nLastClosed, 12, 0)) | ' | weeksScanned=' | TRIM(STR(nWeeks, 12, 0)) | ' | weeksClosedSkipped=' | TRIM(STR(nClosedSkipped, 12, 0)) | ' | weeksConverted=' | TRIM(STR(nConverted, 12, 0)) | ' | weeksHandedBack=' | TRIM(STR(nReverted, 12, 0)), 1);
+ENDIF;
+
+#endregion

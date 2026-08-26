@@ -1,0 +1,210 @@
+#region Prolog
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+#Region : Process Header
+#############################
+##~~ Start Process ~~##
+#############################
+# DEVELOPER : Steve Waterbury
+# CREATED ON : 2026-08-23
+# LAST UPDATE: 2026-08-24
+# CHANGED BY : Steve Waterbury
+# COMMENTS:
+# Promotes placeholder mapping rows from 'Staged' to 'Converted' after the conversion chain
+# has committed, stamping the Conversion Date and retiring the placeholder with Active='N'.
+# Only a row reading 'Staged' is promoted; any other status is left entirely alone, so a
+# placeholder whose data never moved is never retired.
+#
+# Runs as its own job because the status is written by the child stagers and a parent holds a
+# read snapshot, so the orchestrator cannot see it.
+#
+#### CHANGE HISTORY:
+### MODIFICATION DATE  CHANGED BY         COMMENT
+### 2026-08-23         Steve Waterbury    Initial creation
+### 2026-08-24         Steve Waterbury    Bound cell value instead of a re-read; temporary objects; pLogLevel
+#
+#EndRegion
+
+#Region : Logging
+cProcessName = GetProcessName();
+sLogLevel = pLogLevel;
+IF(sLogLevel @= '');
+  sLogLevel = CellGetS('ProcessControl', cProcessName, 'LoggingLevel');
+ENDIF;
+IF(sLogLevel @= '');
+  sLogLevel = 'INFO';
+ENDIF;
+bLogInfo = 0;
+IF(sLogLevel @= 'INFO' % sLogLevel @= 'DEBUG');
+  bLogInfo = 1;
+ENDIF;
+#EndRegion
+
+#Region : Constants
+sMapCube = 'Merch Placeholder Mapping';
+sDimVer = 'Merch Version';
+sDimSKU = 'Merch SKU';
+sDimCat = 'Merch Category';
+sDimPH = 'Merch Placeholder SKU';
+sDimGrp = '}Groups';
+sDimMapMsr = 'Merch Placeholder Mapping Measure';
+cRolesHier = 'Roles';
+cStaged = 'Staged';
+cConverted = 'Converted';
+
+sStampView = 'TI_StampPH';
+sSubVer = 'TI_StampPH_Ver';
+sSubCat = 'TI_StampPH_Cat';
+sSubPH = 'TI_StampPH_PH';
+sSubGrp = 'TI_StampPH_Grp';
+sSubMsr = 'TI_StampPH_Msr';
+
+# Stamped once so every row promoted by this run carries the same date.
+nToday = DAYNO(TODAY(1));
+
+nRows = 0;
+nPromoted = 0;
+nNotStaged = 0;
+nSkipped = 0;
+nBadTarget = 0;
+#EndRegion
+
+#Region : Validation - before any view or subset exists, so ProcessError is safe
+IF(pVersion @= '');
+  LogOutput('ERROR', cProcessName | ' | pVersion is required', 1);
+  ProcessError;
+ENDIF;
+IF(DIMIX(sDimVer, pVersion) = 0);
+  LogOutput('ERROR', cProcessName | ' | version not found: ' | pVersion, 1);
+  ProcessError;
+ENDIF;
+sVersionType = ATTRS(sDimVer, pVersion, 'Version_Type');
+IF(sVersionType @<> 'Calculated');
+  LogOutput('ERROR', cProcessName | ' | version is not Calculated so nothing was converted: ' | pVersion | ' is ' | sVersionType, 1);
+  ProcessError;
+ENDIF;
+IF(pCategory @<> '');
+  IF(DIMIX(sDimCat, pCategory) = 0);
+    LogOutput('ERROR', cProcessName | ' | category not found: ' | pCategory, 1);
+    ProcessError;
+  ENDIF;
+ENDIF;
+IF(pGroup @<> '');
+  IF(DIMIX(sDimGrp, pGroup) = 0);
+    LogOutput('ERROR', cProcessName | ' | group not found: ' | pGroup, 1);
+    ProcessError;
+  ENDIF;
+ENDIF;
+#EndRegion
+
+#Region : Mapping view - same shape and filters as the orchestrator's walk
+# On the Target SKU measure: a row with no target was never dispatched, and zero suppression
+# on that measure is what prunes the walk. Temporary view and subsets.
+ViewCreate(sMapCube, sStampView, 1);
+
+SubsetCreateByMDX(sSubVer, '{[' | sDimVer | '].[' | sDimVer | '].[' | pVersion | ']}', 1);
+ViewSubsetAssign(sMapCube, sStampView, sDimVer, sSubVer);
+
+SubsetCreateByMDX(sSubMsr, '{[' | sDimMapMsr | '].[' | sDimMapMsr | '].[Target SKU]}', 1);
+ViewSubsetAssign(sMapCube, sStampView, sDimMapMsr, sSubMsr);
+
+IF(pCategory @<> '');
+  SubsetCreateByMDX(sSubCat, '{[' | sDimCat | '].[' | sDimCat | '].[' | pCategory | ']}', 1);
+ELSE;
+  SubsetCreateByMDX(sSubCat, '{TM1FILTERBYLEVEL({TM1SUBSETALL([' | sDimCat | '].[' | sDimCat | '])}, 0)}', 1);
+ENDIF;
+ViewSubsetAssign(sMapCube, sStampView, sDimCat, sSubCat);
+
+SubsetCreateByMDX(sSubPH, '{TM1FILTERBYLEVEL({TM1SUBSETALL([' | sDimPH | '].[' | sDimPH | '])}, 0)}', 1);
+ViewSubsetAssign(sMapCube, sStampView, sDimPH, sSubPH);
+
+IF(pGroup @<> '');
+  SubsetCreateByMDX(sSubGrp, '{[' | sDimGrp | '].[' | sDimGrp | '].[' | pGroup | ']}', 1);
+ELSE;
+  SubsetCreateByMDX(sSubGrp, '{TM1SUBSETALL([' | sDimGrp | '].[' | sDimGrp | '])}', 1);
+ENDIF;
+ViewSubsetAssign(sMapCube, sStampView, sDimGrp, sSubGrp);
+
+ViewSuppressZeroesSet(sMapCube, sStampView, 1);
+ViewExtractSkipZeroesSet(sMapCube, sStampView, 1);
+DatasourceType = 'VIEW';
+DatasourceNameForServer = sMapCube;
+DatasourceCubeview = sStampView;
+#EndRegion
+
+IF(bLogInfo = 1);
+  LogOutput('INFO', cProcessName | ' | START | version=' | pVersion | ' | category=' | pCategory | ' | group=' | pGroup, 1);
+ENDIF;
+
+#endregion
+#region Metadata
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+
+#endregion
+#region Data
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+IF(vCat @= '' % vPH @= '' % vGrp @= '');
+  ItemSkip;
+ENDIF;
+IF(DTYPE(sDimCat, vCat) @<> 'N');
+  ItemSkip;
+ENDIF;
+IF(DTYPE(sDimPH, vPH) @<> 'N');
+  ItemSkip;
+ENDIF;
+
+# The view holds one measure, so the record's value IS the Target SKU.
+sTgt = vTgtValue;
+IF(sTgt @= '');
+  ItemSkip;
+ENDIF;
+
+# Re-apply the orchestrator's check: a row whose target is outside the Roles rollup was never
+# dispatched, so a 'Staged' on it can only be residue and must not be promoted.
+IF(HierarchyElementExists(sDimSKU, cRolesHier, sTgt) = 0);
+  nBadTarget = nBadTarget + 1;
+  ItemSkip;
+ENDIF;
+
+nRows = nRows + 1;
+
+# THE GATE. Only a row the stager marked 'Staged' this run is promoted.
+sRowStatus = CellGetS(sMapCube, vVer, vCat, vPH, vGrp, 'Conversion Status');
+IF(sRowStatus @<> cStaged);
+  nNotStaged = nNotStaged + 1;
+  ItemSkip;
+ENDIF;
+
+IF(CellIsUpdateable(sMapCube, vVer, vCat, vPH, vGrp, 'Conversion Status') = 0);
+  nSkipped = nSkipped + 1;
+  ItemSkip;
+ENDIF;
+
+CellPutS(cConverted, sMapCube, vVer, vCat, vPH, vGrp, 'Conversion Status');
+IF(CellIsUpdateable(sMapCube, vVer, vCat, vPH, vGrp, 'Conversion Date') = 1);
+  CellPutN(nToday, sMapCube, vVer, vCat, vPH, vGrp, 'Conversion Date');
+ENDIF;
+
+# The write that most needed the gate: the previous behaviour retired every dispatched
+# placeholder, including ones whose data had never moved.
+AttrPutS('N', sDimPH, vPH, 'Active');
+
+nPromoted = nPromoted + 1;
+
+#endregion
+#region Epilog
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+IF(nSkipped > 0);
+  LogOutput('ERROR', cProcessName | ' | SKIPPED ' | TRIM(STR(nSkipped, 12, 0)) | ' row(s): Conversion Status was not updateable', 1);
+ENDIF;
+IF(nBadTarget > 0);
+  LogOutput('ERROR', cProcessName | ' | ' | TRIM(STR(nBadTarget, 12, 0)) | ' row(s) ignored: the target SKU is not in the ' | cRolesHier | ' hierarchy', 1);
+ENDIF;
+IF(bLogInfo = 1);
+  LogOutput('INFO', cProcessName | ' | END | version=' | pVersion | ' | category=' | pCategory | ' | group=' | pGroup | ' | rows=' | TRIM(STR(nRows, 12, 0)) | ' | promoted=' | TRIM(STR(nPromoted, 12, 0)) | ' | notStaged=' | TRIM(STR(nNotStaged, 12, 0)) | ' | badTargets=' | TRIM(STR(nBadTarget, 12, 0)) | ' | date=' | TRIM(STR(nToday, 12, 0)), 1);
+ENDIF;
+
+#endregion

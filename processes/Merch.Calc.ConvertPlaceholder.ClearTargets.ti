@@ -1,0 +1,299 @@
+#region Prolog
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+#Region : Process Header
+#############################
+##~~ Start Process ~~##
+#############################
+# DEVELOPER : Steve Waterbury
+# CREATED ON : 2026-08-24
+# LAST UPDATE: 2026-08-24
+# CHANGED BY : Steve Waterbury
+# COMMENTS:
+# Clears the conversion-owned Merch Forecast measures on one or more target SKUs across every
+# OPEN week, so Merch.Calc.ConvertPlaceholder REPLACES the target instead of overlaying it.
+#
+# Without this the conversion is an overlay: the writer only writes weeks where the staging
+# cube shows a contribution, so wherever the placeholders say nothing the target keeps
+# whatever it had from an earlier run or from its own organic forecast.
+#
+# WINDOW: Last_Closed_Period + 1 to the end of the calendar, read from the version attribute
+# at RUN TIME. A window fixed at authoring time is wrong by the next close.
+#
+# CLEAR SET: the 16 measures Merch.Calc.ConvertPlaceholder writes. Opening Inventory is
+# absent by design - it is a rule-derived roll-forward, not an input.
+#
+# NOT CLEARED: Receipts, On-Order, On-Order Dollars, Inv Adjustment Dollars, Inventory
+# Adjustment and Reservations. Those are co-owned with the receipt and WOS seeders, and the
+# Adjustment Units rule gates on Opening Inventory + Receipts + On-Order > 0 - clearing the
+# supply would make the later units write refuse on exactly the weeks that matter.
+#
+# Serial and single-instance by design. It takes a comma-delimited SKU list so ONE job clears
+# every target before the parallel converters start; concurrent ViewZeroOut on one cube
+# contends.
+#
+# The registered datasource subset is the existing empty ForecastTPLookup_bootstrap. The
+# runtime DatasourceDimensionSubset assignment below overrides it, but the design-time
+# registration is what makes vMerch_Time_Period defined at compile.
+#
+#### CHANGE HISTORY:
+### MODIFICATION DATE  CHANGED BY         COMMENT
+### 2026-08-24         Steve Waterbury    Initial
+#
+#EndRegion
+
+#Region : Logging
+cProcessName = GetProcessName();
+sLogLevel = CellGetS('ProcessControl', cProcessName, 'LoggingLevel');
+IF(sLogLevel @= '');
+  sLogLevel = 'INFO';
+ENDIF;
+bLogInfo = 0;
+IF(sLogLevel @= 'INFO' % sLogLevel @= 'DEBUG');
+  bLogInfo = 1;
+ENDIF;
+#EndRegion
+
+#Region : Constants
+sTgtCube = 'Merch Forecast';
+sDimVer = 'Merch Version';
+sDimTP = 'Merch Time Period';
+sDimSKU = 'Merch SKU';
+sDimMeas = 'Merch Forecast Measure';
+cRolesHier = 'Roles';
+
+nStartTime = NOW;
+sStamp = TRIM(STR(NOW, 15, 0));
+sSubVer = 'TI_ClrTgtVer_' | sStamp;
+sSubWk = 'TI_ClrTgtWk_' | sStamp;
+sSubAllWk = 'TI_ClrTgtAllWk_' | sStamp;
+sSubSKU = 'TI_ClrTgtSKU_' | sStamp;
+sSubMeas = 'TI_ClrTgtMeas_' | sStamp;
+sView = 'TI_ClrTgtView_' | sStamp;
+
+nTargets = 0;
+nOpenWeeks = 0;
+nClosedSkipped = 0;
+nNonLeafWeeks = 0;
+nCleared = 0;
+#EndRegion
+
+#Region : Validation - all of it BEFORE the first SubsetCreate so ProcessError is legal
+IF(pVersion @= '');
+  LogOutput('ERROR', cProcessName | ' | pVersion is required', 1);
+  ProcessError;
+ENDIF;
+IF(DIMIX(sDimVer, pVersion) = 0);
+  LogOutput('ERROR', cProcessName | ' | version not found: ' | pVersion, 1);
+  ProcessError;
+ENDIF;
+sVersionType = TRIM(ATTRS(sDimVer, pVersion, 'Version_Type'));
+IF(sVersionType @<> 'Calculated');
+  LogOutput('ERROR', cProcessName | ' | version is not Calculated so its forecast cells are not inputs: ' | pVersion | ' is ' | sVersionType, 1);
+  ProcessError;
+ENDIF;
+IF(pTargetSKUs @= '');
+  LogOutput('ERROR', cProcessName | ' | pTargetSKUs is required - comma-delimited target SKU list', 1);
+  ProcessError;
+ENDIF;
+
+# Validate every target before a single cell is cleared. The leaf test is not cosmetic: a
+# consolidation would zero every one of its children.
+sChk = pTargetSKUs;
+WHILE(LONG(sChk) > 0);
+  nComma = SCAN(',', sChk);
+  IF(nComma > 0);
+    sOne = TRIM(SUBST(sChk, 1, nComma - 1));
+    sChk = TRIM(SUBST(sChk, nComma + 1, LONG(sChk) - nComma));
+  ELSE;
+    sOne = TRIM(sChk);
+    sChk = '';
+  ENDIF;
+  IF(sOne @<> '');
+    IF(DIMIX(sDimSKU, sOne) = 0);
+      LogOutput('ERROR', cProcessName | ' | target SKU not found in ' | sDimSKU | ': ' | sOne, 1);
+      ProcessError;
+    ENDIF;
+    IF(HierarchyElementExists(sDimSKU, cRolesHier, sOne) = 0);
+      LogOutput('ERROR', cProcessName | ' | target SKU ' | sOne | ' is outside the ' | cRolesHier | ' hierarchy so the conversion chain does not own it', 1);
+      ProcessError;
+    ENDIF;
+    IF(DTYPE(sDimSKU, sOne) @<> 'N');
+      LogOutput('ERROR', cProcessName | ' | target SKU ' | sOne | ' is a consolidation; clearing it would zero every child', 1);
+      ProcessError;
+    ENDIF;
+    nTargets = nTargets + 1;
+  ENDIF;
+END;
+IF(nTargets = 0);
+  LogOutput('ERROR', cProcessName | ' | pTargetSKUs contained no usable SKU names', 1);
+  ProcessError;
+ENDIF;
+
+# The closed-period boundary, read at RUN TIME. 0 means this version has never been closed,
+# in which case every leaf week is open.
+nLastClosed = ATTRN(sDimVer, pVersion, 'Last_Closed_Period');
+#EndRegion
+
+#Region : Native subsets, one per dimension. The targets are DEFAULT-hierarchy leaves, so the
+# Roles-hierarchy subset trap that forced Merch.Version.Copy.Forecast.Clear onto MDX does not
+# apply and ViewSubsetAssign resolves all four with bare dimension names.
+IF(SubsetExists(sDimVer, sSubVer) = 1);
+  SubsetDestroy(sDimVer, sSubVer);
+ENDIF;
+SubsetCreate(sDimVer, sSubVer);
+SubsetElementInsert(sDimVer, sSubVer, pVersion, 0);
+
+IF(SubsetExists(sDimSKU, sSubSKU) = 1);
+  SubsetDestroy(sDimSKU, sSubSKU);
+ENDIF;
+SubsetCreate(sDimSKU, sSubSKU);
+sIns = pTargetSKUs;
+WHILE(LONG(sIns) > 0);
+  nCommaI = SCAN(',', sIns);
+  IF(nCommaI > 0);
+    sOneI = TRIM(SUBST(sIns, 1, nCommaI - 1));
+    sIns = TRIM(SUBST(sIns, nCommaI + 1, LONG(sIns) - nCommaI));
+  ELSE;
+    sOneI = TRIM(sIns);
+    sIns = '';
+  ENDIF;
+  IF(sOneI @<> '');
+    SubsetElementInsert(sDimSKU, sSubSKU, sOneI, 0);
+  ENDIF;
+END;
+
+IF(SubsetExists(sDimMeas, sSubMeas) = 1);
+  SubsetDestroy(sDimMeas, sSubMeas);
+ENDIF;
+SubsetCreate(sDimMeas, sSubMeas);
+SubsetElementInsert(sDimMeas, sSubMeas, 'Full Price AUR Override', 0);
+SubsetElementInsert(sDimMeas, sSubMeas, 'Base AUC Override', 0);
+SubsetElementInsert(sDimMeas, sSubMeas, 'Sales AUC Override', 0);
+SubsetElementInsert(sDimMeas, sSubMeas, 'Receipt AUC Override', 0);
+SubsetElementInsert(sDimMeas, sSubMeas, 'Adjustment Units', 0);
+SubsetElementInsert(sDimMeas, sSubMeas, 'Markdown %', 0);
+SubsetElementInsert(sDimMeas, sSubMeas, 'Promo %', 0);
+SubsetElementInsert(sDimMeas, sSubMeas, 'Rate Adjustment', 0);
+SubsetElementInsert(sDimMeas, sSubMeas, 'Price Adjustment', 0);
+SubsetElementInsert(sDimMeas, sSubMeas, 'Backend Adjustment', 0);
+SubsetElementInsert(sDimMeas, sSubMeas, 'Other AUC Adjustment', 0);
+SubsetElementInsert(sDimMeas, sSubMeas, 'Seasonality', 0);
+SubsetElementInsert(sDimMeas, sSubMeas, 'Velocity', 0);
+SubsetElementInsert(sDimMeas, sSubMeas, 'Regime', 0);
+SubsetElementInsert(sDimMeas, sSubMeas, 'Promo Build', 0);
+SubsetElementInsert(sDimMeas, sSubMeas, 'Category Build', 0);
+
+# The open-week subset starts EMPTY and is filled one week at a time in the Metadata tab.
+IF(SubsetExists(sDimTP, sSubWk) = 1);
+  SubsetDestroy(sDimTP, sSubWk);
+ENDIF;
+SubsetCreate(sDimTP, sSubWk);
+
+IF(SubsetExists(sDimTP, sSubAllWk) = 1);
+  SubsetDestroy(sDimTP, sSubAllWk);
+ENDIF;
+SubsetCreateByMDX(sSubAllWk, '{TM1FILTERBYLEVEL({TM1SUBSETALL([' | sDimTP | '].[' | sDimTP | '])}, 0)}');
+#EndRegion
+
+#Region : Iterate every leaf week. The registered subset is overridden here at runtime.
+DatasourceType = 'SUBSET';
+DatasourceNameForServer = sDimTP;
+DatasourceDimensionSubset = sSubAllWk;
+#EndRegion
+
+IF(bLogInfo = 1);
+  LogOutput('INFO', 'TIMING START: ' | cProcessName | ' | version=' | pVersion | ' | targets=' | TRIM(STR(nTargets, 12, 0)) | ' | lastClosed=' | TRIM(STR(nLastClosed, 12, 0)), 1);
+ENDIF;
+
+#endregion
+#region Metadata
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+sWk = vMerch_Time_Period;
+IF(sWk @= '');
+  ItemSkip;
+ENDIF;
+IF(DTYPE(sDimTP, sWk) @<> 'N');
+  nNonLeafWeeks = nNonLeafWeeks + 1;
+  ItemSkip;
+ENDIF;
+
+#Region : OPEN-WEEK FILTER
+# ATTRN inside an MDX set expression is invalid v12 MDX, so the window cannot be expressed in
+# the subset MDX - it is applied here one week at a time, against the same End_Date boundary
+# every Merch Forecast rule gate uses. This lives in Metadata because v12 ignores structural
+# writes issued from the Data tab.
+IF(nLastClosed <> 0 & ATTRN(sDimTP, sWk, 'End_Date') <= nLastClosed);
+  nClosedSkipped = nClosedSkipped + 1;
+ELSE;
+  SubsetElementInsert(sDimTP, sSubWk, sWk, 0);
+  nOpenWeeks = nOpenWeeks + 1;
+ENDIF;
+#EndRegion
+
+#endregion
+#region Data
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+
+#endregion
+#region Epilog
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+IF(SubsetExists(sDimTP, sSubAllWk) = 1);
+  SubsetDestroy(sDimTP, sSubAllWk);
+ENDIF;
+
+#Region : Build the view over the four subsets and zero it in a single pass
+IF(nOpenWeeks > 0);
+  IF(ViewExists(sTgtCube, sView) = 1);
+    ViewDestroy(sTgtCube, sView);
+  ENDIF;
+  ViewCreate(sTgtCube, sView);
+  ViewSubsetAssign(sTgtCube, sView, sDimVer, sSubVer);
+  ViewSubsetAssign(sTgtCube, sView, sDimTP, sSubWk);
+  ViewSubsetAssign(sTgtCube, sView, sDimSKU, sSubSKU);
+  ViewSubsetAssign(sTgtCube, sView, sDimMeas, sSubMeas);
+
+  # SkipCalcs stays 0 on purpose. Most Merch Forecast measures carry an N: rule that resolves
+  # to STET on this version; those cells are stored and writable, and SkipCalcs = 1 would drop
+  # them from the view and leave them uncleared.
+  ViewExtractSkipCalcsSet(sTgtCube, sView, 0);
+  ViewExtractSkipZeroesSet(sTgtCube, sView, 1);
+
+  ViewZeroOut(sTgtCube, sView);
+  nCleared = 1;
+
+  ViewDestroy(sTgtCube, sView);
+ELSE;
+  LogOutput('ERROR', cProcessName | ' | no open week found past Last_Closed_Period ' | TRIM(STR(nLastClosed, 12, 0)) | ' - nothing was cleared', 1);
+ENDIF;
+#EndRegion
+
+IF(SubsetExists(sDimVer, sSubVer) = 1);
+  SubsetDestroy(sDimVer, sSubVer);
+ENDIF;
+IF(SubsetExists(sDimTP, sSubWk) = 1);
+  SubsetDestroy(sDimTP, sSubWk);
+ENDIF;
+IF(SubsetExists(sDimSKU, sSubSKU) = 1);
+  SubsetDestroy(sDimSKU, sSubSKU);
+ENDIF;
+IF(SubsetExists(sDimMeas, sSubMeas) = 1);
+  SubsetDestroy(sDimMeas, sSubMeas);
+ENDIF;
+
+# Parent-level audit stamp. Serial and single-instance, so the shared ProcessControl cell is
+# safe here.
+IF(CellIsUpdateable('ProcessControl', cProcessName, 'SubsetCount') = 0);
+  LogOutput('ERROR', cProcessName | ' | ProcessControl.SubsetCount not updateable', 1);
+ELSE;
+  CellPutN(nCleared, 'ProcessControl', cProcessName, 'SubsetCount');
+ENDIF;
+
+IF(bLogInfo = 1);
+  LogOutput('INFO', 'TIMING END: ' | cProcessName | ' | version=' | pVersion | ' | targets=' | TRIM(STR(nTargets, 12, 0)) | ' | lastClosed=' | TRIM(STR(nLastClosed, 12, 0)) | ' | openWeeks=' | TRIM(STR(nOpenWeeks, 12, 0)) | ' | closedSkipped=' | TRIM(STR(nClosedSkipped, 12, 0)) | ' | nonLeafSkipped=' | TRIM(STR(nNonLeafWeeks, 12, 0)) | ' | cleared=' | TRIM(STR(nCleared, 1, 0)) | ' | elapsed=' | TRIM(STR((NOW - nStartTime) * 86400, 12, 1)) | 's', 1);
+ENDIF;
+
+#endregion

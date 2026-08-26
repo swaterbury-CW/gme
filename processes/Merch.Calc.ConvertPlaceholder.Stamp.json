@@ -1,20 +1,38 @@
 {
 	"@type":"Process",
-	"Name":"Merch.Calc.ApplyPromosToForecast",
+	"Name":"Merch.Calc.ConvertPlaceholder.Stamp",
 	"HasSecurityAccess":false,
-	"Code@Code.link":"Merch.Calc.ApplyPromosToForecast.ti",
+	"Code@Code.link":"Merch.Calc.ConvertPlaceholder.Stamp.ti",
 	"DataSource":
 	{
 		"Type":"TM1CubeView",
-		"dataSourceNameForServer":"Merch Promo Calendar",
-		"dataSourceNameForClient":"Merch Promo Calendar",
-		"view":""
+		"dataSourceNameForServer":"Merch Placeholder Mapping",
+		"dataSourceNameForClient":"Merch Placeholder Mapping",
+		"view":"TI_StampPH"
 	},
 	"Parameters":
 	[
 		{
 			"Name":"pVersion",
-			"Prompt":"Version",
+			"Prompt":"Version (must be Calculated)",
+			"Value":"Forecast",
+			"Type":"String"
+		},
+		{
+			"Name":"pCategory",
+			"Prompt":"Merch Category leaf, blank for all",
+			"Value":"",
+			"Type":"String"
+		},
+		{
+			"Name":"pGroup",
+			"Prompt":"Group, blank for all",
+			"Value":"",
+			"Type":"String"
+		},
+		{
+			"Name":"pLogLevel",
+			"Prompt":"Logging level from the caller, blank reads ProcessControl",
 			"Value":"",
 			"Type":"String"
 		}
@@ -22,49 +40,49 @@
 	"Variables":
 	[
 		{
-			"Name":"vMerch_Promo_Calendar_Measure",
+			"Name":"vVer",
 			"Type":"String",
 			"Position":1,
 			"StartByte":0,
 			"EndByte":0
 		},
 		{
-			"Name":"vMerch_Time_Period",
+			"Name":"vCat",
 			"Type":"String",
 			"Position":2,
 			"StartByte":0,
 			"EndByte":0
 		},
 		{
-			"Name":"vMerch_SKU",
+			"Name":"vPH",
 			"Type":"String",
 			"Position":3,
 			"StartByte":0,
 			"EndByte":0
 		},
 		{
-			"Name":"vMerch_Promo_ID",
+			"Name":"vGrp",
 			"Type":"String",
 			"Position":4,
 			"StartByte":0,
 			"EndByte":0
 		},
 		{
-			"Name":"vMerch_Version",
+			"Name":"vMsr",
 			"Type":"String",
 			"Position":5,
 			"StartByte":0,
 			"EndByte":0
 		},
 		{
-			"Name":"Value",
-			"Type":"Numeric",
+			"Name":"vTgtValue",
+			"Type":"String",
 			"Position":6,
 			"StartByte":0,
 			"EndByte":0
 		}
 	],
-	"UID": "17767215300003",
+	"UID": "1787505135000",
 	"UIData": "CubeAction=1511\fDataAction=1503\fCubeLogChanges=0\f",
 	"VariablesUIData": [
 		"VarType=32\fColType=827\f",
@@ -72,6 +90,6 @@
 		"VarType=32\fColType=827\f",
 		"VarType=32\fColType=827\f",
 		"VarType=32\fColType=827\f",
-		"VarType=33\fColType=827\f"
+		"VarType=32\fColType=827\f"
 	]
 }

@@ -1,0 +1,41 @@
+{
+	"@type":"Process",
+	"Name":"Merch.Calc.ConvertPlaceholder.PreSeed",
+	"HasSecurityAccess":false,
+	"Code@Code.link":"Merch.Calc.ConvertPlaceholder.PreSeed.ti",
+	"DataSource":
+	{
+		"Type":"None"
+	},
+	"Parameters":
+	[
+		{
+			"Name":"pVersion",
+			"Prompt":"Version",
+			"Value":"Forecast",
+			"Type":"String"
+		},
+		{
+			"Name":"pCategory",
+			"Prompt":"Merch Category leaf, blank for all",
+			"Value":"",
+			"Type":"String"
+		},
+		{
+			"Name":"pGroup",
+			"Prompt":"Group, blank for all",
+			"Value":"",
+			"Type":"String"
+		},
+		{
+			"Name":"pLogLevel",
+			"Prompt":"Logging level from the caller, blank reads ProcessControl",
+			"Value":"",
+			"Type":"String"
+		}
+	],
+	"Variables":[],
+	"UID": "17873172480003",
+	"UIData": "CubeAction=1511\fDataAction=1503\fCubeLogChanges=0\f",
+	"VariablesUIData": []
+}

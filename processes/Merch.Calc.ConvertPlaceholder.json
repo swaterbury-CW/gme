@@ -1,0 +1,73 @@
+{
+	"@type":"Process",
+	"Name":"Merch.Calc.ConvertPlaceholder",
+	"HasSecurityAccess":false,
+	"Code@Code.link":"Merch.Calc.ConvertPlaceholder.ti",
+	"DataSource":
+	{
+		"Type":"TM1DimensionSubset",
+		"dataSourceNameForServer":"Merch Time Period",
+		"dataSourceNameForClient":"Merch Time Period",
+		"subset":"TI_ConvPH_0"
+	},
+	"Parameters":
+	[
+		{
+			"Name":"pVersion",
+			"Prompt":"pVersion",
+			"Value":"Forecast",
+			"Type":"String"
+		},
+		{
+			"Name":"pPlaceholderSKU",
+			"Prompt":"pPlaceholderSKU",
+			"Value":"",
+			"Type":"String"
+		},
+		{
+			"Name":"pTargetSKU",
+			"Prompt":"pTargetSKU",
+			"Value":"",
+			"Type":"String"
+		},
+		{
+			"Name":"pCategory",
+			"Prompt":"pCategory",
+			"Value":"",
+			"Type":"String"
+		},
+		{
+			"Name":"pGroup",
+			"Prompt":"pGroup",
+			"Value":"",
+			"Type":"String"
+		},
+		{
+			"Name":"pGroups",
+			"Prompt":"pGroups",
+			"Value":"",
+			"Type":"String"
+		},
+		{
+			"Name":"pPartIdx",
+			"Prompt":"pPartIdx",
+			"Value":0,
+			"Type":"Numeric"
+		}
+	],
+	"Variables":
+	[
+		{
+			"Name":"vMerch_Time_Period",
+			"Type":"String",
+			"Position":1,
+			"StartByte":0,
+			"EndByte":0
+		}
+	],
+	"UID": "1774391826000",
+	"UIData": "CubeAction=1511\fDataAction=1503\fCubeLogChanges=0\f",
+	"VariablesUIData": [
+		"VarType=32\fColType=827\f"
+	]
+}

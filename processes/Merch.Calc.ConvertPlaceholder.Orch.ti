@@ -1,0 +1,404 @@
+#region Prolog
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+#Region : Process Header
+# DEVELOPER : Steve Waterbury
+# CREATED ON : 2026-08-21
+# LAST UPDATE: 2026-08-24
+# CHANGED BY : Steve Waterbury
+# COMMENTS:
+# Runs the whole multi-placeholder to target SKU conversion for one version, optionally
+# narrowed to one category and one group.
+#
+# PreSeed clears this run's staging region -> stagers fan out, one per mapping row -> barrier
+# -> CLEAR TARGETS -> converters fan out, one per distinct target -> barrier -> Stamp promotes
+# the rows that actually staged. PreSeed and Stamp are separate jobs on purpose: the clear
+# must COMMIT before the workers read, and the row outcomes must be committed before the
+# promotion reads them, which this process cannot do itself because a parent holds a read
+# snapshot.
+#
+# The target clear sits between the staging barrier and the converter fan-out: that is the
+# only point where the distinct target list exists, and it is mid-run, so a child rolled back
+# by contention still gets a retry window.
+#
+# The logging level is resolved once here and passed down, so the workers do not all read the
+# ProcessControl cube concurrently.
+#
+# WaitForAllJobs is VARIADIC - a comma-joined string waits on nothing - so accumulated JobIDs
+# are split and waited on one at a time.
+#
+#### CHANGE HISTORY:
+### MODIFICATION DATE  CHANGED BY         COMMENT
+### 2026-08-21         Steve Waterbury    Initial creation
+### 2026-08-21         Steve Waterbury    Parallel fan-out with a PreSeed clear and JobID joins
+### 2026-08-24         Steve Waterbury    pLogLevel passed down; PreSeed scoped; temporary objects; Stamp dispatch
+### 2026-08-24         Steve Waterbury    Clear each target before the converter fan-out
+#
+#EndRegion
+
+#Region : Logging
+cProcessName = GetProcessName();
+sLogLevel = CellGetS('ProcessControl', cProcessName, 'LoggingLevel');
+IF(sLogLevel @= '');
+  sLogLevel = 'INFO';
+ENDIF;
+bLogInfo = 0;
+IF(sLogLevel @= 'INFO' % sLogLevel @= 'DEBUG');
+  bLogInfo = 1;
+ENDIF;
+#EndRegion
+
+#Region : Constants
+sMapCube = 'Merch Placeholder Mapping';
+sDimVer = 'Merch Version';
+sDimSKU = 'Merch SKU';
+sDimCat = 'Merch Category';
+sDimPH = 'Merch Placeholder SKU';
+sDimGrp = '}Groups';
+sDimMapMsr = 'Merch Placeholder Mapping Measure';
+cRolesHier = 'Roles';
+cPreSeed = 'Merch.Calc.ConvertPlaceholder.PreSeed';
+cStager = 'Merch.Calc.StagePlaceholderConversion';
+cConverter = 'Merch.Calc.ConvertPlaceholder';
+cStamp = 'Merch.Calc.ConvertPlaceholder.Stamp';
+cClear = 'Merch.Calc.ConvertPlaceholder.ClearTargets';
+
+sOrchView = 'TI_ConvPHOrch';
+sSubVer = 'TI_ConvPHOrch_Ver';
+sSubCat = 'TI_ConvPHOrch_Cat';
+sSubPH = 'TI_ConvPHOrch_PH';
+sSubGrp = 'TI_ConvPHOrch_Grp';
+sSubMsr = 'TI_ConvPHOrch_Msr';
+
+nClear = pClearStaging;
+nUseRun = NUMBR(pUseRunProcess);
+
+nRows = 0;
+nStaged = 0;
+nBadTarget = 0;
+nConverters = 0;
+nClearTargets = 0;
+nNonLeafTgt = 0;
+sStageJobs = '';
+sConvJobs = '';
+sTargets = ';';
+sPairs = ';';
+#EndRegion
+
+#Region : Validation - all of it BEFORE any view or subset exists, so ProcessError is safe
+IF(pVersion @= '');
+  LogOutput('ERROR', cProcessName | ' | pVersion is required', 1);
+  ProcessError;
+ENDIF;
+IF(DIMIX(sDimVer, pVersion) = 0);
+  LogOutput('ERROR', cProcessName | ' | version not found: ' | pVersion, 1);
+  ProcessError;
+ENDIF;
+sVersionType = ATTRS(sDimVer, pVersion, 'Version_Type');
+IF(sVersionType @<> 'Calculated');
+  LogOutput('ERROR', cProcessName | ' | version is not Calculated so nothing would convert: ' | pVersion | ' is ' | sVersionType, 1);
+  ProcessError;
+ENDIF;
+IF(pCategory @<> '');
+  IF(DIMIX(sDimCat, pCategory) = 0);
+    LogOutput('ERROR', cProcessName | ' | category not found: ' | pCategory, 1);
+    ProcessError;
+  ENDIF;
+ENDIF;
+IF(pGroup @<> '');
+  IF(DIMIX(sDimGrp, pGroup) = 0);
+    LogOutput('ERROR', cProcessName | ' | group not found: ' | pGroup, 1);
+    ProcessError;
+  ENDIF;
+ENDIF;
+#EndRegion
+
+#Region : PreSeed clears this run's region as a separate, COMMITTED job
+IF(nClear = 1);
+  IF(nUseRun = 1);
+    sPreSeedJob = RunProcess(cPreSeed, 'pVersion', pVersion, 'pCategory', pCategory, 'pGroup', pGroup, 'pLogLevel', sLogLevel);
+    IF(sPreSeedJob @<> '');
+      WaitForAllJobs(sPreSeedJob);
+    ENDIF;
+  ELSE;
+    nRC = ExecuteProcess(cPreSeed, 'pVersion', pVersion, 'pCategory', pCategory, 'pGroup', pGroup, 'pLogLevel', sLogLevel);
+  ENDIF;
+ENDIF;
+#EndRegion
+
+#Region : Native zero-suppressed view over the mapping rows
+ViewCreate(sMapCube, sOrchView, 1);
+
+SubsetCreateByMDX(sSubVer, '{[' | sDimVer | '].[' | sDimVer | '].[' | pVersion | ']}', 1);
+ViewSubsetAssign(sMapCube, sOrchView, sDimVer, sSubVer);
+
+SubsetCreateByMDX(sSubMsr, '{[' | sDimMapMsr | '].[' | sDimMapMsr | '].[Target SKU]}', 1);
+ViewSubsetAssign(sMapCube, sOrchView, sDimMapMsr, sSubMsr);
+
+IF(pCategory @<> '');
+  SubsetCreateByMDX(sSubCat, '{[' | sDimCat | '].[' | sDimCat | '].[' | pCategory | ']}', 1);
+ELSE;
+  SubsetCreateByMDX(sSubCat, '{TM1FILTERBYLEVEL({TM1SUBSETALL([' | sDimCat | '].[' | sDimCat | '])}, 0)}', 1);
+ENDIF;
+ViewSubsetAssign(sMapCube, sOrchView, sDimCat, sSubCat);
+
+SubsetCreateByMDX(sSubPH, '{TM1FILTERBYLEVEL({TM1SUBSETALL([' | sDimPH | '].[' | sDimPH | '])}, 0)}', 1);
+ViewSubsetAssign(sMapCube, sOrchView, sDimPH, sSubPH);
+
+IF(pGroup @<> '');
+  SubsetCreateByMDX(sSubGrp, '{[' | sDimGrp | '].[' | sDimGrp | '].[' | pGroup | ']}', 1);
+ELSE;
+  SubsetCreateByMDX(sSubGrp, '{TM1SUBSETALL([' | sDimGrp | '].[' | sDimGrp | '])}', 1);
+ENDIF;
+ViewSubsetAssign(sMapCube, sOrchView, sDimGrp, sSubGrp);
+
+ViewSuppressZeroesSet(sMapCube, sOrchView, 1);
+ViewExtractSkipZeroesSet(sMapCube, sOrchView, 1);
+DatasourceType = 'VIEW';
+DatasourceNameForServer = sMapCube;
+DatasourceCubeview = sOrchView;
+#EndRegion
+
+IF(bLogInfo = 1);
+  LogOutput('INFO', cProcessName | ' | START | version=' | pVersion | ' | category=' | pCategory | ' | group=' | pGroup | ' | parallel=' | TRIM(STR(nUseRun, 1, 0)), 1);
+ENDIF;
+
+#endregion
+#region Metadata
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+
+#endregion
+#region Data
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+IF(vCat @= '' % vPH @= '' % vGrp @= '');
+  ItemSkip;
+ENDIF;
+IF(DTYPE(sDimCat, vCat) @<> 'N');
+  ItemSkip;
+ENDIF;
+IF(DTYPE(sDimPH, vPH) @<> 'N');
+  ItemSkip;
+ENDIF;
+
+# The view holds one measure, so the record's value IS the Target SKU.
+sTgt = vTgtValue;
+IF(sTgt @= '');
+  ItemSkip;
+ENDIF;
+
+# Merch SKU is multi-hierarchy, so a target outside the Roles rollup cannot be converted into.
+IF(HierarchyElementExists(sDimSKU, cRolesHier, sTgt) = 0);
+  nBadTarget = nBadTarget + 1;
+  LogOutput('ERROR', cProcessName | ' | skipped ' | vCat | ' / ' | vPH | ' / ' | vGrp | ': target ' | sTgt | ' is not in the ' | cRolesHier | ' hierarchy', 1);
+  ItemSkip;
+ENDIF;
+
+nRows = nRows + 1;
+
+IF(nUseRun = 1);
+  sJobId = RunProcess(cStager, 'pVersion', vVer, 'pCategory', vCat, 'pPlaceholderSKU', vPH, 'pGroup', vGrp, 'pTargetSKU', sTgt, 'pPartIdx', nRows, 'pLogLevel', sLogLevel);
+  IF(sStageJobs @= '');
+    sStageJobs = sJobId;
+  ELSE;
+    sStageJobs = sStageJobs | ',' | sJobId;
+  ENDIF;
+ELSE;
+  nRC = ExecuteProcess(cStager, 'pVersion', vVer, 'pCategory', vCat, 'pPlaceholderSKU', vPH, 'pGroup', vGrp, 'pTargetSKU', sTgt, 'pPartIdx', nRows, 'pLogLevel', sLogLevel);
+ENDIF;
+nStaged = nStaged + 1;
+
+IF(SCAN(';' | sTgt | ';', sTargets) = 0);
+  sTargets = sTargets | sTgt | ';';
+ENDIF;
+IF(SCAN(';' | sTgt | '^' | vGrp | ';', sPairs) = 0);
+  sPairs = sPairs | sTgt | '^' | vGrp | ';';
+ENDIF;
+
+#endregion
+#region Epilog
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+#Region : BARRIER - join every staging job before any converter reads the blend
+IF(nUseRun = 1);
+  sRemainingJobs = sStageJobs;
+  WHILE(LONG(sRemainingJobs) > 0);
+    nCommaPos = SCAN(',', sRemainingJobs);
+    IF(nCommaPos > 0);
+      sOneJob = SUBST(sRemainingJobs, 1, nCommaPos - 1);
+      sRemainingJobs = SUBST(sRemainingJobs, nCommaPos + 1, LONG(sRemainingJobs) - nCommaPos);
+    ELSE;
+      sOneJob = sRemainingJobs;
+      sRemainingJobs = '';
+    ENDIF;
+    IF(sOneJob @<> '');
+      WaitForAllJobs(sOneJob);
+    ENDIF;
+  END;
+ENDIF;
+#EndRegion
+
+#Region : CLEAR EVERY TARGET BEFORE ANY CONVERTER WRITES
+# Without this the conversion is an OVERLAY: the converter only writes weeks where the staging
+# cube shows a contribution, so a week the placeholders no longer cover keeps its old value.
+# The clear runs HERE - after the staging barrier, before the fan-out - because this is the
+# only point where the distinct target list exists, and because a child dispatched mid-run
+# still has a live parent and so is retried if contention rolls it back.
+# ClearTargets ProcessErrors on a consolidated target. That would abort the WHOLE clear job
+# and leave this run silently back in overlay mode, so non-leaf targets are dropped and
+# counted here. The Data tab checks Roles membership but not leaf-ness, so this is a distinct
+# test rather than a duplicate.
+sClr = sTargets;
+IF(LONG(sClr) > 1);
+  sClr = SUBST(sClr, 2, LONG(sClr) - 1);
+ELSE;
+  sClr = '';
+ENDIF;
+
+sClearList = '';
+WHILE(LONG(sClr) > 0);
+  nSemiC = SCAN(';', sClr);
+  IF(nSemiC > 0);
+    sOneC = SUBST(sClr, 1, nSemiC - 1);
+    sClr = SUBST(sClr, nSemiC + 1, LONG(sClr) - nSemiC);
+  ELSE;
+    sOneC = sClr;
+    sClr = '';
+  ENDIF;
+  IF(sOneC @<> '');
+    IF(DTYPE(sDimSKU, sOneC) @<> 'N');
+      nNonLeafTgt = nNonLeafTgt + 1;
+      LogOutput('ERROR', cProcessName | ' | target ' | sOneC | ' is a consolidation and was NOT cleared; that target keeps overlay semantics for this run', 1);
+    ELSE;
+      IF(sClearList @= '');
+        sClearList = sOneC;
+      ELSE;
+        sClearList = sClearList | ',' | sOneC;
+      ENDIF;
+      nClearTargets = nClearTargets + 1;
+    ENDIF;
+  ENDIF;
+END;
+
+IF(sClearList @<> '');
+  IF(nUseRun = 1);
+    sClearJob = RunProcess(cClear, 'pVersion', pVersion, 'pTargetSKUs', sClearList);
+    IF(sClearJob @<> '');
+      WaitForAllJobs(sClearJob);
+    ENDIF;
+  ELSE;
+    nRC = ExecuteProcess(cClear, 'pVersion', pVersion, 'pTargetSKUs', sClearList);
+  ENDIF;
+ENDIF;
+#EndRegion
+
+#Region : Convert once per distinct target, with that target's accumulated group list
+sT = sTargets;
+IF(LONG(sT) > 1);
+  sT = SUBST(sT, 2, LONG(sT) - 1);
+ELSE;
+  sT = '';
+ENDIF;
+
+WHILE(LONG(sT) > 0);
+  nSemi = SCAN(';', sT);
+  IF(nSemi > 0);
+    sOneTgt = SUBST(sT, 1, nSemi - 1);
+    sT = SUBST(sT, nSemi + 1, LONG(sT) - nSemi);
+  ELSE;
+    sOneTgt = sT;
+    sT = '';
+  ENDIF;
+
+  IF(sOneTgt @<> '');
+    sGrpList = '';
+    sP = sPairs;
+    IF(LONG(sP) > 1);
+      sP = SUBST(sP, 2, LONG(sP) - 1);
+    ELSE;
+      sP = '';
+    ENDIF;
+    WHILE(LONG(sP) > 0);
+      nSemi2 = SCAN(';', sP);
+      IF(nSemi2 > 0);
+        sPair = SUBST(sP, 1, nSemi2 - 1);
+        sP = SUBST(sP, nSemi2 + 1, LONG(sP) - nSemi2);
+      ELSE;
+        sPair = sP;
+        sP = '';
+      ENDIF;
+      IF(sPair @<> '');
+        nCaret = SCAN('^', sPair);
+        IF(nCaret > 0);
+          sPairTgt = SUBST(sPair, 1, nCaret - 1);
+          sPairGrp = SUBST(sPair, nCaret + 1, LONG(sPair) - nCaret);
+          IF(sPairTgt @= sOneTgt);
+            IF(sGrpList @= '');
+              sGrpList = sPairGrp;
+            ELSE;
+              sGrpList = sGrpList | ',' | sPairGrp;
+            ENDIF;
+          ENDIF;
+        ENDIF;
+      ENDIF;
+    END;
+
+    IF(sGrpList @<> '');
+      nConverters = nConverters + 1;
+      IF(nUseRun = 1);
+        sConvJobId = RunProcess(cConverter, 'pVersion', pVersion, 'pPlaceholderSKU', '', 'pTargetSKU', sOneTgt, 'pCategory', '', 'pGroup', '', 'pGroups', sGrpList, 'pPartIdx', nConverters);
+        IF(sConvJobs @= '');
+          sConvJobs = sConvJobId;
+        ELSE;
+          sConvJobs = sConvJobs | ',' | sConvJobId;
+        ENDIF;
+      ELSE;
+        nRC = ExecuteProcess(cConverter, 'pVersion', pVersion, 'pPlaceholderSKU', '', 'pTargetSKU', sOneTgt, 'pCategory', '', 'pGroup', '', 'pGroups', sGrpList, 'pPartIdx', nConverters);
+      ENDIF;
+    ENDIF;
+  ENDIF;
+END;
+#EndRegion
+
+#Region : Join the converter jobs
+IF(nUseRun = 1);
+  sRemainingConv = sConvJobs;
+  WHILE(LONG(sRemainingConv) > 0);
+    nCommaPos2 = SCAN(',', sRemainingConv);
+    IF(nCommaPos2 > 0);
+      sOneConv = SUBST(sRemainingConv, 1, nCommaPos2 - 1);
+      sRemainingConv = SUBST(sRemainingConv, nCommaPos2 + 1, LONG(sRemainingConv) - nCommaPos2);
+    ELSE;
+      sOneConv = sRemainingConv;
+      sRemainingConv = '';
+    ENDIF;
+    IF(sOneConv @<> '');
+      WaitForAllJobs(sOneConv);
+    ENDIF;
+  END;
+ENDIF;
+#EndRegion
+
+#Region : Promote the rows that actually staged
+IF(nUseRun = 1);
+  sStampJob = RunProcess(cStamp, 'pVersion', pVersion, 'pCategory', pCategory, 'pGroup', pGroup, 'pLogLevel', sLogLevel);
+  IF(sStampJob @<> '');
+    WaitForAllJobs(sStampJob);
+  ENDIF;
+ELSE;
+  nRC = ExecuteProcess(cStamp, 'pVersion', pVersion, 'pCategory', pCategory, 'pGroup', pGroup, 'pLogLevel', sLogLevel);
+ENDIF;
+#EndRegion
+
+IF(nBadTarget > 0);
+  LogOutput('ERROR', cProcessName | ' | ' | TRIM(STR(nBadTarget, 12, 0)) | ' mapping row(s) skipped: the target SKU is not in the ' | cRolesHier | ' hierarchy', 1);
+ENDIF;
+IF(nNonLeafTgt > 0);
+  LogOutput('ERROR', cProcessName | ' | ' | TRIM(STR(nNonLeafTgt, 12, 0)) | ' target(s) were NOT cleared because they are consolidations; those targets kept overlay semantics', 1);
+ENDIF;
+IF(bLogInfo = 1);
+  LogOutput('INFO', cProcessName | ' | END | version=' | pVersion | ' | parallel=' | TRIM(STR(nUseRun, 1, 0)) | ' | rows=' | TRIM(STR(nRows, 12, 0)) | ' | staged=' | TRIM(STR(nStaged, 12, 0)) | ' | targetsCleared=' | TRIM(STR(nClearTargets, 12, 0)) | ' | targetsNotCleared=' | TRIM(STR(nNonLeafTgt, 12, 0)) | ' | targetsConverted=' | TRIM(STR(nConverters, 12, 0)) | ' | badTargets=' | TRIM(STR(nBadTarget, 12, 0)), 1);
+ENDIF;
+
+#endregion

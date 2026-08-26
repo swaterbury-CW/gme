@@ -1,0 +1,354 @@
+#region Prolog
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+#Region : Process Header
+#############################
+##~~ Start Process ~~##
+#############################
+# DEVELOPER : Steve Waterbury
+# CREATED ON : 2026-08-21
+# LAST UPDATE: 2026-08-24
+# CHANGED BY : Steve Waterbury
+# COMMENTS:
+# Stages one placeholder's weekly contribution towards its target SKU into
+# }Merch Placeholder Conversion, so N placeholders on one target aggregate instead of
+# overwriting. Writes additive components and the weighted Build/Debuild chain only - the
+# staging cube's ratio-of-sums rules derive every rate. Closed weeks are never staged.
+# Reports this row's outcome to Merch Placeholder Mapping 'Conversion Status'.
+# Driven by a zero-suppressed view over the source cube, so only weeks the placeholder
+# actually plans are visited. Clearing belongs to Merch.Calc.ConvertPlaceholder.PreSeed.
+#
+#### CHANGE HISTORY:
+### MODIFICATION DATE  CHANGED BY         COMMENT
+### 2026-08-21         Steve Waterbury    Initial creation
+### 2026-08-21         Steve Waterbury    Opening Inventory excluded from the activity gate
+### 2026-08-21         Steve Waterbury    Stale week cleared, not recomputed
+### 2026-08-23         Steve Waterbury    Closed weeks not staged; row outcome reported
+### 2026-08-24         Steve Waterbury    Source-cube view datasource; copy-only; temporary objects; pLogLevel
+#
+#EndRegion
+
+#Region : Logging
+cProcessName = GetProcessName();
+sLogLevel = pLogLevel;
+IF(sLogLevel @= '');
+  sLogLevel = CellGetS('ProcessControl', cProcessName, 'LoggingLevel');
+ENDIF;
+IF(sLogLevel @= '');
+  sLogLevel = 'INFO';
+ENDIF;
+bLogInfo = 0;
+IF(sLogLevel @= 'INFO' % sLogLevel @= 'DEBUG');
+  bLogInfo = 1;
+ENDIF;
+#EndRegion
+
+#Region : Constants
+sSrcCube = 'Merch Placeholder Forecast';
+sStgCube = '}Merch Placeholder Conversion';
+sMapCube = 'Merch Placeholder Mapping';
+sDimVer = 'Merch Version';
+sDimTP = 'Merch Time Period';
+sDimSKU = 'Merch SKU';
+sDimCat = 'Merch Category';
+sDimPH = 'Merch Placeholder SKU';
+sDimGrp = '}Groups';
+sDimMsr = 'Merch Forecast Measure';
+cRolesHier = 'Roles';
+
+sIdx = TRIM(STR(pPartIdx, 12, 0));
+sSrcView = 'TI_StagePH_' | sIdx;
+sSubVer = 'TI_StagePH_' | sIdx | '_Ver';
+sSubTP = 'TI_StagePH_' | sIdx | '_TP';
+sSubCat = 'TI_StagePH_' | sIdx | '_Cat';
+sSubPH = 'TI_StagePH_' | sIdx | '_PH';
+sSubGrp = 'TI_StagePH_' | sIdx | '_Grp';
+sSubMsr = 'TI_StagePH_' | sIdx | '_Msr';
+
+sLastWk = '';
+nWeeks = 0;
+nStaged = 0;
+nBootstrap = 0;
+nSkipped = 0;
+nClosedIneligible = 0;
+#EndRegion
+
+#Region : Validation - all of it BEFORE any view or subset exists, so ProcessError is safe
+IF(pVersion @= '');
+  LogOutput('ERROR', cProcessName | ' | pVersion is required', 1);
+  ProcessError;
+ENDIF;
+IF(DIMIX(sDimVer, pVersion) = 0);
+  LogOutput('ERROR', cProcessName | ' | version not found: ' | pVersion, 1);
+  ProcessError;
+ENDIF;
+sVersionType = ATTRS(sDimVer, pVersion, 'Version_Type');
+IF(sVersionType @<> 'Calculated');
+  LogOutput('ERROR', cProcessName | ' | version is not Calculated so the placeholder plan is frozen: ' | pVersion | ' is ' | sVersionType, 1);
+  ProcessError;
+ENDIF;
+IF(pCategory @= '');
+  LogOutput('ERROR', cProcessName | ' | pCategory is required', 1);
+  ProcessError;
+ENDIF;
+IF(DIMIX(sDimCat, pCategory) = 0);
+  LogOutput('ERROR', cProcessName | ' | category not found: ' | pCategory, 1);
+  ProcessError;
+ENDIF;
+IF(DTYPE(sDimCat, pCategory) @<> 'N');
+  LogOutput('ERROR', cProcessName | ' | category must be a leaf, not a rollup: ' | pCategory, 1);
+  ProcessError;
+ENDIF;
+IF(pPlaceholderSKU @= '');
+  LogOutput('ERROR', cProcessName | ' | pPlaceholderSKU is required', 1);
+  ProcessError;
+ENDIF;
+IF(DIMIX(sDimPH, pPlaceholderSKU) = 0);
+  LogOutput('ERROR', cProcessName | ' | placeholder SKU not found: ' | pPlaceholderSKU, 1);
+  ProcessError;
+ENDIF;
+IF(DTYPE(sDimPH, pPlaceholderSKU) @<> 'N');
+  LogOutput('ERROR', cProcessName | ' | placeholder SKU must be a leaf, not a rollup: ' | pPlaceholderSKU, 1);
+  ProcessError;
+ENDIF;
+IF(pGroup @= '');
+  LogOutput('ERROR', cProcessName | ' | pGroup is required', 1);
+  ProcessError;
+ENDIF;
+IF(DIMIX(sDimGrp, pGroup) = 0);
+  LogOutput('ERROR', cProcessName | ' | group not found: ' | pGroup, 1);
+  ProcessError;
+ENDIF;
+
+sTarget = pTargetSKU;
+IF(sTarget @= '');
+  sTarget = CellGetS(sMapCube, pVersion, pCategory, pPlaceholderSKU, pGroup, 'Target SKU');
+ENDIF;
+IF(sTarget @= '');
+  LogOutput('ERROR', cProcessName | ' | no Target SKU mapped for ' | pCategory | ' / ' | pPlaceholderSKU | ' / ' | pGroup, 1);
+  ProcessError;
+ENDIF;
+
+# Merch SKU is multi-hierarchy, so DIMIX alone would pass a SKU that exists only in an
+# attribute hierarchy and that the conversion chain would then reject.
+nTgtAnywhere = DIMIX(sDimSKU, sTarget);
+nTgtInRoles = HierarchyElementExists(sDimSKU, cRolesHier, sTarget);
+IF(nTgtInRoles = 0);
+  IF(nTgtAnywhere = 0);
+    LogOutput('ERROR', cProcessName | ' | target SKU not found in ' | sDimSKU | ': ' | sTarget, 1);
+  ELSE;
+    LogOutput('ERROR', cProcessName | ' | target SKU ' | sTarget | ' exists in ' | sDimSKU | ' but NOT in the ' | cRolesHier | ' hierarchy, so conversion would reject it', 1);
+  ENDIF;
+  ProcessError;
+ENDIF;
+
+# 0 means the version has never been closed, so every week is open.
+nLastClosed = ATTRN(sDimVer, pVersion, 'Last_Closed_Period');
+#EndRegion
+
+#Region : Source view - only weeks this placeholder actually plans
+# Zero suppression is on exactly the seven measures the activity gate used to test, so a
+# record existing IS the gate. Temporary view and subsets, unique per worker via pPartIdx.
+ViewCreate(sSrcCube, sSrcView, 1);
+
+SubsetCreateByMDX(sSubVer, '{[' | sDimVer | '].[' | sDimVer | '].[' | pVersion | ']}', 1);
+ViewSubsetAssign(sSrcCube, sSrcView, sDimVer, sSubVer);
+
+SubsetCreateByMDX(sSubTP, '{TM1FILTERBYLEVEL({TM1SUBSETALL([' | sDimTP | '].[' | sDimTP | '])}, 0)}', 1);
+ViewSubsetAssign(sSrcCube, sSrcView, sDimTP, sSubTP);
+
+SubsetCreateByMDX(sSubCat, '{[' | sDimCat | '].[' | sDimCat | '].[' | pCategory | ']}', 1);
+ViewSubsetAssign(sSrcCube, sSrcView, sDimCat, sSubCat);
+
+SubsetCreateByMDX(sSubPH, '{[' | sDimPH | '].[' | sDimPH | '].[' | pPlaceholderSKU | ']}', 1);
+ViewSubsetAssign(sSrcCube, sSrcView, sDimPH, sSubPH);
+
+SubsetCreateByMDX(sSubGrp, '{[' | sDimGrp | '].[' | sDimGrp | '].[' | pGroup | ']}', 1);
+ViewSubsetAssign(sSrcCube, sSrcView, sDimGrp, sSubGrp);
+
+sMsrMDX = '{[' | sDimMsr | '].[' | sDimMsr | '].[Units]';
+sMsrMDX = sMsrMDX | ',[' | sDimMsr | '].[' | sDimMsr | '].[Receipts]';
+sMsrMDX = sMsrMDX | ',[' | sDimMsr | '].[' | sDimMsr | '].[Reservations]';
+sMsrMDX = sMsrMDX | ',[' | sDimMsr | '].[' | sDimMsr | '].[Seasonality]';
+sMsrMDX = sMsrMDX | ',[' | sDimMsr | '].[' | sDimMsr | '].[Velocity]';
+sMsrMDX = sMsrMDX | ',[' | sDimMsr | '].[' | sDimMsr | '].[Regime]';
+sMsrMDX = sMsrMDX | ',[' | sDimMsr | '].[' | sDimMsr | '].[Promo Build]}';
+SubsetCreateByMDX(sSubMsr, sMsrMDX, 1);
+ViewSubsetAssign(sSrcCube, sSrcView, sDimMsr, sSubMsr);
+
+ViewSuppressZeroesSet(sSrcCube, sSrcView, 1);
+ViewExtractSkipZeroesSet(sSrcCube, sSrcView, 1);
+DatasourceType = 'VIEW';
+DatasourceNameForServer = sSrcCube;
+DatasourceCubeview = sSrcView;
+#EndRegion
+
+IF(bLogInfo = 1);
+  LogOutput('INFO', cProcessName | ' | START | version=' | pVersion | ' | category=' | pCategory | ' | placeholder=' | pPlaceholderSKU | ' | group=' | pGroup | ' | target=' | sTarget | ' | lastClosed=' | TRIM(STR(nLastClosed, 12, 0)), 1);
+ENDIF;
+
+#endregion
+#region Metadata
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+
+#endregion
+#region Data
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+# One record is one CELL. The seven measure records for a week arrive together, so comparing
+# against the previous week collapses them to one pass; the record identifies the WEEK and the
+# rest of that week's measures are read below.
+sWk = vTime;
+IF(sWk @= sLastWk);
+  ItemSkip;
+ENDIF;
+sLastWk = sWk;
+IF(DTYPE(sDimTP, sWk) @<> 'N');
+  ItemSkip;
+ENDIF;
+nWeeks = nWeeks + 1;
+
+# A closed week can never be converted, so it is never staged as a contribution.
+IF(nLastClosed <> 0);
+  IF(ATTRN(sDimTP, sWk, 'End_Date') <= nLastClosed);
+    nClosedIneligible = nClosedIneligible + 1;
+    ItemSkip;
+  ENDIF;
+ENDIF;
+
+nSrcUnits = CellGetN(sSrcCube, pVersion, sWk, pCategory, pPlaceholderSKU, pGroup, 'Units');
+nSrcReceipts = CellGetN(sSrcCube, pVersion, sWk, pCategory, pPlaceholderSKU, pGroup, 'Receipts');
+nSrcRes = CellGetN(sSrcCube, pVersion, sWk, pCategory, pPlaceholderSKU, pGroup, 'Reservations');
+nSrcOI = CellGetN(sSrcCube, pVersion, sWk, pCategory, pPlaceholderSKU, pGroup, 'Opening Inventory');
+nS = CellGetN(sSrcCube, pVersion, sWk, pCategory, pPlaceholderSKU, pGroup, 'Seasonality');
+nV = CellGetN(sSrcCube, pVersion, sWk, pCategory, pPlaceholderSKU, pGroup, 'Velocity');
+nR = CellGetN(sSrcCube, pVersion, sWk, pCategory, pPlaceholderSKU, pGroup, 'Regime');
+nP = CellGetN(sSrcCube, pVersion, sWk, pCategory, pPlaceholderSKU, pGroup, 'Promo Build');
+nSrcCalcU = CellGetN(sSrcCube, pVersion, sWk, pCategory, pPlaceholderSKU, pGroup, 'Calc Units');
+nSrcBaseRev = CellGetN(sSrcCube, pVersion, sWk, pCategory, pPlaceholderSKU, pGroup, 'Base Revenue');
+nSrcBaseCost = CellGetN(sSrcCube, pVersion, sWk, pCategory, pPlaceholderSKU, pGroup, 'Base Cost');
+nSrcBackCost = CellGetN(sSrcCube, pVersion, sWk, pCategory, pPlaceholderSKU, pGroup, 'Backend Cost');
+nSrcOtherCost = CellGetN(sSrcCube, pVersion, sWk, pCategory, pPlaceholderSKU, pGroup, 'Other Cost Adjustment');
+nSrcMdRev = CellGetN(sSrcCube, pVersion, sWk, pCategory, pPlaceholderSKU, pGroup, 'Markdown Revenue');
+nSrcRevAdj = CellGetN(sSrcCube, pVersion, sWk, pCategory, pPlaceholderSKU, pGroup, 'Revenue Adjustment');
+nSrcPriceAdj = CellGetN(sSrcCube, pVersion, sWk, pCategory, pPlaceholderSKU, pGroup, 'Price Adjustment');
+nSrcRcptDlr = CellGetN(sSrcCube, pVersion, sWk, pCategory, pPlaceholderSKU, pGroup, 'Receipt Dollars');
+nSrcCBW = CellGetN(sSrcCube, pVersion, sWk, pCategory, pPlaceholderSKU, pGroup, 'CB Weighted Calc');
+nSrcOO = CellGetN(sSrcCube, pVersion, sWk, pCategory, pPlaceholderSKU, pGroup, 'On-Order');
+nSrcOOD = CellGetN(sSrcCube, pVersion, sWk, pCategory, pPlaceholderSKU, pGroup, 'On-Order Dollars');
+nSrcInvAdjD = CellGetN(sSrcCube, pVersion, sWk, pCategory, pPlaceholderSKU, pGroup, 'Inv Adjustment Dollars');
+nSrcInvAdj = CellGetN(sSrcCube, pVersion, sWk, pCategory, pPlaceholderSKU, pGroup, 'Inventory Adjustment');
+
+# Dollar form of the Price Adjustment rate, so the cube can blend it by ratio of sums.
+nPriceAdjDlr = nSrcUnits * nSrcPriceAdj;
+
+# w = Units at the PRIOR week, the quantity the Build/Debuild rule scales. A bootstrap week
+# with no prior units uses its own, so it stays weighted.
+nW = 0;
+sPrevWk = ATTRS(sDimTP, sWk, 'Previous Week');
+IF(sPrevWk @<> '');
+  IF(DIMIX(sDimTP, sPrevWk) > 0);
+    nW = CellGetN(sSrcCube, pVersion, sPrevWk, pCategory, pPlaceholderSKU, pGroup, 'Units');
+  ENDIF;
+ENDIF;
+IF(nW = 0);
+  nW = nSrcUnits;
+  IF(nW <> 0);
+    nBootstrap = nBootstrap + 1;
+  ENDIF;
+ENDIF;
+
+# Each zero factor normalises to 1 as the forecast rule does. All four zero leaves the chain
+# at 0 while BD Weight still carries the units, so that contributor drags the blend down
+# instead of reading as a neutral 1.
+nAllZero = 0;
+IF(nS = 0 & nV = 0 & nR = 0 & nP = 0);
+  nAllZero = 1;
+ENDIF;
+nSn = nS;
+IF(nSn = 0);
+  nSn = 1;
+ENDIF;
+nVn = nV;
+IF(nVn = 0);
+  nVn = 1;
+ENDIF;
+nRn = nR;
+IF(nRn = 0);
+  nRn = 1;
+ENDIF;
+nPn = nP;
+IF(nPn = 0);
+  nPn = 1;
+ENDIF;
+nWS = 0;
+nWSV = 0;
+nWSVR = 0;
+nWSVRP = 0;
+IF(nAllZero = 0);
+  nWS = nW * nSn;
+  nWSV = nWS * nVn;
+  nWSVR = nWSV * nRn;
+  nWSVRP = nWSVR * nPn;
+ENDIF;
+
+# Guarded per PAT-001.
+IF(CellIsUpdateable(sStgCube, pVersion, sWk, sTarget, pCategory, pPlaceholderSKU, pGroup, 'Units') = 0);
+  nSkipped = nSkipped + 1;
+  ItemSkip;
+ENDIF;
+
+CellPutN(nSrcUnits, sStgCube, pVersion, sWk, sTarget, pCategory, pPlaceholderSKU, pGroup, 'Units');
+CellPutN(nSrcCalcU, sStgCube, pVersion, sWk, sTarget, pCategory, pPlaceholderSKU, pGroup, 'Calc Units');
+CellPutN(nSrcBaseRev, sStgCube, pVersion, sWk, sTarget, pCategory, pPlaceholderSKU, pGroup, 'Base Revenue');
+CellPutN(nSrcBaseCost, sStgCube, pVersion, sWk, sTarget, pCategory, pPlaceholderSKU, pGroup, 'Base Cost');
+CellPutN(nSrcBackCost, sStgCube, pVersion, sWk, sTarget, pCategory, pPlaceholderSKU, pGroup, 'Backend Cost');
+CellPutN(nSrcOtherCost, sStgCube, pVersion, sWk, sTarget, pCategory, pPlaceholderSKU, pGroup, 'Other Cost Adjustment');
+CellPutN(nSrcMdRev, sStgCube, pVersion, sWk, sTarget, pCategory, pPlaceholderSKU, pGroup, 'Markdown Revenue');
+CellPutN(nSrcRevAdj, sStgCube, pVersion, sWk, sTarget, pCategory, pPlaceholderSKU, pGroup, 'Revenue Adjustment');
+CellPutN(nPriceAdjDlr, sStgCube, pVersion, sWk, sTarget, pCategory, pPlaceholderSKU, pGroup, 'Price Adj Dollars');
+CellPutN(nSrcReceipts, sStgCube, pVersion, sWk, sTarget, pCategory, pPlaceholderSKU, pGroup, 'Receipts');
+CellPutN(nSrcRcptDlr, sStgCube, pVersion, sWk, sTarget, pCategory, pPlaceholderSKU, pGroup, 'Receipt Dollars');
+CellPutN(nSrcCBW, sStgCube, pVersion, sWk, sTarget, pCategory, pPlaceholderSKU, pGroup, 'CB Weighted Calc');
+CellPutN(nSrcOI, sStgCube, pVersion, sWk, sTarget, pCategory, pPlaceholderSKU, pGroup, 'Opening Inventory');
+CellPutN(nSrcOO, sStgCube, pVersion, sWk, sTarget, pCategory, pPlaceholderSKU, pGroup, 'On-Order');
+CellPutN(nSrcOOD, sStgCube, pVersion, sWk, sTarget, pCategory, pPlaceholderSKU, pGroup, 'On-Order Dollars');
+CellPutN(nSrcInvAdjD, sStgCube, pVersion, sWk, sTarget, pCategory, pPlaceholderSKU, pGroup, 'Inv Adjustment Dollars');
+CellPutN(nSrcInvAdj, sStgCube, pVersion, sWk, sTarget, pCategory, pPlaceholderSKU, pGroup, 'Inventory Adjustment');
+CellPutN(nSrcRes, sStgCube, pVersion, sWk, sTarget, pCategory, pPlaceholderSKU, pGroup, 'Reservations');
+CellPutN(1, sStgCube, pVersion, sWk, sTarget, pCategory, pPlaceholderSKU, pGroup, 'Contributor Count');
+CellPutN(nW, sStgCube, pVersion, sWk, sTarget, pCategory, pPlaceholderSKU, pGroup, 'BD Weight');
+CellPutN(nWS, sStgCube, pVersion, sWk, sTarget, pCategory, pPlaceholderSKU, pGroup, 'BD W_S');
+CellPutN(nWSV, sStgCube, pVersion, sWk, sTarget, pCategory, pPlaceholderSKU, pGroup, 'BD W_SV');
+CellPutN(nWSVR, sStgCube, pVersion, sWk, sTarget, pCategory, pPlaceholderSKU, pGroup, 'BD W_SVR');
+CellPutN(nWSVRP, sStgCube, pVersion, sWk, sTarget, pCategory, pPlaceholderSKU, pGroup, 'BD W_SVRP');
+
+nStaged = nStaged + 1;
+
+#endregion
+#region Epilog
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+#Region : Report this row's outcome to the mapping cube
+# 'Staged' means at least one open week contributed; 'No Data' means nothing did. The
+# orchestrator promotes only a 'Staged' row, so a row that moved nothing is not retired.
+sStatus = 'No Data';
+IF(nStaged > 0);
+  sStatus = 'Staged';
+ENDIF;
+IF(CellIsUpdateable(sMapCube, pVersion, pCategory, pPlaceholderSKU, pGroup, 'Conversion Status') = 1);
+  CellPutS(sStatus, sMapCube, pVersion, pCategory, pPlaceholderSKU, pGroup, 'Conversion Status');
+ELSE;
+  LogOutput('ERROR', cProcessName | ' | Conversion Status not updateable for ' | pCategory | ' / ' | pPlaceholderSKU | ' / ' | pGroup, 1);
+ENDIF;
+#EndRegion
+
+IF(nSkipped > 0);
+  LogOutput('ERROR', cProcessName | ' | SKIPPED ' | TRIM(STR(nSkipped, 12, 0)) | ' week(s): the staging cell was not updateable', 1);
+ENDIF;
+IF(bLogInfo = 1);
+  LogOutput('INFO', cProcessName | ' | END | version=' | pVersion | ' | category=' | pCategory | ' | placeholder=' | pPlaceholderSKU | ' | group=' | pGroup | ' | target=' | sTarget | ' | weeksVisited=' | TRIM(STR(nWeeks, 12, 0)) | ' | weeksStaged=' | TRIM(STR(nStaged, 12, 0)) | ' | closedIneligible=' | TRIM(STR(nClosedIneligible, 12, 0)) | ' | bootstrapWeighted=' | TRIM(STR(nBootstrap, 12, 0)) | ' | status=' | sStatus, 1);
+ENDIF;
+
+#endregion
