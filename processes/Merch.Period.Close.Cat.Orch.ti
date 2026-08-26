@@ -1,0 +1,302 @@
+#region Prolog
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+#=============================================================
+# PROCESS: Merch.Period.Close.Cat.Orch
+# PURPOSE: Fan the period-close volume hold out across the Roles hierarchy.
+#          One Merch.Period.Close.Cat worker per Roles-L4 node, dispatched from
+#          the EPILOG in bounded batches, each batch genuinely joined before the
+#          next is dispatched.
+#
+#          WHY THIS EXISTS. Merch.Period.Close used to dispatch these workers
+#          itself, from its Data tab, joined with WaitForInternalJobs(). That
+#          join does not hold: measured 2026-08-21, 74 workers were still running
+#          three minutes after the Epilog had advanced Last_Closed_Period and
+#          loaded the actuals, so they read a half-closed model. The fix is to
+#          join PROPERLY, not to serialise - a single pass walks every leaf SKU
+#          under Director, which on Prod is the full SKU population.
+#
+#          WHY THE BARRIER POLLS GetJobStatus AND DOES NOT CALL WaitForAllJobs.
+#          Measured 2026-08-26 with a WaitForAllJobs version of this process:
+#            TIMING END: Roles=74 | Dispatched=74 | Batches=13 | Elapsed=1.0s
+#            738 x "Lock contention occurred, rolling back changes."
+#            only 50 of 74 workers logged a TIMING END
+#          Thirteen sequential batches of six supposedly joined in ONE SECOND.
+#          WaitForAllJobs DOES NOT BLOCK on a job that is queued but not yet
+#          started, so the batching was cosmetic. GetJobStatus reports the job's
+#          REAL state whether or not it has started, so pBatchSize becomes an
+#          actual cap.
+#
+#          WHAT CONTENDS: concurrent CellPutN into Merch Forecast. The workers'
+#          views are uniquely named from pPartIdx and this process's subset is
+#          its own, so no object is shared - the worker deliberately creates NO
+#          subset on Merch SKU:Roles, because this process holds a datasource on
+#          that dimension and the pair deadlocked when it did.
+#
+#          LOGGING LEVEL IS READ ONCE, HERE, AND PASSED DOWN as pLogInfo.
+#          Workers must never read or write ProcessControl.
+#
+#          AND IT FAILS LOUDLY. Workers that exit abnormally or blow
+#          pWorkerTimeoutSec are counted and this process ProcessErrors. A close
+#          must NEVER advance Last_Closed_Period over a half-applied hold. The
+#          TIMING END counters are logged UNCONDITIONALLY, before any
+#          ProcessError, so a failed close is diagnosable from one line.
+#
+#          pUseRunProcess=0 is the safety valve: the same per-Role workers run
+#          serially via synchronous ExecuteProcess.
+#
+#          Node names travel Data-tab to Epilog in a TAB-delimited string. Never
+#          a comma - role names are free text. Five roles contain '/', which is
+#          why worker objects are named from the numeric pPartIdx.
+#
+#          THE DATASOURCE BOOTSTRAP: TM1DimensionSubset on Merch SKU /
+#          PeriodCloseSKUBootstrap, present so the compiler knows vMerch_SKU.
+#          The Prolog overrides the dimension and subset at runtime.
+# DEVELOPER : Steve Waterbury
+# CREATED ON: 2026-08-26
+# LAST UPDATE: 2026-08-26
+# CHANGED BY: Steve Waterbury
+# CHANGE HISTORY:
+#   2026-08-26 | Steve Waterbury | Initial creation; restores the per-Role fan-out with a barrier that actually blocks, a single ProcessControl read passed down as pLogInfo, and worker-failure counters that abort rather than complete a partial hold.
+#=============================================================
+
+cProcessName = GetProcessName();
+
+# The ONE control-cube read in this chain. Resolved here, passed to every worker.
+sLogLevel = CellGetS('ProcessControl', cProcessName, 'LoggingLevel');
+IF(sLogLevel @= '');
+    sLogLevel = 'OFF';
+ENDIF;
+nLogInfo = 0;
+IF(sLogLevel @= 'INFO' % sLogLevel @= 'DEBUG');
+    nLogInfo = 1;
+ENDIF;
+
+# ALL validation runs before the first SubsetCreateByMDX so ProcessError is legal.
+IF(pVersion @= '');
+    LogOutput('ERROR', cProcessName | ' | pVersion empty', 1);
+    ProcessError;
+ENDIF;
+IF(DIMIX('Merch Version', pVersion) = 0);
+    LogOutput('ERROR', cProcessName | ' | pVersion not found: ' | pVersion, 1);
+    ProcessError;
+ENDIF;
+IF(ATTRS('Merch Version', pVersion, 'Version_Type') @<> 'Calculated');
+    LogOutput('ERROR', cProcessName | ' | pVersion is not a Calculated version: ' | pVersion, 1);
+    ProcessError;
+ENDIF;
+IF(pTargetPeriod @= '');
+    LogOutput('ERROR', cProcessName | ' | pTargetPeriod empty', 1);
+    ProcessError;
+ENDIF;
+IF(DIMIX('Merch Time Period', pTargetPeriod) = 0);
+    LogOutput('ERROR', cProcessName | ' | pTargetPeriod not in Merch Time Period: ' | pTargetPeriod, 1);
+    ProcessError;
+ENDIF;
+
+sFirstOpenWeek = ATTRS('Merch Time Period', pTargetPeriod, 'Next Week');
+IF(sFirstOpenWeek @= '');
+    LogOutput('ERROR', cProcessName | ' | pTargetPeriod has no Next Week: ' | pTargetPeriod, 1);
+    ProcessError;
+ENDIF;
+
+# Refuse a week that is already closed - the workers' numerator would be gone.
+nLastClosed = ATTRN('Merch Version', pVersion, 'Last_Closed_Period');
+nTargetEnd  = ATTRN('Merch Time Period', pTargetPeriod, 'End_Date');
+IF(nLastClosed <> 0 & nTargetEnd <= nLastClosed);
+    LogOutput('ERROR', cProcessName | ' | pTargetPeriod is already closed - must run BEFORE Last_Closed_Period advances. Period=' | pTargetPeriod, 1);
+    ProcessError;
+ENDIF;
+
+sRoot = pSKUElement;
+IF(sRoot @= '');
+    sRoot = 'Director';
+ENDIF;
+# Roles elements exist only in the 'Roles' hierarchy; DIMIX searches the DEFAULT
+# hierarchy only and would always return 0 here.
+IF(HierarchyElementExists('Merch SKU', 'Roles', sRoot) = 0);
+    LogOutput('ERROR', cProcessName | ' | pSKUElement not in Merch SKU:Roles: ' | sRoot, 1);
+    ProcessError;
+ENDIF;
+
+# Local copies - a p-prefixed parameter must not appear in a numeric context.
+nBatchSize = pBatchSize;
+IF(nBatchSize <= 0);
+    nBatchSize = 6;
+ENDIF;
+nUseRun = pUseRunProcess;
+nWorkerTimeoutSec = pWorkerTimeoutSec;
+IF(nWorkerTimeoutSec <= 0);
+    nWorkerTimeoutSec = 900;
+ENDIF;
+nWorkerTimeoutMs = nWorkerTimeoutSec * 1000;
+
+# TAB, because role names are free text and may contain commas.
+sDelim = CHAR(9);
+sNodes = '';
+nRoles = 0;
+nDispatched = 0;
+nPartIdx = 0;
+nBatches = 0;
+nOK = 0;
+nFailed = 0;
+nTimedOut = 0;
+
+nStart = NOW;
+IF(nLogInfo = 1);
+    LogOutput('INFO', 'TIMING START: ' | cProcessName | ' | V=' | pVersion | ' | Closing=' | pTargetPeriod | ' | FirstOpen=' | sFirstOpenWeek | ' | Root=' | sRoot | ' | BatchSize=' | TRIM(STR(nBatchSize, 10, 0)) | ' | Parallel=' | TRIM(STR(nUseRun, 1, 0)) | ' | WorkerTimeout=' | TRIM(STR(nWorkerTimeoutSec, 10, 0)) | 's', 1);
+ENDIF;
+
+sSub = 'TI_PCCatOrchSub_' | TRIM(STR(NOW, 15, 0));
+IF(HierarchySubsetExists('Merch SKU', 'Roles', sSub) = 1);
+    HierarchySubsetDestroy('Merch SKU', 'Roles', sSub);
+ENDIF;
+sMDX = '{FILTER({DESCENDANTS([Merch SKU].[Roles].[' | sRoot | '])}, [Merch SKU].[Roles].CurrentMember.LEVEL.ORDINAL = 4)}';
+SubsetCreateByMDX(sSub, sMDX);
+
+DatasourceType            = 'SUBSET';
+DatasourceNameForServer   = 'Merch SKU:Roles';
+DatasourceDimensionSubset = sSub;
+
+#endregion
+#region Metadata
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+
+#endregion
+#region Data
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+# COLLECT ONLY. The Epilog owns dispatch so the barrier can bound concurrency.
+nRoles = nRoles + 1;
+sNode = vMerch_SKU;
+IF(sNode @= '');
+    ItemSkip;
+ENDIF;
+sNodes = sNodes | sNode | sDelim;
+
+#endregion
+#region Epilog
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+# Empty-subset fallback: run the root once rather than silently doing nothing.
+IF(nRoles = 0);
+    sNodes = sRoot | sDelim;
+    LogOutput('ERROR', cProcessName | ' | Roles-L4 subset was EMPTY under ' | sRoot | ' - falling back to a single worker on the root', 1);
+ENDIF;
+
+# Dispatch in bounded batches, JOINING each batch before starting the next.
+sRemaining = sNodes;
+WHILE(sRemaining @<> '');
+
+    sJobIDs = '';
+    nInBatch = 0;
+
+    WHILE(nInBatch < nBatchSize & sRemaining @<> '');
+        nPos = SCAN(sDelim, sRemaining);
+        IF(nPos = 0);
+            sOne = sRemaining;
+            sRemaining = '';
+        ELSE;
+            sOne = SUBST(sRemaining, 1, nPos - 1);
+            sRemaining = SUBST(sRemaining, nPos + 1, LONG(sRemaining) - nPos);
+        ENDIF;
+
+        IF(sOne @<> '');
+            nPartIdx = nPartIdx + 1;
+            IF(nUseRun = 1);
+                sJobId = RunProcess('Merch.Period.Close.Cat',
+                    'pVersion',      pVersion,
+                    'pTargetPeriod', pTargetPeriod,
+                    'pRole',         sOne,
+                    'pPartIdx',      nPartIdx,
+                    'pLogInfo',      nLogInfo);
+                IF(sJobId @= '');
+                    nFailed = nFailed + 1;
+                    LogOutput('ERROR', cProcessName | ' | RunProcess returned an empty JobID for role ' | sOne, 1);
+                ELSE;
+                    IF(sJobIDs @= '');
+                        sJobIDs = sJobId;
+                    ELSE;
+                        sJobIDs = sJobIDs | ',' | sJobId;
+                    ENDIF;
+                ENDIF;
+            ELSE;
+                nRC = ExecuteProcess('Merch.Period.Close.Cat',
+                    'pVersion',      pVersion,
+                    'pTargetPeriod', pTargetPeriod,
+                    'pRole',         sOne,
+                    'pPartIdx',      nPartIdx,
+                    'pLogInfo',      nLogInfo);
+                IF(nRC = 0);
+                    nOK = nOK + 1;
+                ELSE;
+                    nFailed = nFailed + 1;
+                    LogOutput('ERROR', cProcessName | ' | serial worker FAILED for role ' | sOne | ' RC=' | TRIM(STR(nRC, 10, 0)), 1);
+                ENDIF;
+            ENDIF;
+            nDispatched = nDispatched + 1;
+            nInBatch = nInBatch + 1;
+        ENDIF;
+    END;
+
+    IF(nInBatch > 0);
+        nBatches = nBatches + 1;
+    ENDIF;
+
+    # ---------------------------------------------------------------------
+    # THE BARRIER. Poll GetJobStatus per JobID. WaitForAllJobs is deliberately
+    # NOT used - it returns immediately for a job that is queued but not yet
+    # started, which made an identical-looking batched version join 13 batches
+    # in 1.0s while all 74 workers ran at once.
+    # ---------------------------------------------------------------------
+    sRest = sJobIDs;
+    WHILE(sRest @<> '');
+        nComma = SCAN(',', sRest);
+        IF(nComma = 0);
+            sJob = sRest;
+            sRest = '';
+        ELSE;
+            sJob = SUBST(sRest, 1, nComma - 1);
+            sRest = SUBST(sRest, nComma + 1, LONG(sRest) - nComma);
+        ENDIF;
+
+        IF(sJob @<> '');
+            nWaited = 0;
+            nStatus = GetJobStatus(sJob);
+            WHILE(nStatus = ProcessExecutionInProgress() & nWaited < nWorkerTimeoutMs);
+                Sleep(250);
+                nWaited = nWaited + 250;
+                nStatus = GetJobStatus(sJob);
+            END;
+
+            IF(nStatus = ProcessExecutionInProgress());
+                nTimedOut = nTimedOut + 1;
+                LogOutput('ERROR', cProcessName | ' | worker job ' | sJob | ' STILL RUNNING after ' | TRIM(STR(nWorkerTimeoutSec, 10, 0)) | 's - barrier gave up waiting', 1);
+            ELSE;
+                IF(nStatus = ProcessExitNormal());
+                    nOK = nOK + 1;
+                ELSE;
+                    nFailed = nFailed + 1;
+                    LogOutput('ERROR', cProcessName | ' | worker job ' | sJob | ' exited abnormally, status=' | TRIM(STR(nStatus, 10, 0)), 1);
+                ENDIF;
+            ENDIF;
+        ENDIF;
+    END;
+
+END;
+
+IF(HierarchySubsetExists('Merch SKU', 'Roles', sSub) = 1);
+    HierarchySubsetDestroy('Merch SKU', 'Roles', sSub);
+ENDIF;
+
+# UNCONDITIONAL and BEFORE any ProcessError - one line, and it is the whole
+# diagnosis of whether the fan-out completed.
+LogOutput('INFO', 'TIMING END: ' | cProcessName | ' | Closing=' | pTargetPeriod | ' | Roles=' | TRIM(STR(nRoles, 10, 0)) | ' | Dispatched=' | TRIM(STR(nDispatched, 10, 0)) | ' | Batches=' | TRIM(STR(nBatches, 10, 0)) | ' | OK=' | TRIM(STR(nOK, 10, 0)) | ' | Failed=' | TRIM(STR(nFailed, 10, 0)) | ' | TimedOut=' | TRIM(STR(nTimedOut, 10, 0)) | ' | Elapsed=' | TRIM(STR((NOW - nStart) * 86400, 12, 1)) | 's', 1);
+
+IF(nFailed > 0 % nTimedOut > 0);
+    LogOutput('ERROR', cProcessName | ' | ABORTING: ' | TRIM(STR(nFailed, 10, 0)) | ' worker(s) failed and ' | TRIM(STR(nTimedOut, 10, 0)) | ' timed out of ' | TRIM(STR(nDispatched, 10, 0)) | ' dispatched. The volume hold is only PARTIALLY applied - the caller must NOT advance Last_Closed_Period.', 1);
+    ProcessError;
+ENDIF;
+
+#endregion

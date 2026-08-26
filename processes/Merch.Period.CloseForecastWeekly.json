@@ -1,0 +1,23 @@
+{
+	"@type":"Process",
+	"Name":"Merch.Period.CloseForecastWeekly",
+	"HasSecurityAccess":false,
+	"Code@Code.link":"Merch.Period.CloseForecastWeekly.ti",
+	"DataSource":
+	{
+		"Type":"None"
+	},
+	"Parameters":
+	[
+		{
+			"Name":"pVersion",
+			"Prompt":"Calculated version to close",
+			"Value":"Forecast",
+			"Type":"String"
+		}
+	],
+	"Variables":[],
+	"UID": "17873595960003",
+	"UIData": "CubeAction=1511\fDataAction=1503\fCubeLogChanges=0\f",
+	"VariablesUIData": []
+}

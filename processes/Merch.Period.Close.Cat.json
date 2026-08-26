@@ -1,40 +1,46 @@
 {
 	"@type":"Process",
-	"Name":"Merch.Calc.SubmitForecastToInventory.Cat",
+	"Name":"Merch.Period.Close.Cat",
 	"HasSecurityAccess":false,
-	"Code@Code.link":"Merch.Calc.SubmitForecastToInventory.Cat.ti",
+	"Code@Code.link":"Merch.Period.Close.Cat.ti",
 	"DataSource":
 	{
 		"Type":"TM1CubeView",
 		"dataSourceNameForServer":"Merch Forecast",
 		"dataSourceNameForClient":"Merch Forecast",
-		"view":"temp_SubmitForecast"
+		"view":"TI_PCCat_placeholder"
 	},
 	"Parameters":
 	[
 		{
 			"Name":"pVersion",
-			"Prompt":"Version",
-			"Value":"Forecast",
+			"Prompt":"Calculated Merch Version",
+			"Value":"",
 			"Type":"String"
 		},
 		{
-			"Name":"pSKUElement",
-			"Prompt":"Roles node",
+			"Name":"pTargetPeriod",
+			"Prompt":"Week being closed",
+			"Value":"",
+			"Type":"String"
+		},
+		{
+			"Name":"pRole",
+			"Prompt":"Roles alt-hier element",
 			"Value":"",
 			"Type":"String"
 		},
 		{
 			"Name":"pPartIdx",
-			"Prompt":"Partition index",
+			"Prompt":"Partition index from the orchestrator",
 			"Value":1,
 			"Type":"Numeric"
 		},
 		{
-			"Name":"sLogLevel",
-			"Prompt":"",
-			"Value":"INFO",
-			"Type":"String"
+			"Name":"pLogInfo",
+			"Prompt":"1 = emit INFO logging. Passed in by the parent; never read from ProcessControl here.",
+			"Value":0,
+			"Type":"Numeric"
 		}
 	],
 	"Variables":
@@ -54,34 +60,26 @@
 			"EndByte":0
 		},
 		{
-			"Name":"vMerch_Time_Period",
+			"Name":"vMerch_Version",
 			"Type":"String",
 			"Position":3,
 			"StartByte":0,
 			"EndByte":0
 		},
 		{
-			"Name":"vMerch_Version",
+			"Name":"vMerch_Time_Period",
 			"Type":"String",
 			"Position":4,
 			"StartByte":0,
 			"EndByte":0
-		},
-		{
-			"Name":"Value",
-			"Type":"Numeric",
-			"Position":5,
-			"StartByte":0,
-			"EndByte":0
 		}
 	],
-	"UID": "1781032954000",
+	"UID": "17787880160001",
 	"UIData": "CubeAction=1511\fDataAction=1503\fCubeLogChanges=0\f",
 	"VariablesUIData": [
 		"VarType=32\fColType=827\f",
 		"VarType=32\fColType=827\f",
 		"VarType=32\fColType=827\f",
-		"VarType=32\fColType=827\f",
-		"VarType=33\fColType=827\f"
+		"VarType=32\fColType=827\f"
 	]
 }

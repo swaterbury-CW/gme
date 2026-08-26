@@ -1,61 +1,49 @@
 {
 	"@type":"Process",
-	"Name":"Merch.Calc.ApplyPromos",
+	"Name":"Merch.Load.ActualsToForecast",
 	"HasSecurityAccess":false,
-	"Code@Code.link":"Merch.Calc.ApplyPromos.ti",
+	"Code@Code.link":"Merch.Load.ActualsToForecast.ti",
 	"DataSource":
 	{
 		"Type":"TM1CubeView",
-		"dataSourceNameForServer":"Merch Promo Settings",
-		"dataSourceNameForClient":"Merch Promo Settings",
-		"view":"TI_ApplyPromos_bootstrap"
+		"dataSourceNameForServer":"Merch Actuals",
+		"dataSourceNameForClient":"Merch Actuals",
+		"view":"TI_ActualsToForecast_placeholder"
 	},
 	"Parameters":
 	[
 		{
-			"Name":"pVersion",
-			"Prompt":"Version",
-			"Value":"",
-			"Type":"String"
-		},
-		{
-			"Name":"pPromoID",
-			"Prompt":"Promo ID (blank=all)",
-			"Value":"",
-			"Type":"String"
-		},
-		{
-			"Name":"pSKU",
-			"Prompt":"SKU node (blank=all Roles)",
-			"Value":"",
+			"Name":"pTimePeriod",
+			"Prompt":"pTimePeriod",
+			"Value":"FY2026",
 			"Type":"String"
 		}
 	],
 	"Variables":
 	[
 		{
-			"Name":"vMerch_Promo_Settings_Measure",
+			"Name":"vMerch_Actuals_Measure",
 			"Type":"String",
 			"Position":1,
 			"StartByte":0,
 			"EndByte":0
 		},
 		{
-			"Name":"vMerch_SKU",
+			"Name":"vMerch_Time_Period",
 			"Type":"String",
 			"Position":2,
 			"StartByte":0,
 			"EndByte":0
 		},
 		{
-			"Name":"vMerch_Promo_ID",
+			"Name":"vMerch_SKU",
 			"Type":"String",
 			"Position":3,
 			"StartByte":0,
 			"EndByte":0
 		},
 		{
-			"Name":"vMerch_Version",
+			"Name":"vMerch_Channel",
 			"Type":"String",
 			"Position":4,
 			"StartByte":0,
@@ -69,7 +57,7 @@
 			"EndByte":0
 		}
 	],
-	"UID": "1775679537000",
+	"UID": "1775159017000",
 	"UIData": "CubeAction=1511\fDataAction=1503\fCubeLogChanges=0\f",
 	"VariablesUIData": [
 		"VarType=32\fColType=827\f",

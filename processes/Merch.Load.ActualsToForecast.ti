@@ -1,0 +1,115 @@
+#region Prolog
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+#Region : Process Header
+# DEVELOPER : Steve Waterbury
+# CREATED ON : 2026-04-02
+# LAST UPDATE: 2026-07-16
+# CHANGED BY : Steve Waterbury
+# COMMENTS: Loads Merch Actuals into Merch Forecast Actual version. Clear-before-load. Bypass-LCP attribute-driven open-period gate.
+# CHANGE HISTORY:
+#   2026-04-02 | Steve Waterbury | Creation
+#   2026-06-16 | Steve Waterbury | Clear-before-load: full ViewZeroOut of Actual/DESCENDANTS(pTimePeriod) x all SKU x all FC measures. LogOutput 3-arg.
+#   2026-07-16 | Steve Waterbury | LCP gate via Bypass LCP attribute: non-flagged measures load closed periods only (End_Date>LCP skipped); measures flagged Bypass LCP=1 load closed AND open
+#EndRegion
+
+cProcessName = GetProcessName();
+sLogLevel = CellGetS('ProcessControl', cProcessName, 'LoggingLevel');
+IF(sLogLevel @= ''); sLogLevel = 'OFF'; ENDIF;
+bLogInfo = 0; IF(sLogLevel @= 'INFO' % sLogLevel @= 'DEBUG'); bLogInfo = 1; ENDIF;
+
+IF(pTimePeriod @= ''); LogOutput('ERROR', cProcessName | ' | pTimePeriod is empty', 1); ProcessError; ENDIF;
+IF(DIMIX('Merch Time Period', pTimePeriod) = 0); LogOutput('ERROR', cProcessName | ' | Time period not found: ' | pTimePeriod, 1); ProcessError; ENDIF;
+IF(bLogInfo = 1); LogOutput('INFO', 'START: ' | cProcessName | ' | TimePeriod=' | pTimePeriod, 1); ENDIF;
+
+cSrcCube = 'Merch Actuals';
+cDstCube = 'Merch Forecast';
+cVersion = 'Actual';
+cChannel = 'All Channels';
+cMeasDim = 'Merch Actuals Measure';
+nCellsWritten = 0; nSkipped = 0; nRecordCount = 0; nOIPrefilled = 0;
+
+nLCP = ATTRN('Merch Version', 'Forecast', 'Last_Closed_Period');
+
+#Region : Bypass-LCP set (measures flagged Bypass LCP=1 load into OPEN periods)
+sBypassMeasures = ';';
+nActMeasSize = DIMSIZ('Merch Actuals Measure');
+nBPx = 1;
+WHILE(nBPx <= nActMeasSize);
+  sActMeas = DIMNM('Merch Actuals Measure', nBPx);
+  IF(ATTRN('Merch Actuals Measure', sActMeas, 'Bypass LCP') = 1);
+    sDstMeas = ATTRS('Merch Actuals Measure', sActMeas, 'Forecast Measure Map');
+    IF(sDstMeas @<> ''); sBypassMeasures = sBypassMeasures | sDstMeas | ';'; ENDIF;
+  ENDIF;
+  nBPx = nBPx + 1;
+END;
+#EndRegion
+
+#Region : Clear target region before load (clear-before-load)
+sClrView = 'TI_AtoFClr_' | TRIM(STR(NOW, 15, 0));
+sClrMDX = 'SELECT {TM1FILTERBYLEVEL({TM1SUBSETALL([Merch Forecast Measure].[Merch Forecast Measure])}, 0)} ON COLUMNS, NON EMPTY CROSSJOIN({TM1FILTERBYLEVEL(DESCENDANTS([Merch Time Period].[Merch Time Period].[' | pTimePeriod | ']), 0)}, {TM1FILTERBYLEVEL({TM1SUBSETALL([Merch SKU].[Merch SKU])}, 0)}) ON ROWS FROM [Merch Forecast] WHERE ([Merch Version].[Merch Version].[' | cVersion | '])';
+IF(ViewExists(cDstCube, sClrView) = 1); ViewDestroy(cDstCube, sClrView); ENDIF;
+ViewCreateByMDX(cDstCube, sClrView, sClrMDX, 1);
+ViewZeroOut(cDstCube, sClrView);
+IF(ViewExists(cDstCube, sClrView) = 1); ViewDestroy(cDstCube, sClrView); ENDIF;
+#EndRegion
+
+sView = 'TI_ActualsToForecast_' | TRIM(STR(NOW, 15, 0));
+sMDX = 'SELECT {TM1FILTERBYLEVEL({TM1SUBSETALL([Merch Actuals Measure])}, 0)} ON COLUMNS, NON EMPTY {TM1FILTERBYLEVEL({DESCENDANTS([Merch Time Period].[' | pTimePeriod | '])}, 0)} * {TM1FILTERBYLEVEL({TM1SUBSETALL([Merch SKU].[Merch SKU])}, 0)} ON ROWS FROM [Merch Actuals] WHERE ([Merch Channel].[' | cChannel | '])';
+ViewCreateByMDX(cSrcCube, sView, sMDX, 1);
+ViewExtractSkipCalcsSet(cSrcCube, sView, 0);
+ViewExtractSkipZeroesSet(cSrcCube, sView, 1);
+DatasourceType = 'VIEW';
+DatasourceNameForServer = cSrcCube;
+DatasourceCubeview = sView;
+#endregion
+#region Metadata
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+
+#endregion
+#region Data
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+nRecordCount = nRecordCount + 1;
+sForecastMeasure = ATTRS(cMeasDim, vMerch_Actuals_Measure, 'Forecast Measure Map');
+IF(sForecastMeasure @= ''); nSkipped = nSkipped + 1; ItemSkip; ENDIF;
+IF(DIMIX('Merch Forecast Measure', sForecastMeasure) = 0); nSkipped = nSkipped + 1; ItemSkip; ENDIF;
+
+bBypass = 0;
+IF(SCAN(';' | sForecastMeasure | ';', sBypassMeasures) > 0); bBypass = 1; ENDIF;
+IF(bBypass = 0 & ATTRN('Merch Time Period', vMerch_Time_Period, 'End_Date') > nLCP);
+  nSkipped = nSkipped + 1;
+  ItemSkip;
+ENDIF;
+
+nVal = Value;
+IF(nVal = 0); ItemSkip; ENDIF;
+IF(CellIsUpdateable(cDstCube, cVersion, vMerch_Time_Period, vMerch_SKU, sForecastMeasure) = 0);
+  nSkipped = nSkipped + 1;
+  ItemSkip;
+ENDIF;
+CellPutN(nVal, cDstCube, cVersion, vMerch_Time_Period, vMerch_SKU, sForecastMeasure);
+nCellsWritten = nCellsWritten + 1;
+
+IF(nLCP > 0 & sForecastMeasure @= 'Calc Units' & ATTRN('Merch Time Period', vMerch_Time_Period, 'End_Date') = nLCP);
+  sNextWeek = ATTRS('Merch Time Period', vMerch_Time_Period, 'Next Week');
+  IF(sNextWeek @<> '' & DIMIX('Merch Time Period', sNextWeek) > 0);
+    nActualEI = CellGetN(cSrcCube, vMerch_SKU, vMerch_Time_Period, cChannel, 'location_inventory_quantity_ending');
+    IF(nActualEI <> 0);
+      IF(CellIsUpdateable(cDstCube, 'Forecast', sNextWeek, vMerch_SKU, 'Opening Inventory') = 0);
+        nSkipped = nSkipped + 1;
+        ItemSkip;
+      ENDIF;
+      CellPutN(nActualEI, cDstCube, 'Forecast', sNextWeek, vMerch_SKU, 'Opening Inventory');
+      nOIPrefilled = nOIPrefilled + 1;
+    ENDIF;
+  ENDIF;
+ENDIF;
+#endregion
+#region Epilog
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+IF(ViewExists(cSrcCube, sView) = 1); ViewDestroy(cSrcCube, sView); ENDIF;
+IF(bLogInfo = 1); LogOutput('INFO', 'END: ' | cProcessName | ' | Written=' | TRIM(STR(nCellsWritten, 10, 0)) | ' | Skipped=' | TRIM(STR(nSkipped, 10, 0)), 1); ENDIF;
+#endregion

@@ -1,0 +1,337 @@
+#region Prolog
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+#=============================================================
+# PROCESS: Merch.Period.Close.Cat
+# PURPOSE: Per-Role period-close worker. Holds the FIRST OPEN week's sales
+#          volume across the close. Dispatched one per Roles-L4 node by
+#          Merch.Period.Close.Cat.Orch and joined before Last_Closed_Period
+#          advances.
+#
+#          THIS WORKER CREATES NO SUBSET, AND THAT IS LOAD-BEARING.
+#          It used to do SubsetCreateByMDX on Merch SKU:Roles. The orchestrator
+#          holds a SUBSET DATASOURCE on that same dimension for its whole
+#          lifetime, and subset creation is a metadata write on the dimension -
+#          so the parent waited for the child while the child waited for the
+#          dimension. Measured 2026-08-26: the orchestrator's barrier never
+#          exited past its own 900s per-job timeout and the worker never wrote.
+#          The subset NAMES were fine (unique per pPartIdx); the DIMENSION was
+#          the shared object.
+#          The fix is the shape Merch.Calc.ForecastWOS already uses: put the
+#          Roles set INLINE IN MDX and iterate a CUBE VIEW. The parent then
+#          holds a dimension, the workers hold views on a cube, and nothing is
+#          shared. Do not reintroduce a subset here.
+#
+#          THE VIEW IS NON EMPTY ON 'Units' AT THE FIRST OPEN WEEK, so this only
+#          visits SKUs where Units <> 0 - which is exactly nPreClose > 0 -
+#          rather than every leaf under the role. 'Units' consolidates Calc
+#          Units + Adjustment Units, so it catches both levers.
+#          ViewExtractSkipCalcsSet(...,0) because those cells are rule-derived
+#          on a Calculated version and would otherwise be dropped.
+#
+#          THIS WORKER TOUCHES NO SHARED CONTROL CUBE either. The parent reads
+#          LoggingLevel once and passes pLogInfo in. INFO logging is gated on
+#          it; ERROR is unconditional.
+#
+#          TWO LEVERS, chosen per SKU by whether the closing week has actuals.
+#          1. ACTUALS PRESENT -> re-weight the curve drivers. Build/Debuild is
+#             rule-derived and unwritable, so it is set through its four
+#             sub-components. The correction is spread GEOMETRICALLY: each
+#             active driver x factor^(1/nActive), so the product moves by
+#             exactly factor and every ratio between drivers is unchanged. A
+#             zero driver is not part of this SKU's curve (the rule substitutes
+#             1) so it is left alone rather than invented.
+#          2. NO ACTUALS -> write Adjustment Units on the FIRST OPEN week.
+#             Build/Debuild multiplies Units(closing week); off a zero base no
+#             value of it can hold the volume. Adjustment Units is additive and
+#             is the only lever that works there. This is NOT the old SeedAdj,
+#             which wrote every SKU unconditionally on the week being CLOSED and
+#             inflated it above actuals - 40041 over-stated at Director after
+#             the FY26-W06 close.
+#
+#          DENOMINATOR IS ACTUALS ALONE. ActualsToCalc clears every leaf measure
+#          on a closed week and reloads only what actuals supply, so
+#          Units(closed) = actuals. Adding Adjustment Units(closing) back would
+#          aim every re-weighting at the wrong Build/Debuild.
+#
+#          MUST run BEFORE Last_Closed_Period advances - once the week closes
+#          the calculated measures go STET and the pre-close numerator is gone.
+# DEVELOPER : Steve Waterbury
+# CREATED ON: 2026-05-14
+# LAST UPDATE: 2026-08-26
+# CHANGED BY: Steve Waterbury
+# CHANGE HISTORY:
+#   2026-05-14 | Steve Waterbury | Initial creation
+#   2026-08-21 | Steve Waterbury | Hold first-open-week volume by re-weighting the curve drivers; B/DB is rule-derived and was never writable.
+#   2026-08-26 | Steve Waterbury | Denominator is actuals alone; add lever 2 for zero-actual SKUs.
+#   2026-08-26 | Steve Waterbury | Remove the ProcessControl read - the parent passes pLogInfo.
+#   2026-08-26 | Steve Waterbury | Replace the Merch SKU:Roles subset with a Merch Forecast view, Roles set inline in MDX. The subset deadlocked against the orchestrator's datasource on the same dimension.
+#=============================================================
+
+cProcessName = GetProcessName();
+
+# Logging level comes from the CALLER. No shared control cube is touched here.
+nLogInfo = pLogInfo;
+
+cSrcCube = 'Merch Actuals';
+cDstCube = 'Merch Forecast';
+cChannel = 'All Channels';
+cActMeas = 'location_sales_quantity';
+
+IF(pVersion @= '');
+    LogOutput('ERROR', cProcessName | ' | pVersion empty', 1);
+    ProcessError;
+ENDIF;
+IF(DIMIX('Merch Version', pVersion) = 0);
+    LogOutput('ERROR', cProcessName | ' | pVersion not found: ' | pVersion, 1);
+    ProcessError;
+ENDIF;
+IF(ATTRS('Merch Version', pVersion, 'Version_Type') @<> 'Calculated');
+    LogOutput('ERROR', cProcessName | ' | pVersion is not a Calculated version: ' | pVersion, 1);
+    ProcessError;
+ENDIF;
+IF(pTargetPeriod @= '');
+    LogOutput('ERROR', cProcessName | ' | pTargetPeriod empty', 1);
+    ProcessError;
+ENDIF;
+IF(DIMIX('Merch Time Period', pTargetPeriod) = 0);
+    LogOutput('ERROR', cProcessName | ' | pTargetPeriod not in Merch Time Period: ' | pTargetPeriod, 1);
+    ProcessError;
+ENDIF;
+IF(pRole @= '');
+    LogOutput('ERROR', cProcessName | ' | pRole empty', 1);
+    ProcessError;
+ENDIF;
+# Roles elements exist only in the 'Roles' hierarchy; DIMIX searches the DEFAULT
+# hierarchy only and would always return 0 here.
+IF(HierarchyElementExists('Merch SKU', 'Roles', pRole) = 0);
+    LogOutput('ERROR', cProcessName | ' | pRole not in Merch SKU:Roles: ' | pRole, 1);
+    ProcessError;
+ENDIF;
+
+sFirstOpenWeek = ATTRS('Merch Time Period', pTargetPeriod, 'Next Week');
+IF(sFirstOpenWeek @= '');
+    LogOutput('ERROR', cProcessName | ' | pTargetPeriod has no Next Week: ' | pTargetPeriod, 1);
+    ProcessError;
+ENDIF;
+IF(DIMIX('Merch Time Period', sFirstOpenWeek) = 0);
+    LogOutput('ERROR', cProcessName | ' | Next Week not in Merch Time Period: ' | sFirstOpenWeek, 1);
+    ProcessError;
+ENDIF;
+
+# Refuse to run on a week that is already closed - the numerator would be gone.
+nLastClosed = ATTRN('Merch Version', pVersion, 'Last_Closed_Period');
+nTargetEnd  = ATTRN('Merch Time Period', pTargetPeriod, 'End_Date');
+IF(nLastClosed <> 0 & nTargetEnd <= nLastClosed);
+    LogOutput('ERROR', cProcessName | ' | pTargetPeriod is already closed - must run BEFORE Last_Closed_Period advances. Period=' | pTargetPeriod, 1);
+    ProcessError;
+ENDIF;
+
+nStart = NOW;
+IF(nLogInfo = 1);
+    LogOutput('INFO', 'TIMING START: ' | cProcessName | ' | V=' | pVersion | ' | Closing=' | pTargetPeriod | ' | FirstOpen=' | sFirstOpenWeek | ' | Role=' | pRole, 1);
+ENDIF;
+
+# All validation is above, so ProcessError is legal everywhere before this point.
+# The view name is built from the NUMERIC pPartIdx - never from pRole, because
+# five roles contain '/' which TM1 rejects in an object name.
+nPartIdx = pPartIdx;
+sIdx = TRIM(STR(nPartIdx, 10, 0));
+IF(nPartIdx <= 0);
+    sIdx = TRIM(STR(NOW, 15, 0));
+ENDIF;
+sView = 'TI_PCCat_' | sIdx;
+
+sSkuSet = '{TM1FILTERBYLEVEL({DESCENDANTS([Merch SKU].[Roles].[' | pRole | '])},0)}';
+sMDX = 'SELECT {[Merch Forecast Measure].[Merch Forecast Measure].[Units]} ON COLUMNS, '
+     | 'NON EMPTY ' | sSkuSet | ' ON ROWS '
+     | 'FROM [Merch Forecast] '
+     | 'WHERE ([Merch Version].[Merch Version].[' | pVersion | '], [Merch Time Period].[Merch Time Period].[' | sFirstOpenWeek | '])';
+IF(ViewExists(cDstCube, sView) = 1);
+    ViewDestroy(cDstCube, sView);
+ENDIF;
+ViewCreateByMDX(cDstCube, sView, sMDX, 1);
+ViewExtractSkipCalcsSet(cDstCube, sView, 0);
+ViewExtractSkipZeroesSet(cDstCube, sView, 1);
+
+DatasourceType          = 'VIEW';
+DatasourceNameForServer = cDstCube;
+DatasourceCubeview      = sView;
+
+nRecords = 0;
+nWrites = 0;
+nSKUsAdjusted = 0;
+nHeldByDriver = 0;
+nHeldByAdj = 0;
+nNoForecast = 0;
+nNoDriver = 0;
+nLocked = 0;
+
+#endregion
+#region Metadata
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+
+#endregion
+#region Data
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+nRecords = nRecords + 1;
+sSKU = vMerch_SKU;
+IF(sSKU @= '');
+    ItemSkip;
+ENDIF;
+
+# Volume to hold: the first open week's forecast as it stands BEFORE the close.
+# 'Units' is consolidated, so take its two leaves.
+nOpenCalc = CellGetN(cDstCube, pVersion, sFirstOpenWeek, sSKU, 'Calc Units');
+nOpenAdj  = CellGetN(cDstCube, pVersion, sFirstOpenWeek, sSKU, 'Adjustment Units');
+nPreClose = nOpenCalc + nOpenAdj;
+IF(nPreClose = 0);
+    nNoForecast = nNoForecast + 1;
+    ItemSkip;
+ENDIF;
+
+# What the first-open-week Expected Calc Sales rule will read as prior-week
+# 'Units' once the close has run: actuals alone.
+nDenom = CellGetN(cSrcCube, sSKU, pTargetPeriod, cChannel, cActMeas);
+
+# LEVER 2 - zero actuals on the closing week. See the header.
+IF(nDenom = 0);
+    IF(CellIsUpdateable(cDstCube, pVersion, sFirstOpenWeek, sSKU, 'Adjustment Units') = 1);
+        CellPutN(nPreClose, cDstCube, pVersion, sFirstOpenWeek, sSKU, 'Adjustment Units');
+        nWrites = nWrites + 1;
+        nHeldByAdj = nHeldByAdj + 1;
+        nSKUsAdjusted = nSKUsAdjusted + 1;
+        IF(nLogInfo = 1 & nHeldByAdj <= 10);
+            LogOutput('INFO', cProcessName | ' | probeAdj | SKU=[' | sSKU | '] | preClose=' | TRIM(STR(nPreClose, 20, 4)) | ' | no actuals on ' | pTargetPeriod | ' - held additively', 1);
+        ENDIF;
+    ELSE;
+        nLocked = nLocked + 1;
+    ENDIF;
+    ItemSkip;
+ENDIF;
+
+# LEVER 1 - the closing week has actuals. Re-weight the curve drivers.
+nTargetBDB = nPreClose / nDenom;
+IF(nTargetBDB <= 0);
+    nNoForecast = nNoForecast + 1;
+    ItemSkip;
+ENDIF;
+
+nSea = CellGetN(cDstCube, pVersion, sFirstOpenWeek, sSKU, 'Seasonality');
+nVel = CellGetN(cDstCube, pVersion, sFirstOpenWeek, sSKU, 'Velocity');
+nPB  = CellGetN(cDstCube, pVersion, sFirstOpenWeek, sSKU, 'Promo Build');
+nReg = CellGetN(cDstCube, pVersion, sFirstOpenWeek, sSKU, 'Regime');
+
+# Only non-zero drivers are part of this SKU's curve - the rule substitutes 1
+# for a zero driver, so writing to one would invent a component.
+nActive = 0;
+IF(nSea <> 0);
+    nActive = nActive + 1;
+ENDIF;
+IF(nVel <> 0);
+    nActive = nActive + 1;
+ENDIF;
+IF(nPB <> 0);
+    nActive = nActive + 1;
+ENDIF;
+IF(nReg <> 0);
+    nActive = nActive + 1;
+ENDIF;
+IF(nActive = 0);
+    nNoDriver = nNoDriver + 1;
+    ItemSkip;
+ENDIF;
+
+# Current B/DB, reproducing the rule's 0 -> 1 substitution.
+nS = nSea;
+IF(nSea = 0);
+    nS = 1;
+ENDIF;
+nV = nVel;
+IF(nVel = 0);
+    nV = 1;
+ENDIF;
+nP = nPB;
+IF(nPB = 0);
+    nP = 1;
+ENDIF;
+nR = nReg;
+IF(nReg = 0);
+    nR = 1;
+ENDIF;
+nCurrentBDB = nS * nV * nP * nR;
+IF(nCurrentBDB <= 0);
+    nNoDriver = nNoDriver + 1;
+    ItemSkip;
+ENDIF;
+
+# EXP is the NATURAL anti-log and LN the natural log. LOG is base-10 and must
+# not be used here.
+nFactor = nTargetBDB / nCurrentBDB;
+IF(nFactor <= 0);
+    nNoDriver = nNoDriver + 1;
+    ItemSkip;
+ENDIF;
+nPer = EXP( LN(nFactor) / nActive );
+
+bWrote = 0;
+IF(nSea <> 0);
+    IF(CellIsUpdateable(cDstCube, pVersion, sFirstOpenWeek, sSKU, 'Seasonality') = 1);
+        CellPutN(nSea * nPer, cDstCube, pVersion, sFirstOpenWeek, sSKU, 'Seasonality');
+        nWrites = nWrites + 1;
+        bWrote = 1;
+    ELSE;
+        nLocked = nLocked + 1;
+    ENDIF;
+ENDIF;
+IF(nVel <> 0);
+    IF(CellIsUpdateable(cDstCube, pVersion, sFirstOpenWeek, sSKU, 'Velocity') = 1);
+        CellPutN(nVel * nPer, cDstCube, pVersion, sFirstOpenWeek, sSKU, 'Velocity');
+        nWrites = nWrites + 1;
+        bWrote = 1;
+    ELSE;
+        nLocked = nLocked + 1;
+    ENDIF;
+ENDIF;
+IF(nPB <> 0);
+    IF(CellIsUpdateable(cDstCube, pVersion, sFirstOpenWeek, sSKU, 'Promo Build') = 1);
+        CellPutN(nPB * nPer, cDstCube, pVersion, sFirstOpenWeek, sSKU, 'Promo Build');
+        nWrites = nWrites + 1;
+        bWrote = 1;
+    ELSE;
+        nLocked = nLocked + 1;
+    ENDIF;
+ENDIF;
+IF(nReg <> 0);
+    IF(CellIsUpdateable(cDstCube, pVersion, sFirstOpenWeek, sSKU, 'Regime') = 1);
+        CellPutN(nReg * nPer, cDstCube, pVersion, sFirstOpenWeek, sSKU, 'Regime');
+        nWrites = nWrites + 1;
+        bWrote = 1;
+    ELSE;
+        nLocked = nLocked + 1;
+    ENDIF;
+ENDIF;
+IF(bWrote = 1);
+    nSKUsAdjusted = nSKUsAdjusted + 1;
+    nHeldByDriver = nHeldByDriver + 1;
+ENDIF;
+
+# Debug probe only - gated, and capped so it cannot flood even when enabled.
+IF(nLogInfo = 1 & bWrote = 1 & nHeldByDriver <= 25);
+    LogOutput('INFO', cProcessName | ' | probe | SKU=[' | sSKU | '] | preClose=' | TRIM(STR(nPreClose, 20, 4)) | ' | denom=' | TRIM(STR(nDenom, 20, 4)) | ' | targetBDB=' | TRIM(STR(nTargetBDB, 20, 10)) | ' | currentBDB=' | TRIM(STR(nCurrentBDB, 20, 10)) | ' | active=' | TRIM(STR(nActive, 10, 0)) | ' | per=' | TRIM(STR(nPer, 20, 10)), 1);
+ENDIF;
+
+#endregion
+#region Epilog
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+IF(ViewExists(cDstCube, sView) = 1);
+    ViewDestroy(cDstCube, sView);
+ENDIF;
+IF(nLogInfo = 1);
+    LogOutput('INFO', 'TIMING END: ' | cProcessName | ' | Role=' | pRole | ' | Records=' | TRIM(STR(nRecords, 10, 0)) | ' | SKUsAdjusted=' | TRIM(STR(nSKUsAdjusted, 10, 0)) | ' | HeldByDriver=' | TRIM(STR(nHeldByDriver, 10, 0)) | ' | HeldByAdj=' | TRIM(STR(nHeldByAdj, 10, 0)) | ' | Writes=' | TRIM(STR(nWrites, 10, 0)) | ' | NoForecast=' | TRIM(STR(nNoForecast, 10, 0)) | ' | NoDriver=' | TRIM(STR(nNoDriver, 10, 0)) | ' | Locked=' | TRIM(STR(nLocked, 10, 0)) | ' | Elapsed=' | TRIM(STR((NOW - nStart) * 86400, 12, 1)) | 's', 1);
+ENDIF;
+
+#endregion

@@ -1,0 +1,29 @@
+{
+	"@type":"Process",
+	"Name":"Merch.Period.Close.AdvanceLCP",
+	"HasSecurityAccess":false,
+	"Code@Code.link":"Merch.Period.Close.AdvanceLCP.ti",
+	"DataSource":
+	{
+		"Type":"None"
+	},
+	"Parameters":
+	[
+		{
+			"Name":"pVersion",
+			"Prompt":"Calculated Merch Version",
+			"Value":"",
+			"Type":"String"
+		},
+		{
+			"Name":"pTargetPeriod",
+			"Prompt":"Week being closed",
+			"Value":"",
+			"Type":"String"
+		}
+	],
+	"Variables":[],
+	"UID": "17873324430001",
+	"UIData": "CubeAction=1511\fDataAction=1503\fCubeLogChanges=0\f",
+	"VariablesUIData": []
+}

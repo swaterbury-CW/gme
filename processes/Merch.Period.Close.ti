@@ -1,0 +1,348 @@
+#region Prolog
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+#=============================================================
+# PROCESS: Merch.Period.Close
+# PURPOSE: Close the next open week. Runs each close sub-step as its own
+#          committed RunProcess job, genuinely joined before the next begins.
+# DEVELOPER: Steve Waterbury
+# CREATED ON: 2026-03-24
+# LAST UPDATE: 2026-08-26
+# CHANGED BY: Steve Waterbury
+# CHANGE HISTORY:
+#   2026-03-24 | Steve Waterbury | Initial single-thread
+#   2026-05-14 | Steve Waterbury | Refactor to per-Role parallel dispatch
+#   2026-08-21 | Steve Waterbury | Stage every sub-step as its own RunProcess job; add Merch.Load.ActualsToCalc and RefreshOverlays.All
+#   2026-08-21 | Steve Waterbury | Remove the per-Role fan-out and the SeedAdj dispatch; call the single-pass Merch.Period.Close.Hold
+#   2026-08-21 | Steve Waterbury | Orchestrate from the Prolog; stop creating a Merch SKU subset here
+#   2026-08-21 | Steve Waterbury | Normalise pTargetPeriod from element name OR alias to the principal element name before it reaches any sub-step
+#   2026-08-24 | Steve Waterbury | Correct the shared-object comment; no code change
+#   2026-08-26 | Steve Waterbury | Sub-step 1 is Merch.Period.Close.Cat.Orch; dispatch the sub-steps from the Epilog behind a GetJobStatus poll barrier and abort on any that does not exit normally
+#=============================================================
+
+cProcessName = GetProcessName();
+cTimeDim = 'Merch Time Period';
+
+sLogLevel = CellGetS('ProcessControl', cProcessName, 'LoggingLevel');
+IF(sLogLevel @= '');
+    sLogLevel = 'OFF';
+ENDIF;
+bLogInfo = 0;
+IF(sLogLevel @= 'INFO' % sLogLevel @= 'DEBUG');
+    bLogInfo = 1;
+ENDIF;
+
+IF(DIMIX('Merch Version', pVersion) = 0);
+    LogOutput('ERROR', cProcessName | ' | pVersion "' | pVersion | '" not found.', 1);
+    ProcessError;
+ENDIF;
+IF(ATTRS('Merch Version', pVersion, 'Version_Type') @<> 'Calculated');
+    LogOutput('ERROR', cProcessName | ' | pVersion not Calculated', 1);
+    ProcessError;
+ENDIF;
+
+IF(pTargetPeriod @= '');
+    LogOutput('ERROR', cProcessName | ' | pTargetPeriod blank', 1);
+    ProcessError;
+ENDIF;
+
+# ---------------------------------------------------------------------------
+# NORMALISE pTargetPeriod TO THE PRINCIPAL ELEMENT NAME.
+#
+# Merch Time Period carries TWO Alias attributes:
+#   Caption         the week's SUNDAY start date, e.g. FY26-W10 = 2026-04-05
+#   End_Date_Alias  the week's SATURDAY end date,  e.g. FY26-W10 = 2026-04-11
+# DIMIX RESOLVES ALIASES, so a date string passes validation while NOT being a
+# principal element name. That value is then handed to Merch.Load.ActualsToCalc,
+# which interpolates it into MDX as
+#     [Merch Time Period].[Merch Time Period].[<value>]
+# MDX member resolution by alias is NOT dependable, so the clear regions would
+# resolve to nothing, ViewZeroOut would clear nothing, and the close would report
+# success while silently doing the wrong thing.
+#
+# Callers legitimately pass aliases. Accept either form, resolve ONCE here, and
+# pass the principal name to every sub-step. Never forward the caller's raw string.
+# ---------------------------------------------------------------------------
+nPeriodIdx = DIMIX(cTimeDim, pTargetPeriod);
+IF(nPeriodIdx = 0);
+    LogOutput('ERROR', cProcessName | ' | pTargetPeriod not found in ' | cTimeDim | ' as element name or alias: "' | pTargetPeriod | '"', 1);
+    ProcessError;
+ENDIF;
+sTargetPeriod = DIMNM(cTimeDim, nPeriodIdx);
+IF(sTargetPeriod @<> pTargetPeriod);
+    LogOutput('INFO', cProcessName | ' | pTargetPeriod "' | pTargetPeriod | '" resolved via alias to principal element "' | sTargetPeriod | '"', 1);
+ENDIF;
+
+IF(DTYPE(cTimeDim, sTargetPeriod) @<> 'N');
+    LogOutput('ERROR', cProcessName | ' | pTargetPeriod is not a leaf week: ' | sTargetPeriod, 1);
+    ProcessError;
+ENDIF;
+
+nLastClosedSerial = ATTRN('Merch Version', pVersion, 'Last_Closed_Period');
+IF(nLastClosedSerial <> 0);
+    sPrevWeek = ATTRS(cTimeDim, sTargetPeriod, 'Previous Week');
+    IF(sPrevWeek @= '');
+        LogOutput('ERROR', cProcessName | ' | pTargetPeriod has no Previous Week', 1);
+        ProcessError;
+    ENDIF;
+    nPrevSerial = ATTRN(cTimeDim, sPrevWeek, 'Start_Date');
+    IF(nPrevSerial > nLastClosedSerial);
+        LogOutput('ERROR', cProcessName | ' | pTargetPeriod is not the next open week.', 1);
+        ProcessError;
+    ENDIF;
+ENDIF;
+
+# Local copy - a p-prefixed parameter must not appear in a numeric context.
+nStepTimeoutSec = pStepTimeoutSec;
+IF(nStepTimeoutSec <= 0);
+    nStepTimeoutSec = 10800;
+ENDIF;
+nStepTimeoutMs = nStepTimeoutSec * 1000;
+
+nStart = NOW;
+LogOutput('INFO', 'TIMING START: ' | cProcessName | ' | V=' | pVersion | ' | P=' | sTargetPeriod, 1);
+
+# The close itself runs in the EPILOG - see the comment there. This tab does
+# validation and alias normalisation only, and creates NOTHING.
+
+#endregion
+#region Metadata
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+
+#endregion
+#region Data
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+# Intentionally empty, and unreachable - this process has no datasource, so the
+# Metadata and Data tabs never run. The close is dispatched from the Epilog.
+# This tab once dispatched one Merch.Period.Close.Cat job per Role plus a SeedAdj
+# job; that fan-out was never joined. The fan-out now lives in
+# Merch.Period.Close.Cat.Orch, where it IS joined. Do not add work here.
+
+#endregion
+#region Epilog
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+# ---------------------------------------------------------------------------
+# THE CLOSE RUNS HERE, IN THE EPILOG. Four things to know before touching it.
+#
+# 1. ORDER. Each sub-step reads what the previous one COMMITTED, so each runs as
+#    its OWN RunProcess job and is joined before the next starts. They are
+#    STRICTLY SERIAL for correctness, not merely for tidiness: AdvanceLCP WRITES
+#    }ElementAttributes_Merch Version, while the volume hold and this process both
+#    READ it via ATTRN. Do not parallelise them to save time.
+#
+# 2. THE JOIN MUST BE A GetJobStatus POLL, NOT WaitForAllJobs. WaitForAllJobs
+#    returns immediately for a job that is QUEUED BUT NOT YET STARTED. Measured
+#    2026-08-26 on the orchestrator: 13 sequential batches of 6 "joined" in 1.0s
+#    while all 74 workers ran at once, 738 lock-contention rollbacks, 24 workers
+#    lost. The same call was joining THIS process's sub-steps. A close that
+#    advances Last_Closed_Period while the volume hold is still running reads a
+#    half-closed model - which is the bug this whole workstream exists to remove.
+#
+# 3. EVERY SUB-STEP'S EXIT STATUS IS CHECKED, and anything other than
+#    ProcessExitNormal ABORTS. Until 2026-08-26 not one of the six return codes
+#    was looked at, so the close reported success no matter what happened
+#    underneath it. Strict is deliberate: a partial close must stop and get a
+#    human, never quietly produce wrong numbers.
+#
+# 4. WHY THE EPILOG. Dispatching orchestration from the Epilog is the canonical
+#    shape in this model - Merch.Calc.ForecastWOS.Orch and
+#    Merch.Period.Close.Cat.Orch both do it. This ran in the Prolog for a while
+#    because an EARLIER Epilog version built its own subset on Merch SKU:Roles and
+#    contended with a child that built one too. That cause is gone: this process
+#    creates NOTHING - no subset, no view - and has no datasource, so there is no
+#    shared object for a child to contend with, and its own datasource is never
+#    opened. The Epilog runs whether or not a datasource is set; only the Metadata
+#    and Data tabs need one.
+#
+# SHARED OBJECTS, stated plainly. Merch.Period.Close.Cat.Orch owns the subset on
+# Merch SKU:Roles and its workers own views on Merch Forecast named from pPartIdx.
+# Those sets do not intersect with each other or with anything here. See the KB
+# section 'Shared Object Discipline for Concurrent Workers'.
+#
+# THIS PROCESS CANNOT SEE ITS CHILDREN'S COMMITS: it holds a transaction-consistent
+# read snapshot taken when it started. Proven 2026-08-21 - AdvanceLCP committed
+# 46088 -> 46095 at 17:17:38.223 and this process read 46088 at 17:17:38.231.
+# Never gate on a child's work from here; read the child ProcessLogs.
+# ---------------------------------------------------------------------------
+
+# STEP 1 - hold the first open week's volume, fanned out one Merch.Period.Close.Cat
+# worker per Roles-L4 node. MUST be first: it reads the pre-close forecast, which
+# stops existing the moment Last_Closed_Period advances.
+sStep = 'Merch.Period.Close.Cat.Orch';
+sJob = RunProcess('Merch.Period.Close.Cat.Orch',
+    'pVersion',      pVersion,
+    'pTargetPeriod', sTargetPeriod);
+IF(sJob @= '');
+    LogOutput('ERROR', cProcessName | ' | ' | sStep | ' returned no JobID - the sub-step never started. ABORTING the close.', 1);
+    ProcessError;
+ENDIF;
+nWaited = 0;
+nStatus = GetJobStatus(sJob);
+WHILE(nStatus = ProcessExecutionInProgress() & nWaited < nStepTimeoutMs);
+    Sleep(500);
+    nWaited = nWaited + 500;
+    nStatus = GetJobStatus(sJob);
+END;
+IF(nStatus = ProcessExecutionInProgress());
+    LogOutput('ERROR', cProcessName | ' | ' | sStep | ' STILL RUNNING after ' | TRIM(STR(nStepTimeoutSec, 10, 0)) | 's - barrier gave up. ABORTING: the close is PARTIAL.', 1);
+    ProcessError;
+ENDIF;
+IF(nStatus <> ProcessExitNormal());
+    LogOutput('ERROR', cProcessName | ' | ' | sStep | ' did not finish normally - status=' | TRIM(STR(nStatus, 10, 0)) | '. ABORTING: the close is PARTIAL and no later sub-step may run.', 1);
+    ProcessError;
+ENDIF;
+IF(bLogInfo = 1);
+    LogOutput('INFO', cProcessName | ' | ' | sStep | ' OK in ' | TRIM(STR(nWaited / 1000, 10, 1)) | 's', 1);
+ENDIF;
+
+# STEP 2 - advance Last_Closed_Period. Everything after this reads a closed week.
+sStep = 'Merch.Period.Close.AdvanceLCP';
+sJob = RunProcess('Merch.Period.Close.AdvanceLCP',
+    'pVersion',      pVersion,
+    'pTargetPeriod', sTargetPeriod);
+IF(sJob @= '');
+    LogOutput('ERROR', cProcessName | ' | ' | sStep | ' returned no JobID - the sub-step never started. ABORTING the close.', 1);
+    ProcessError;
+ENDIF;
+nWaited = 0;
+nStatus = GetJobStatus(sJob);
+WHILE(nStatus = ProcessExecutionInProgress() & nWaited < nStepTimeoutMs);
+    Sleep(500);
+    nWaited = nWaited + 500;
+    nStatus = GetJobStatus(sJob);
+END;
+IF(nStatus = ProcessExecutionInProgress());
+    LogOutput('ERROR', cProcessName | ' | ' | sStep | ' STILL RUNNING after ' | TRIM(STR(nStepTimeoutSec, 10, 0)) | 's - barrier gave up. ABORTING: the close is PARTIAL.', 1);
+    ProcessError;
+ENDIF;
+IF(nStatus <> ProcessExitNormal());
+    LogOutput('ERROR', cProcessName | ' | ' | sStep | ' did not finish normally - status=' | TRIM(STR(nStatus, 10, 0)) | '. ABORTING: the close is PARTIAL and no later sub-step may run.', 1);
+    ProcessError;
+ENDIF;
+IF(bLogInfo = 1);
+    LogOutput('INFO', cProcessName | ' | ' | sStep | ' OK in ' | TRIM(STR(nWaited / 1000, 10, 1)) | 's', 1);
+ENDIF;
+
+# STEP 3 - the only reader of Merch Actuals. Loads into the 'Actual' version, and
+# seeds the first open week's Opening Inventory from the closed week's ending
+# inventory, which is why it must run AFTER AdvanceLCP.
+sStep = 'Merch.Load.ActualsToForecast';
+sJob = RunProcess('Merch.Load.ActualsToForecast', 'pTimePeriod', sTargetPeriod);
+IF(sJob @= '');
+    LogOutput('ERROR', cProcessName | ' | ' | sStep | ' returned no JobID - the sub-step never started. ABORTING the close.', 1);
+    ProcessError;
+ENDIF;
+nWaited = 0;
+nStatus = GetJobStatus(sJob);
+WHILE(nStatus = ProcessExecutionInProgress() & nWaited < nStepTimeoutMs);
+    Sleep(500);
+    nWaited = nWaited + 500;
+    nStatus = GetJobStatus(sJob);
+END;
+IF(nStatus = ProcessExecutionInProgress());
+    LogOutput('ERROR', cProcessName | ' | ' | sStep | ' STILL RUNNING after ' | TRIM(STR(nStepTimeoutSec, 10, 0)) | 's - barrier gave up. ABORTING: the close is PARTIAL.', 1);
+    ProcessError;
+ENDIF;
+IF(nStatus <> ProcessExitNormal());
+    LogOutput('ERROR', cProcessName | ' | ' | sStep | ' did not finish normally - status=' | TRIM(STR(nStatus, 10, 0)) | '. ABORTING: the close is PARTIAL and no later sub-step may run.', 1);
+    ProcessError;
+ENDIF;
+IF(bLogInfo = 1);
+    LogOutput('INFO', cProcessName | ' | ' | sStep | ' OK in ' | TRIM(STR(nWaited / 1000, 10, 1)) | 's', 1);
+ENDIF;
+
+# STEP 4 - physically copy the actuals from the 'Actual' version into the
+# Calculated one. Closed-period rules are STET-only, so without this the week
+# freezes EMPTY and the forward curve rebuilds off zero - the original Prod defect.
+# This is also the step whose MDX would break on a raw alias, hence the
+# normalisation in the Prolog.
+sStep = 'Merch.Load.ActualsToCalc';
+sJob = RunProcess('Merch.Load.ActualsToCalc',
+    'pCubeName',      'Merch Forecast',
+    'pTargetVersion', pVersion,
+    'pTimePeriod',    sTargetPeriod);
+IF(sJob @= '');
+    LogOutput('ERROR', cProcessName | ' | ' | sStep | ' returned no JobID - the sub-step never started. ABORTING the close.', 1);
+    ProcessError;
+ENDIF;
+nWaited = 0;
+nStatus = GetJobStatus(sJob);
+WHILE(nStatus = ProcessExecutionInProgress() & nWaited < nStepTimeoutMs);
+    Sleep(500);
+    nWaited = nWaited + 500;
+    nStatus = GetJobStatus(sJob);
+END;
+IF(nStatus = ProcessExecutionInProgress());
+    LogOutput('ERROR', cProcessName | ' | ' | sStep | ' STILL RUNNING after ' | TRIM(STR(nStepTimeoutSec, 10, 0)) | 's - barrier gave up. ABORTING: the close is PARTIAL.', 1);
+    ProcessError;
+ENDIF;
+IF(nStatus <> ProcessExitNormal());
+    LogOutput('ERROR', cProcessName | ' | ' | sStep | ' did not finish normally - status=' | TRIM(STR(nStatus, 10, 0)) | '. ABORTING: the close is PARTIAL and no later sub-step may run.', 1);
+    ProcessError;
+ENDIF;
+IF(bLogInfo = 1);
+    LogOutput('INFO', cProcessName | ' | ' | sStep | ' OK in ' | TRIM(STR(nWaited / 1000, 10, 1)) | 's', 1);
+ENDIF;
+
+# STEP 5 - feed the newly closed period.
+sStep = 'Merch.Feed.LoadClosedPeriods';
+sJob = RunProcess('Merch.Feed.LoadClosedPeriods',
+    'pVersion', pVersion,
+    'pPeriod',  sTargetPeriod);
+IF(sJob @= '');
+    LogOutput('ERROR', cProcessName | ' | ' | sStep | ' returned no JobID - the sub-step never started. ABORTING the close.', 1);
+    ProcessError;
+ENDIF;
+nWaited = 0;
+nStatus = GetJobStatus(sJob);
+WHILE(nStatus = ProcessExecutionInProgress() & nWaited < nStepTimeoutMs);
+    Sleep(500);
+    nWaited = nWaited + 500;
+    nStatus = GetJobStatus(sJob);
+END;
+IF(nStatus = ProcessExecutionInProgress());
+    LogOutput('ERROR', cProcessName | ' | ' | sStep | ' STILL RUNNING after ' | TRIM(STR(nStepTimeoutSec, 10, 0)) | 's - barrier gave up. ABORTING: the close is PARTIAL.', 1);
+    ProcessError;
+ENDIF;
+IF(nStatus <> ProcessExitNormal());
+    LogOutput('ERROR', cProcessName | ' | ' | sStep | ' did not finish normally - status=' | TRIM(STR(nStatus, 10, 0)) | '. ABORTING: the close is PARTIAL and no later sub-step may run.', 1);
+    ProcessError;
+ENDIF;
+IF(bLogInfo = 1);
+    LogOutput('INFO', cProcessName | ' | ' | sStep | ' OK in ' | TRIM(STR(nWaited / 1000, 10, 1)) | 's', 1);
+ENDIF;
+
+# STEP 6 - refresh the security overlays so the newly closed week is read-only.
+sStep = 'Merch.Security.RefreshOverlays.All';
+sJob = RunProcess('Merch.Security.RefreshOverlays.All');
+IF(sJob @= '');
+    LogOutput('ERROR', cProcessName | ' | ' | sStep | ' returned no JobID - the sub-step never started. ABORTING the close.', 1);
+    ProcessError;
+ENDIF;
+nWaited = 0;
+nStatus = GetJobStatus(sJob);
+WHILE(nStatus = ProcessExecutionInProgress() & nWaited < nStepTimeoutMs);
+    Sleep(500);
+    nWaited = nWaited + 500;
+    nStatus = GetJobStatus(sJob);
+END;
+IF(nStatus = ProcessExecutionInProgress());
+    LogOutput('ERROR', cProcessName | ' | ' | sStep | ' STILL RUNNING after ' | TRIM(STR(nStepTimeoutSec, 10, 0)) | 's - barrier gave up. ABORTING: the close is PARTIAL.', 1);
+    ProcessError;
+ENDIF;
+IF(nStatus <> ProcessExitNormal());
+    LogOutput('ERROR', cProcessName | ' | ' | sStep | ' did not finish normally - status=' | TRIM(STR(nStatus, 10, 0)) | '. ABORTING: the close is PARTIAL and no later sub-step may run.', 1);
+    ProcessError;
+ENDIF;
+IF(bLogInfo = 1);
+    LogOutput('INFO', cProcessName | ' | ' | sStep | ' OK in ' | TRIM(STR(nWaited / 1000, 10, 1)) | 's', 1);
+ENDIF;
+
+# Reached only if every sub-step exited normally - any failure ProcessErrors
+# above. So this line means the close COMPLETED.
+LogOutput('INFO', 'TIMING END: ' | cProcessName | ' | V=' | pVersion | ' | P=' | sTargetPeriod | ' | Elapsed=' | TRIM(STR((NOW - nStart) * 86400, 12, 1)) | 's', 1);
+
+#endregion

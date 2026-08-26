@@ -1,0 +1,66 @@
+{
+	"@type":"Process",
+	"Name":"Merch.Period.Close.Cat.Orch",
+	"HasSecurityAccess":false,
+	"Code@Code.link":"Merch.Period.Close.Cat.Orch.ti",
+	"DataSource":
+	{
+		"Type":"TM1DimensionSubset",
+		"dataSourceNameForServer":"Merch SKU",
+		"dataSourceNameForClient":"Merch SKU",
+		"subset":"PeriodCloseSKUBootstrap"
+	},
+	"Parameters":
+	[
+		{
+			"Name":"pVersion",
+			"Prompt":"Calculated Merch Version",
+			"Value":"",
+			"Type":"String"
+		},
+		{
+			"Name":"pTargetPeriod",
+			"Prompt":"Week being closed",
+			"Value":"",
+			"Type":"String"
+		},
+		{
+			"Name":"pSKUElement",
+			"Prompt":"Roles root; blank = Director",
+			"Value":"",
+			"Type":"String"
+		},
+		{
+			"Name":"pBatchSize",
+			"Prompt":"Workers dispatched per barrier",
+			"Value":6,
+			"Type":"Numeric"
+		},
+		{
+			"Name":"pUseRunProcess",
+			"Prompt":"1 = parallel, 0 = serial",
+			"Value":1,
+			"Type":"Numeric"
+		},
+		{
+			"Name":"pWorkerTimeoutSec",
+			"Prompt":"Per-worker barrier timeout, seconds",
+			"Value":900,
+			"Type":"Numeric"
+		}
+	],
+	"Variables":
+	[
+		{
+			"Name":"vMerch_SKU",
+			"Type":"String",
+			"Position":1,
+			"StartByte":0,
+			"EndByte":0
+		}
+	],
+	"UIData": "CubeAction=1511\fDataAction=1503\fCubeLogChanges=0\f",
+	"VariablesUIData": [
+		"VarType=32\fColType=827\f"
+	]
+}

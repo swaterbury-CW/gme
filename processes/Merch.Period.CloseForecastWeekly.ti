@@ -1,0 +1,164 @@
+#region Prolog
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+#=============================================================
+# PROCESS: Merch.Period.CloseForecastWeekly
+# PURPOSE: Scheduled weekly entry point for the period close. Works out which
+#          week is due and calls Merch.Period.Close for it.
+#
+#          REPLACES a prod version whose entire body was:
+#            ExecuteProcess('Merch.Period.Close','pVersion','Forecast',
+#                           'pTargetPeriod', Date(Now-6));
+#          Two defects, and between them the scheduled close had NEVER run.
+#          (1) Date(Now-6) is wall-clock arithmetic. Merch Time Period elements
+#              are named FY26-Wnn but the dimension carries two date ALIASES -
+#              Caption (the Sunday start) and End_Date_Alias (the Saturday end) -
+#              and DIMIX resolves aliases, so a date CAN resolve. But the chore
+#              fires every SUNDAY, so Date(Now-6) is always a MONDAY, matching
+#              NEITHER alias. DIMIX returns 0 and the close ProcessErrors on entry.
+#          (2) The return code was discarded, so the chore reported SUCCESS every
+#              week while doing nothing at all.
+#
+#          DO NOT 'FIX' THAT BY RESCHEDULING THE CHORE. On a Friday or Saturday
+#          DIMIX would succeed and pass a date ALIAS down to Merch.Period.Close
+#          and on into Merch.Load.ActualsToCalc, which interpolates the period
+#          into MDX where alias resolution is unreliable. That turns a loud
+#          failure into a silent one.
+#
+#          THIS VERSION walks the model's own calendar chain. Last_Closed_Period
+#          is a date serial and End_Date_Alias is that same date as text, so the
+#          closed week is one DIMIX away; DIMNM then gives the PRINCIPAL element
+#          name, and its 'Next Week' attribute gives the week now due. Two
+#          attribute lookups, no iteration, no wall-clock arithmetic - and
+#          because it follows the calendar's own links rather than inferring
+#          adjacency from date order, it cannot mis-resolve across a 53-week year
+#          or a gap. Merch.Period.Close.Hold already steps weeks the same way.
+#
+#          Self-correcting: it cannot skip a week or close one twice, and it
+#          closes at most ONE week per run, so a missed or late chore simply
+#          catches up one week at a time.
+#
+#          SHARED OBJECTS. This process creates no subsets and no views, and has
+#          no Data-tab datasource. Not because a datasource "holds a lock" - it
+#          does not - but because two workers must never touch the same OBJECT.
+#          Merch.Period.Close dispatches Merch.Load.ActualsToCalc via RunProcess
+#          and that child builds MDX subsets on Merch Time Period; anything built
+#          here on that dimension would be a second worker on it. A RunProcess
+#          child rolled back that way does NOT fail its parent - the child dies
+#          and the parent carries on reporting success. An orchestrator must
+#          create nothing. There is also simply nothing to iterate here: two
+#          attribute lookups answer the question.
+# DEVELOPER: Steve Waterbury
+# CREATED ON: 2026-08-21
+# LAST UPDATE: 2026-08-25
+# CHANGED BY: Steve Waterbury
+# CHANGE HISTORY:
+#   2026-08-21 | Steve Waterbury | Initial creation on dev; replaces the prod Date(Now-6) version
+#   2026-08-25 | Steve Waterbury | Corrected shared-object comment; no executable change
+#=============================================================
+
+cProcessName = GetProcessName();
+cTimeDim = 'Merch Time Period';
+
+IF(pVersion @= '');
+    LogOutput('ERROR', cProcessName | ' | pVersion empty', 1);
+    ProcessError;
+ENDIF;
+IF(DIMIX('Merch Version', pVersion) = 0);
+    LogOutput('ERROR', cProcessName | ' | pVersion not found: ' | pVersion, 1);
+    ProcessError;
+ENDIF;
+IF(ATTRS('Merch Version', pVersion, 'Version_Type') @<> 'Calculated');
+    LogOutput('ERROR', cProcessName | ' | pVersion is not a Calculated version: ' | pVersion, 1);
+    ProcessError;
+ENDIF;
+
+nLCP = ATTRN('Merch Version', pVersion, 'Last_Closed_Period');
+IF(nLCP = 0);
+    LogOutput('ERROR', cProcessName | ' | Last_Closed_Period is not set on version ' | pVersion | ' - the first close must be run manually to seed it', 1);
+    ProcessError;
+ENDIF;
+
+# Last_Closed_Period is the End_Date SERIAL of the most recently closed week, and
+# End_Date_Alias holds that same date as text, so one DIMIX finds the element.
+# DATE(serial, 1) gives the four-digit-year form; fall back to the two-digit form
+# rather than failing on a format difference.
+sClosedAlias = DATE(nLCP, 1);
+nClosedIdx = DIMIX(cTimeDim, sClosedAlias);
+IF(nClosedIdx = 0);
+    sClosedAlias = DATE(nLCP);
+    nClosedIdx = DIMIX(cTimeDim, sClosedAlias);
+ENDIF;
+IF(nClosedIdx = 0);
+    LogOutput('ERROR', cProcessName | ' | no week in ' | cTimeDim | ' has End_Date_Alias matching Last_Closed_Period ' | TRIM(STR(nLCP, 15, 0)) | ' (tried "' | DATE(nLCP, 1) | '" and "' | DATE(nLCP) | '")', 1);
+    ProcessError;
+ENDIF;
+
+# DIMNM turns whatever matched - alias or principal - into the principal name.
+sClosed = DIMNM(cTimeDim, nClosedIdx);
+
+# The alias could in principle belong to some other element; insist the week we
+# landed on really is the one Last_Closed_Period refers to before trusting it.
+IF(ATTRN(cTimeDim, sClosed, 'End_Date') <> nLCP);
+    LogOutput('ERROR', cProcessName | ' | resolved ' | sClosed | ' from Last_Closed_Period ' | TRIM(STR(nLCP, 15, 0)) | ' but its End_Date is ' | TRIM(STR(ATTRN(cTimeDim, sClosed, 'End_Date'), 15, 0)) | ' - refusing to guess', 1);
+    ProcessError;
+ENDIF;
+
+# Follow the calendar's own chain to the week now due.
+sTarget = ATTRS(cTimeDim, sClosed, 'Next Week');
+IF(sTarget @= '');
+    LogOutput('ERROR', cProcessName | ' | ' | sClosed | ' has no Next Week - the calendar needs extending', 1);
+    ProcessError;
+ENDIF;
+nTargetIdx = DIMIX(cTimeDim, sTarget);
+IF(nTargetIdx = 0);
+    LogOutput('ERROR', cProcessName | ' | Next Week of ' | sClosed | ' is "' | sTarget | '", which is not in ' | cTimeDim, 1);
+    ProcessError;
+ENDIF;
+sTarget = DIMNM(cTimeDim, nTargetIdx);
+IF(DTYPE(cTimeDim, sTarget) @<> 'N');
+    LogOutput('ERROR', cProcessName | ' | resolved target ' | sTarget | ' is not a leaf week', 1);
+    ProcessError;
+ENDIF;
+
+nTargetEnd = ATTRN(cTimeDim, sTarget, 'End_Date');
+IF(nTargetEnd <= nLCP);
+    LogOutput('ERROR', cProcessName | ' | Next Week ' | sTarget | ' ends ' | TRIM(STR(nTargetEnd, 15, 0)) | ', not after Last_Closed_Period ' | TRIM(STR(nLCP, 15, 0)) | ' - the calendar chain is wrong', 1);
+    ProcessError;
+ENDIF;
+
+nToday = DAYNO(TIMST(NOW, '\Y-\m-\d'));
+
+# Only close a week that has actually finished. A weekly chore finding nothing due
+# is a NORMAL outcome, not an error, so it logs and does nothing rather than
+# raising. There is no early exit here on purpose: TI has no RETURN, and
+# ProcessQuit is forbidden in favour of ProcessError, which would wrongly fail
+# the chore. An IF/ELSE gives the same semantics with no exit statement.
+IF(nTargetEnd > nToday);
+    LogOutput('INFO', cProcessName | ' | next open week ' | sTarget | ' has not ended yet (End_Date ' | TRIM(STR(nTargetEnd, 15, 0)) | ' > today ' | TRIM(STR(nToday, 15, 0)) | ') - nothing to close', 1);
+ELSE;
+    LogOutput('INFO', cProcessName | ' | V=' | pVersion | ' | LCP=' | TRIM(STR(nLCP, 15, 0)) | ' resolved to closed week ' | sClosed | ' | closing Next Week ' | sTarget | ' (End_Date ' | TRIM(STR(nTargetEnd, 15, 0)) | ' <= today ' | TRIM(STR(nToday, 15, 0)) | ')', 1);
+    nRC = ExecuteProcess('Merch.Period.Close', 'pVersion', pVersion, 'pTargetPeriod', sTarget);
+    IF(nRC <> 0);
+        LogOutput('ERROR', cProcessName | ' | Merch.Period.Close FAILED for ' | sTarget | ' RC=' | TRIM(STR(nRC, 10, 0)), 1);
+        ProcessError;
+    ENDIF;
+    LogOutput('INFO', cProcessName | ' | closed ' | sTarget | ' successfully', 1);
+ENDIF;
+
+#endregion
+#region Metadata
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+
+#endregion
+#region Data
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+
+#endregion
+#region Epilog
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+
+#endregion

@@ -1,0 +1,91 @@
+#region Prolog
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+#=============================================================
+# PROCESS: Merch.Period.Close.AdvanceLCP
+# PURPOSE: Advance Last_Closed_Period for pVersion to End_Date(pTargetPeriod)
+#          as its OWN committed job.
+#          Merch.Period.Close dispatches this with RunProcess and joins it before
+#          running the loaders, so that ActualsToForecast, ActualsToCalc and
+#          LoadClosedPeriods all start from a COMMITTED Last_Closed_Period.
+#          A RunProcess child runs in its own transaction and would not see an
+#          AttrPutN still uncommitted in the parent, so it would read the OLD
+#          value and skip the very week being closed.
+#          Re-running for the current period is idempotent, which is what makes
+#          an interrupted close safe to resume.
+# DEVELOPER: Steve Waterbury
+# CREATED ON: 2026-08-21
+# LAST UPDATE: 2026-08-21
+# CHANGED BY: Steve Waterbury
+# CHANGE HISTORY:
+#   2026-08-21 | Steve Waterbury | Initial creation
+#=============================================================
+
+cProcessName = GetProcessName();
+sLogLevel = CellGetS('ProcessControl', cProcessName, 'LoggingLevel');
+IF(sLogLevel @= '');
+    sLogLevel = 'OFF';
+ENDIF;
+bLogInfo = 0;
+IF(sLogLevel @= 'INFO' % sLogLevel @= 'DEBUG');
+    bLogInfo = 1;
+ENDIF;
+
+IF(pVersion @= '');
+    LogOutput('ERROR', cProcessName | ' | pVersion empty', 1);
+    ProcessError;
+ENDIF;
+IF(DIMIX('Merch Version', pVersion) = 0);
+    LogOutput('ERROR', cProcessName | ' | pVersion not found: ' | pVersion, 1);
+    ProcessError;
+ENDIF;
+IF(ATTRS('Merch Version', pVersion, 'Version_Type') @<> 'Calculated');
+    LogOutput('ERROR', cProcessName | ' | pVersion not Calculated: ' | pVersion, 1);
+    ProcessError;
+ENDIF;
+IF(pTargetPeriod @= '');
+    LogOutput('ERROR', cProcessName | ' | pTargetPeriod empty', 1);
+    ProcessError;
+ENDIF;
+IF(DIMIX('Merch Time Period', pTargetPeriod) = 0);
+    LogOutput('ERROR', cProcessName | ' | pTargetPeriod not in Merch Time Period: ' | pTargetPeriod, 1);
+    ProcessError;
+ENDIF;
+IF(DTYPE('Merch Time Period', pTargetPeriod) @<> 'N');
+    LogOutput('ERROR', cProcessName | ' | pTargetPeriod not a leaf: ' | pTargetPeriod, 1);
+    ProcessError;
+ENDIF;
+
+nEndDateSerial = ATTRN('Merch Time Period', pTargetPeriod, 'End_Date');
+IF(nEndDateSerial <= 0);
+    LogOutput('ERROR', cProcessName | ' | pTargetPeriod has no End_Date: ' | pTargetPeriod, 1);
+    ProcessError;
+ENDIF;
+
+# Never move the close backwards. Equal is allowed so a resumed close is idempotent.
+nCurrentLCP = ATTRN('Merch Version', pVersion, 'Last_Closed_Period');
+IF(nEndDateSerial < nCurrentLCP);
+    LogOutput('ERROR', cProcessName | ' | refusing to move Last_Closed_Period backwards: current=' | TRIM(STR(nCurrentLCP, 15, 0)) | ' requested=' | TRIM(STR(nEndDateSerial, 15, 0)) | ' period=' | pTargetPeriod, 1);
+    ProcessError;
+ENDIF;
+
+AttrPutN(nEndDateSerial, 'Merch Version', pVersion, 'Last_Closed_Period');
+
+LogOutput('INFO', cProcessName | ' | V=' | pVersion | ' | P=' | pTargetPeriod | ' | Last_Closed_Period ' | TRIM(STR(nCurrentLCP, 15, 0)) | ' -> ' | TRIM(STR(nEndDateSerial, 15, 0)), 1);
+
+#endregion
+#region Metadata
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+
+#endregion
+#region Data
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+
+#endregion
+#region Epilog
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+
+#endregion
