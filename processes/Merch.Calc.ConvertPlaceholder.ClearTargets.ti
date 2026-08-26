@@ -7,7 +7,7 @@
 #############################
 # DEVELOPER : Steve Waterbury
 # CREATED ON : 2026-08-24
-# LAST UPDATE: 2026-08-24
+# LAST UPDATE: 2026-08-26
 # CHANGED BY : Steve Waterbury
 # COMMENTS:
 # Clears the conversion-owned Merch Forecast measures on one or more target SKUs across every
@@ -20,8 +20,10 @@
 # WINDOW: Last_Closed_Period + 1 to the end of the calendar, read from the version attribute
 # at RUN TIME. A window fixed at authoring time is wrong by the next close.
 #
-# CLEAR SET: the 16 measures Merch.Calc.ConvertPlaceholder writes. Opening Inventory is
-# absent by design - it is a rule-derived roll-forward, not an input.
+# CLEAR SET: the 13 measures Merch.Calc.ConvertPlaceholder writes. Opening Inventory is
+# absent by design - it is a rule-derived roll-forward, not an input. The three selling-rate
+# Overrides were dropped on 2026-08-26: the converter no longer writes rates onto the target,
+# and the elements themselves are being removed from Merch Forecast Measure.
 #
 # NOT CLEARED: Receipts, On-Order, On-Order Dollars, Inv Adjustment Dollars, Inventory
 # Adjustment and Reservations. Those are co-owned with the receipt and WOS seeders, and the
@@ -39,6 +41,7 @@
 #### CHANGE HISTORY:
 ### MODIFICATION DATE  CHANGED BY         COMMENT
 ### 2026-08-24         Steve Waterbury    Initial
+### 2026-08-26         Steve Waterbury    Clear set 16 -> 13; the three selling-rate Overrides are gone
 #
 #EndRegion
 
@@ -167,9 +170,6 @@ IF(SubsetExists(sDimMeas, sSubMeas) = 1);
   SubsetDestroy(sDimMeas, sSubMeas);
 ENDIF;
 SubsetCreate(sDimMeas, sSubMeas);
-SubsetElementInsert(sDimMeas, sSubMeas, 'Full Price AUR Override', 0);
-SubsetElementInsert(sDimMeas, sSubMeas, 'Base AUC Override', 0);
-SubsetElementInsert(sDimMeas, sSubMeas, 'Sales AUC Override', 0);
 SubsetElementInsert(sDimMeas, sSubMeas, 'Receipt AUC Override', 0);
 SubsetElementInsert(sDimMeas, sSubMeas, 'Adjustment Units', 0);
 SubsetElementInsert(sDimMeas, sSubMeas, 'Markdown %', 0);
