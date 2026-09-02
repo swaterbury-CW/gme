@@ -1,0 +1,50 @@
+#region Prolog
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+#Region : Process Header
+# DEVELOPER: Steve Waterbury
+# CREATED ON: 2026-08-26
+# CHANGED BY: Steve Waterbury
+# CHANGE HISTORY:
+#   2026-08-26 | Steve Waterbury | Creation: committed Version_Type flip for the freeze
+#EndRegion
+
+cProcessName = GetProcessName();
+
+IF(pVersion @= '' % pVersionType @= '');
+  LogOutput('ERROR', cProcessName | ' | missing param', 1);
+  ProcessError;
+ENDIF;
+IF(DIMIX('Merch Version', pVersion) = 0);
+  LogOutput('ERROR', cProcessName | ' | version not found: ' | pVersion, 1);
+  ProcessError;
+ENDIF;
+
+sType = TRIM(pVersionType);
+IF(sType @<> 'Calculated' & sType @<> 'Static' & sType @<> 'Actual');
+  LogOutput('ERROR', cProcessName | ' | invalid Version_Type: ' | pVersionType, 1);
+  ProcessError;
+ENDIF;
+
+# Version_Type only. ConvertToStatic has always written just this attribute, so
+# Version_Type_Code is left alone deliberately rather than guessed at.
+AttrPutS(sType, 'Merch Version', pVersion, 'Version_Type');
+
+LogOutput('INFO', cProcessName | ' | ' | pVersion | ' Version_Type -> ' | sType, 1);
+
+#endregion
+#region Metadata
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+
+#endregion
+#region Data
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+
+#endregion
+#region Epilog
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+
+#endregion

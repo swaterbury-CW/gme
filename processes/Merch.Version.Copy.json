@@ -1,0 +1,79 @@
+{
+	"@type":"Process",
+	"Name":"Merch.Version.Copy",
+	"HasSecurityAccess":false,
+	"Code@Code.link":"Merch.Version.Copy.ti",
+	"DataSource":
+	{
+		"Type":"TM1DimensionSubset",
+		"dataSourceNameForServer":"}Cubes",
+		"dataSourceNameForClient":"}Cubes",
+		"subset":"TI_VersionCopy_placeholder"
+	},
+	"Parameters":
+	[
+		{
+			"Name":"pSourceVersion",
+			"Prompt":"Source version",
+			"Value":"",
+			"Type":"String"
+		},
+		{
+			"Name":"pTargetVersion",
+			"Prompt":"Target version",
+			"Value":"",
+			"Type":"String"
+		},
+		{
+			"Name":"pSkipCalcs",
+			"Prompt":"1 skip rule-derived, 0 include, -1 infer",
+			"Value":-1,
+			"Type":"Numeric"
+		},
+		{
+			"Name":"pTimePeriod",
+			"Prompt":"Scope Plan Reporting to a period (blank=all weeks)",
+			"Value":"",
+			"Type":"String"
+		},
+		{
+			"Name":"pBatchSize",
+			"Prompt":"Workers dispatched per batch",
+			"Value":6,
+			"Type":"Numeric"
+		},
+		{
+			"Name":"pWorkerTimeoutSec",
+			"Prompt":"Per-worker barrier timeout",
+			"Value":1800,
+			"Type":"Numeric"
+		},
+		{
+			"Name":"pUseRunProcess",
+			"Prompt":"1 parallel, 0 serial valve",
+			"Value":1,
+			"Type":"Numeric"
+		},
+		{
+			"Name":"pMaxParts",
+			"Prompt":"Cap on Merch Forecast partitions; 0 = all",
+			"Value":0,
+			"Type":"Numeric"
+		}
+	],
+	"Variables":
+	[
+		{
+			"Name":"vCube",
+			"Type":"String",
+			"Position":1,
+			"StartByte":0,
+			"EndByte":0
+		}
+	],
+	"UID": "1774218836000",
+	"UIData": "CubeAction=1511\fDataAction=1503\fCubeLogChanges=0\f",
+	"VariablesUIData": [
+		"VarType=32\fColType=827\f"
+	]
+}

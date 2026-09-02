@@ -4,17 +4,21 @@
 #Region : Process Header
 # DEVELOPER: Steve Waterbury
 # CREATED ON: 2026-05-14
+# LAST UPDATE: 2026-08-31
 # CHANGED BY: Steve Waterbury
 # CHANGE HISTORY:
 #   2026-05-14 | Steve Waterbury | Initial: per-slice ASCII reload
-#   2026-05-17 | Steve Waterbury | WildcardFileSearch -> FileExists
-#   2026-06-15 | Steve Waterbury | Rewrite: slice file by pPartIdx+FY; REMOVED forced AttrPutS('Static',target); pCategory dropped
+#   2026-05-17 | Steve Waterbury | WildcardFileSearch replaced by FileExists
+#   2026-06-15 | Steve Waterbury | Rewrite: slice file by pPartIdx and FY; forced AttrPutS Static removed; pCategory dropped
+#   2026-08-30 | Steve Waterbury | Drop the per-worker control-cube write; rows go to LogOutput only, with Part and FY so a count is attributable
+#   2026-08-31 | Steve Waterbury | Missing extract file is a benign IF/ELSE with a NULL datasource; ProcessBreak made the barrier read status=8 as a failure
 #EndRegion
 
 cProcessName = GetProcessName();
 nRowsWritten = 0;
 nCalcUnitsSum = 0;
 nPartIdx = pPartIdx;
+nStartTime = NOW;
 
 IF(pSourceVersion @= '' % pTargetVersion @= '' % pFiscalYear @= '' % pBatchTag @= '');
   LogOutput('ERROR', cProcessName | ' | missing param', 1);
@@ -25,23 +29,39 @@ IF(DIMIX('Merch Version', pTargetVersion) = 0);
   ProcessError;
 ENDIF;
 
-# Target Version_Type is NEVER mutated by the copy (forced AttrPutS('Static') removed 2026-06-15).
+# Target Version_Type is NEVER mutated by the copy; the forced AttrPutS was removed in June.
 
 sFile = './version_copy/' | pBatchTag | '_' | pSourceVersion | '_part' | TRIM(STR(nPartIdx, 10, 0)) | '_' | pFiscalYear | '.csv';
 
+# A partition with no source data produces no CSV. That is NOT an error - it is a
+# partition that legitimately had nothing to copy - and it MUST exit NORMALLY.
+#
+# This used to be ProcessBreak. GetJobStatus reports a ProcessBreak termination as
+# status=8, and every barrier in this chain credits ProcessExitNormal() alone, so
+# ReloadByCat counted all 132 empty partitions as failed workers and aborted a copy
+# whose data was exact. Measured 2026-08-31: 'ABORTING: 132 reload worker(s) failed
+# and 0 timed out of 135 dispatched', while the children logged 'no extract file',
+# 'Rows=0' and 'Process execution finished with ProcessBreak()'.
+#
+# The barrier is NOT loosened to accept status 8 - v12 documents only
+# ProcessExecutionInProgress, ProcessExitNormal and ProcessExitSeriousError, so
+# treating 8 as benign would be a guess, and a barrier that guesses is how a partial
+# copy gets reported as success. The WORKER is made to exit normally instead, which is
+# what the sibling Extract already does over the same partitions, and a NULL datasource
+# is the shape ExtractByCat already uses in its own Prolog.
+nHasFile = 1;
 IF(FileExists(sFile) = 0);
+  nHasFile = 0;
   LogOutput('INFO', cProcessName | ' | no extract file | ' | sFile, 1);
-  ProcessBreak;
+  DatasourceType = 'NULL';
+ELSE;
+  DatasourceType = 'CHARACTERDELIMITED';
+  DatasourceNameForServer = sFile;
+  DatasourceASCIIDelimiter = ',';
+  DatasourceASCIIQuoteCharacter = '"';
+  DatasourceASCIIHeaderRecords = 0;
+  LogOutput('INFO', 'TIMING START: ' | cProcessName | ' | File=' | sFile | ' | Tgt=' | pTargetVersion, 1);
 ENDIF;
-
-DatasourceType = 'CHARACTERDELIMITED';
-DatasourceNameForServer = sFile;
-DatasourceASCIIDelimiter = ',';
-DatasourceASCIIQuoteCharacter = '"';
-DatasourceASCIIHeaderRecords = 0;
-
-nStartTime = NOW;
-LogOutput('INFO', 'TIMING START: ' | cProcessName | ' | File=' | sFile | ' | Tgt=' | pTargetVersion, 1);
 
 #endregion
 #region Metadata
@@ -80,12 +100,13 @@ ENDIF;
 #region Epilog
 #****Begin: Generated Statements***
 #****End: Generated Statements****
-IF(CellIsUpdateable('ProcessControl', cProcessName, 'SubsetCount') = 0);
-  LogOutput('ERROR', cProcessName | ' | ProcessControl.SubsetCount not updateable', 1);
-ELSE;
-  CellPutN(nRowsWritten, 'ProcessControl', cProcessName, 'SubsetCount');
-ENDIF;
-
-LogOutput('INFO', 'TIMING END: ' | cProcessName | ' | Rows=' | TRIM(STR(nRowsWritten, 12, 0)) | ' | Elapsed=' | TRIM(STR((NOW - nStartTime) * 86400, 12, 1)) | 's', 1);
+# THE PER-WORKER CONTROL-CUBE WRITE IS GONE. This Epilog used to push nRowsWritten into
+# the SubsetCount measure of the ProcessControl cube. Up to 135 of these workers run in
+# parallel and every one targeted that SAME cell, so the value was last-writer-wins and
+# could never attribute a count to a partition. TI-009. Part and FY are in the line below
+# so a row count is attributable to a partition.
+# HasFile distinguishes the two legitimate outcomes: a partition that loaded rows, and a
+# partition that had no CSV because it had nothing to copy. Both exit NORMALLY.
+LogOutput('INFO', 'TIMING END: ' | cProcessName | ' | Part=' | TRIM(STR(nPartIdx, 10, 0)) | ' | FY=' | pFiscalYear | ' | HasFile=' | TRIM(STR(nHasFile, 1, 0)) | ' | Rows=' | TRIM(STR(nRowsWritten, 12, 0)) | ' | CalcUnits=' | TRIM(STR(nCalcUnitsSum, 25, 2)) | ' | Elapsed=' | TRIM(STR((NOW - nStartTime) * 86400, 12, 1)) | 's', 1);
 
 #endregion

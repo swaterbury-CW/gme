@@ -1,0 +1,108 @@
+{
+	"@type":"Process",
+	"Name":"Merch.Version.Copy.PlanReporting",
+	"HasSecurityAccess":false,
+	"Code@Code.link":"Merch.Version.Copy.PlanReporting.ti",
+	"DataSource":
+	{
+		"Type":"TM1CubeView",
+		"dataSourceNameForServer":"Merch Plan Reporting",
+		"dataSourceNameForClient":"Merch Plan Reporting",
+		"view":"Test_BQ_Insert_PR_Smoke"
+	},
+	"Parameters":
+	[
+		{
+			"Name":"pSourceVersion",
+			"Prompt":"Source version",
+			"Value":"Actual",
+			"Type":"String"
+		},
+		{
+			"Name":"pTargetVersion",
+			"Prompt":"Target version",
+			"Value":"Forecast",
+			"Type":"String"
+		},
+		{
+			"Name":"pClear",
+			"Prompt":"Clear target first (1=yes)",
+			"Value":1,
+			"Type":"Numeric"
+		},
+		{
+			"Name":"pPartIdx",
+			"Prompt":"Caller-supplied unique index (0=derive from time)",
+			"Value":0,
+			"Type":"Numeric"
+		},
+		{
+			"Name":"pTimePeriod",
+			"Prompt":"Scope to period (blank=all weeks)",
+			"Value":"",
+			"Type":"String"
+		},
+		{
+			"Name":"pSkipCalcs",
+			"Prompt":"-1=infer from target Version_Type, 0=copy all n-level, 1=skip rule-calculated",
+			"Value":-1,
+			"Type":"Numeric"
+		}
+	],
+	"Variables":
+	[
+		{
+			"Name":"vMerch_Version",
+			"Type":"String",
+			"Position":1,
+			"StartByte":0,
+			"EndByte":0
+		},
+		{
+			"Name":"vMerch_Time_Period",
+			"Type":"String",
+			"Position":2,
+			"StartByte":0,
+			"EndByte":0
+		},
+		{
+			"Name":"vMerch_SKU",
+			"Type":"String",
+			"Position":3,
+			"StartByte":0,
+			"EndByte":0
+		},
+		{
+			"Name":"vMerch_Channel",
+			"Type":"String",
+			"Position":4,
+			"StartByte":0,
+			"EndByte":0
+		},
+		{
+			"Name":"vMerch_Lifecycle",
+			"Type":"String",
+			"Position":5,
+			"StartByte":0,
+			"EndByte":0
+		},
+		{
+			"Name":"vMerch_Plan_Reporting_Measure",
+			"Type":"String",
+			"Position":6,
+			"StartByte":0,
+			"EndByte":0
+		}
+	],
+	"UID": "1781900406000",
+	"UIData": "",
+	"VariablesUIData": [
+		"VarType=32\fColType=827\f",
+		"VarType=32\fColType=827\f",
+		"VarType=32\fColType=827\f",
+		"VarType=32\fColType=827\f",
+		"VarType=32\fColType=827\f",
+		"VarType=32\fColType=827\f",
+		"IgnoredInputVarName=value\fVarType=32\fColType=1165\f"
+	]
+}

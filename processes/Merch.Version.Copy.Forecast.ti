@@ -4,14 +4,23 @@
 #Region : Process Header
 # DEVELOPER: Steve Waterbury
 # CREATED ON: 2026-05-14
+# LAST UPDATE: 2026-08-28
 # CHANGED BY: Steve Waterbury
 # CHANGE HISTORY:
 #   2026-05-14 | Steve Waterbury | Top orchestrator for Forecast version copy
-#   2026-06-15 | Steve Waterbury | Remove forced-Static; derive pSkipCalcs from target Version_Type; add pMaxParts; pCategoryFilter kept inert
+#   2026-06-15 | Steve Waterbury | Derive pSkipCalcs from target Version_Type; add pMaxParts
+#   2026-08-24 | Steve Waterbury | TRIM Version_Type; dispatch Clear before fan-out
+#   2026-08-24 | Steve Waterbury | pFreeze: self-copy skips the Clear and extracts all n-level
+#   2026-08-26 | Steve Waterbury | Explicit pSkipCalcs from the caller; inference only when -1
+#   2026-08-28 | Steve Waterbury | Drop the Merch Time Period subset datasource; run-unique batch tag; ProcessControl writes deleted
 #EndRegion
 
 cProcessName = GetProcessName();
 nStart = NOW;
+
+# Local numeric copies of the parameters.
+nFreeze = pFreeze;
+nSkipParam = pSkipCalcs;
 
 IF(pSourceVersion @= '' % pTargetVersion @= '');
   LogOutput('ERROR', cProcessName | ' | missing params', 1);
@@ -22,20 +31,29 @@ IF(DIMIX('Merch Version', pSourceVersion) = 0 % DIMIX('Merch Version', pTargetVe
   ProcessError;
 ENDIF;
 
+# A self-copy without the freeze flag would clear the target - which IS the source -
+# before the extract ever reads it, destroying the version. Refuse it.
+IF(nFreeze <> 1 & pSourceVersion @= pTargetVersion);
+  LogOutput('ERROR', cProcessName | ' | refusing self-copy without pFreeze=1: the clear would wipe the source | Version=' | pSourceVersion, 1);
+  ProcessError;
+ENDIF;
+
 nLCP = ATTRN('Merch Version', pSourceVersion, 'Last_Closed_Period');
 IF(nLCP = 0);
   nLCP = INT(NOW);
 ENDIF;
 
+# THE Merch Time Period SUBSET DATASOURCE IS GONE. It created a subset on the SHARED
+# Merch Time Period dimension and held it as this process's datasource for the ENTIRE
+# scan, purely to find the one leaf week whose Start_Date/End_Date bracket nLCP - and its
+# name was TRIM(STR(NOW,15,0)), which is zero decimals and therefore the DAY serial, so
+# two runs on one day collided on a shared-dimension object. The leaf is now resolved by
+# a DIMSIZ/DIMNM/ELLEV walk in the EPILOG, which is also where TI-BUILTIN-001 requires a
+# loop over dimension elements to live. Same fix already committed on Copy.PlanReporting.
 sCurLeaf = '';
+DatasourceType = 'NULL';
 
-sTPSubset = 'TI_ForecastTPLookup_' | TRIM(STR(NOW, 15, 0));
-SubsetCreateByMDX(sTPSubset, '{TM1FILTERBYLEVEL({TM1SUBSETALL([Merch Time Period].[Merch Time Period])}, 0)}');
-DatasourceType = 'SUBSET';
-DatasourceNameForServer = 'Merch Time Period';
-DatasourceDimensionSubset = sTPSubset;
-
-LogOutput('INFO', 'TIMING START: ' | cProcessName | ' | Src=' | pSourceVersion | ' | Tgt=' | pTargetVersion | ' | LCP=' | TRIM(STR(nLCP, 15, 0)), 1);
+LogOutput('INFO', 'TIMING START: ' | cProcessName | ' | Src=' | pSourceVersion | ' | Tgt=' | pTargetVersion | ' | Freeze=' | TRIM(STR(nFreeze, 1, 0)) | ' | LCP=' | TRIM(STR(nLCP, 15, 0)), 1);
 
 #endregion
 #region Metadata
@@ -46,22 +64,28 @@ LogOutput('INFO', 'TIMING START: ' | cProcessName | ' | Src=' | pSourceVersion |
 #region Data
 #****Begin: Generated Statements***
 #****End: Generated Statements****
-IF(sCurLeaf @<> '');
-  ItemSkip;
-ENDIF;
-nStartDate = ATTRN('Merch Time Period', vMerch_Time_Period, 'Start_Date');
-nEndDate = ATTRN('Merch Time Period', vMerch_Time_Period, 'End_Date');
-IF(nLCP >= nStartDate & nLCP <= nEndDate);
-  sCurLeaf = vMerch_Time_Period;
-ENDIF;
 
 #endregion
 #region Epilog
 #****Begin: Generated Statements***
 #****End: Generated Statements****
-IF(SubsetExists('Merch Time Period', sTPSubset) = 1);
-  SubsetDestroy('Merch Time Period', sTPSubset);
-ENDIF;
+# Resolve the leaf week containing Last_Closed_Period WITHOUT a subset. Walks the
+# dimension directly and stops at the first level-0 element whose Start_Date/End_Date
+# bracket nLCP.
+cTPDim = 'Merch Time Period';
+nDimSize = DIMSIZ(cTPDim);
+nIdx = 1;
+WHILE(nIdx <= nDimSize & sCurLeaf @= '');
+  sWk = DIMNM(cTPDim, nIdx);
+  IF(ELLEV(cTPDim, sWk) = 0);
+    nStartDate = ATTRN(cTPDim, sWk, 'Start_Date');
+    nEndDate = ATTRN(cTPDim, sWk, 'End_Date');
+    IF(nLCP >= nStartDate & nLCP <= nEndDate);
+      sCurLeaf = sWk;
+    ENDIF;
+  ENDIF;
+  nIdx = nIdx + 1;
+END;
 
 IF(sCurLeaf @= '');
   LogOutput('ERROR', cProcessName | ' | could not resolve current period LCP=' | TRIM(STR(nLCP, 15, 0)), 1);
@@ -78,23 +102,64 @@ IF(DIMIX('Merch Time Period', sLY) = 0 % DIMIX('Merch Time Period', sCY) = 0 % D
   ProcessError;
 ENDIF;
 
-sBatchTag = 'vc_' | pSourceVersion | '_' | TRIM(STR(NOW, 15, 0));
-
-sTgtType = ATTRS('Merch Version', pTargetVersion, 'Version_Type');
-nSkip = 1;
-IF(sTgtType @= 'Static');
-  nSkip = 0;
+# RUN-UNIQUE BATCH TAG. This was 'vc_' | pSourceVersion | '_' | TRIM(STR(NOW,15,0)),
+# which is the DAY serial - and this tag NAMES THE EXTRACT FILES ON DISK, so two runs on
+# one day wrote and read identical paths. Seconds resolution.
+nNowTag = NOW;
+nTagSec = INT((nNowTag - INT(nNowTag)) * 86400);
+IF(nTagSec <= 0);
+  nTagSec = 1;
 ENDIF;
+sBatchTag = 'vc_' | pSourceVersion | '_' | TRIM(STR(INT(nNowTag), 15, 0)) | 'x' | TRIM(STR(nTagSec, 6, 0));
+
+# TRIM: a hand-entered ' Static' must not read as a non-Static type.
+sTgtType = TRIM(ATTRS('Merch Version', pTargetVersion, 'Version_Type'));
+nTgtTypeCode = 2;
+IF(sTgtType @= 'Static');
+  nTgtTypeCode = 1;
+ENDIF;
+
+# SkipCalcs comes from the CALLER when supplied. Merch.Version.Copy can read the
+# target's Version_Type correctly because Merch.Version.Create invokes it in the SAME
+# transaction; this orchestrator's own children run under RunProcess and cannot see an
+# uncommitted AttrPutS, so they must be TOLD. -1 keeps the legacy inference.
+IF(nSkipParam >= 0);
+  nSkip = nSkipParam;
+  sSkipSource = 'param';
+ELSE;
+  nSkip = 1;
+  IF(sTgtType @= 'Static');
+    nSkip = 0;
+  ENDIF;
+  sSkipSource = 'inferred';
+ENDIF;
+
+# FREEZE: source and target are the SAME version. The destination INTENT is Static
+# even though Version_Type may still read Calculated here, so extract everything.
+IF(nFreeze = 1);
+  nSkip = 0;
+  nTgtTypeCode = 1;
+  sSkipSource = 'freeze';
+ENDIF;
+
+# Clear the target BEFORE the fan-out, as its own committed job. Suppressed on a
+# freeze - clearing the target would wipe the source it is about to be read from.
+IF(nFreeze = 1);
+  LogOutput('INFO', cProcessName | ' | FREEZE mode: clear suppressed, extracting all n-level values', 1);
+ELSE;
+  sClearJob = RunProcess('Merch.Version.Copy.Forecast.Clear', 'pTargetVersion', pTargetVersion, 'pLY', sLY, 'pCY', sCY, 'pNY', sNY);
+  WaitForAllJobs(sClearJob);
+ENDIF;
+
+LogOutput('INFO', cProcessName | ' | Tgt=' | sTgtType | ' | SkipCalcs=' | TRIM(STR(nSkip, 1, 0)) | ' (' | sSkipSource | ') | BatchTag=' | sBatchTag, 1);
 
 ExecuteProcess('Merch.Version.Copy.Forecast.ExtractByCat', 'pSourceVersion', pSourceVersion, 'pLY', sLY, 'pCY', sCY, 'pNY', sNY, 'pBatchTag', sBatchTag, 'pSkipCalcs', nSkip, 'pMaxParts', pMaxParts);
 ExecuteProcess('Merch.Version.Copy.Forecast.ReloadByCat', 'pSourceVersion', pSourceVersion, 'pTargetVersion', pTargetVersion, 'pLY', sLY, 'pCY', sCY, 'pNY', sNY, 'pBatchTag', sBatchTag, 'pMaxParts', pMaxParts);
 
-IF(CellIsUpdateable('ProcessControl', cProcessName, 'SubsetCount') = 0);
-  LogOutput('ERROR', cProcessName | ' | ProcessControl.SubsetCount not updateable', 1);
-ELSE;
-  CellPutN(1, 'ProcessControl', cProcessName, 'SubsetCount');
-ENDIF;
-
-LogOutput('INFO', 'TIMING END: ' | cProcessName | ' | Years=' | sLY | '/' | sCY | '/' | sNY | ' | Tgt=' | sTgtType | ' | Skip=' | TRIM(STR(nSkip, 1, 0)) | ' | Elapsed=' | TRIM(STR((NOW - nStart) * 86400, 12, 1)) | 's', 1);
+# BOTH ProcessControl writes are GONE. One put the CONSTANT 1 into SubsetCount; the other
+# put nTgtTypeCode - a VERSION TYPE CODE - into a measure named RecordCount. Both were
+# writes to a shared control cube in a chain being de-locked, and the line below already
+# carries the years, target type, freeze flag and skip decision.
+LogOutput('INFO', 'TIMING END: ' | cProcessName | ' | Years=' | sLY | '/' | sCY | '/' | sNY | ' | Tgt=' | sTgtType | ' | TypeCode=' | TRIM(STR(nTgtTypeCode, 1, 0)) | ' | Freeze=' | TRIM(STR(nFreeze, 1, 0)) | ' | Skip=' | TRIM(STR(nSkip, 1, 0)) | ' | Elapsed=' | TRIM(STR((NOW - nStart) * 86400, 12, 1)) | 's', 1);
 
 #endregion

@@ -1,0 +1,169 @@
+#region Prolog
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+#Region : Process Header
+# DEVELOPER : Steve Waterbury
+# CREATED ON : 2026-06-24
+# LAST UPDATE: 2026-08-25
+# CHANGED BY : Steve Waterbury
+# COMMENTS: Period-subset parallel fan-out: copy pSourceVersion (default Actual) -> Calculated Merch
+#  Versions in Merch Plan Reporting, one .Week worker per (week x calc version) over the scoped
+#  pTimePeriod. Dispatch runs in the EPILOG in capped batches with a split-and-wait barrier.
+#### CHANGE HISTORY:
+###   2026-06-30 | Steve Waterbury | Period-subset parallel fan-out across weeks x calc versions.
+###   2026-08-25 | Steve Waterbury | Dispatch moved to Epilog; batches of 6; WaitForAllJobs split per JobID (it is variadic - a comma-joined string does not wait on N jobs).
+#EndRegion
+cProcessName = GetProcessName();
+sLogLevel = CellGetS('ProcessControl', cProcessName, 'LoggingLevel');
+IF(sLogLevel @= '');
+  sLogLevel = 'OFF';
+ENDIF;
+bLogInfo = 0;
+IF(sLogLevel @= 'INFO' % sLogLevel @= 'DEBUG');
+  bLogInfo = 1;
+ENDIF;
+
+sWorkerLog = CellGetS('ProcessControl', 'Merch.Version.Copy.PlanReporting.Week', 'LoggingLevel');
+
+sSrc = pSourceVersion;
+IF(sSrc @= '');
+  sSrc = 'Actual';
+ENDIF;
+IF(DIMIX('Merch Version', sSrc) = 0);
+  LogOutput('ERROR', cProcessName | ' | Invalid pSourceVersion: ' | sSrc, 1);
+  ProcessError;
+ENDIF;
+IF(pTimePeriod @<> '' & DIMIX('Merch Time Period', pTimePeriod) = 0);
+  LogOutput('ERROR', cProcessName | ' | Invalid pTimePeriod: ' | pTimePeriod, 1);
+  ProcessError;
+ENDIF;
+IF(pTargetVersion @<> '' & DIMIX('Merch Version', pTargetVersion) = 0);
+  LogOutput('ERROR', cProcessName | ' | Invalid pTargetVersion: ' | pTargetVersion, 1);
+  ProcessError;
+ENDIF;
+nClear = pClear;
+
+cVerDim = 'Merch Version';
+sSubVer = 'TI_CopyPRToCalc_ver_' | TRIM(STR(NOW, 15, 0));
+IF(SubsetExists(cVerDim, sSubVer) = 1);
+  SubsetDestroy(cVerDim, sSubVer);
+ENDIF;
+IF(pTargetVersion @<> '');
+  SubsetCreateByMDX(sSubVer, '{[Merch Version].[Merch Version].[' | pTargetVersion | ']}');
+ELSE;
+  SubsetCreateByMDX(sSubVer, '{EXCEPT({FILTER({TM1FILTERBYLEVEL({TM1SUBSETALL([Merch Version].[Merch Version])}, 0)}, [Merch Version].[Merch Version].CurrentMember.Properties("Version_Type") = "Calculated")}, {[Merch Version].[Merch Version].[' | sSrc | ']})}');
+ENDIF;
+nVerCount = SubsetGetSize(cVerDim, sSubVer);
+
+cTPDim = 'Merch Time Period';
+sSubTP = 'TI_CopyPRToCalc_tp_' | TRIM(STR(NOW, 15, 0));
+IF(SubsetExists(cTPDim, sSubTP) = 1);
+  SubsetDestroy(cTPDim, sSubTP);
+ENDIF;
+IF(pTimePeriod @<> '');
+  SubsetCreateByMDX(sSubTP, '{TM1FILTERBYLEVEL({DESCENDANTS([Merch Time Period].[Merch Time Period].[' | pTimePeriod | '])}, 0)}');
+ELSE;
+  SubsetCreateByMDX(sSubTP, '{TM1FILTERBYLEVEL({TM1SUBSETALL([Merch Time Period].[Merch Time Period])}, 0)}');
+ENDIF;
+nWeeks = SubsetGetSize(cTPDim, sSubTP);
+
+DatasourceType = 'NULL';
+
+cCols = '{TM1FILTERBYLEVEL({TM1SUBSETALL([Merch Plan Reporting Measure].[Merch Plan Reporting Measure])},0)}';
+nPartIdx = 0;
+nDispatched = 0;
+nStartTime = NOW;
+LogOutput('INFO', 'TIMING START: ' | cProcessName | ' | Source=' | sSrc | ' | Target=' | pTargetVersion | ' | Scope=' | pTimePeriod | ' | Versions=' | TRIM(STR(nVerCount, 6, 0)) | ' | Weeks=' | TRIM(STR(nWeeks, 8, 0)) | ' | Clear=' | TRIM(STR(nClear, 3, 0)), 1);
+
+#endregion
+#region Metadata
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+#endregion
+#region Data
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+#endregion
+#region Epilog
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+# Dispatch runs HERE, not in the Data tab: a large Data-tab RunProcess fan-out is not
+# reliably joined by the Epilog on this server. Jobs are emitted in capped batches and
+# each batch is joined before the next one starts.
+nBatchJobs = 6;
+nInBatch = 0;
+sJobIDs = '';
+
+nW = 1;
+WHILE(nW <= nWeeks);
+  sWk = SubsetGetElementName(cTPDim, sSubTP, nW);
+  IF(sWk @<> '');
+    sRows = '{[Merch Time Period].[Merch Time Period].[' | sWk | ']} * {TM1FILTERBYLEVEL({TM1SUBSETALL([Merch SKU].[Merch SKU])},0)} * {TM1FILTERBYLEVEL({TM1SUBSETALL([Merch Channel].[Merch Channel])},0)} * {TM1FILTERBYLEVEL({TM1SUBSETALL([Merch Lifecycle].[Merch Lifecycle])},0)}';
+
+    nI = 1;
+    WHILE(nI <= nVerCount);
+      sVer = SubsetGetElementName(cVerDim, sSubVer, nI);
+      IF(sVer @<> '');
+        sLoadMDX = 'SELECT NON EMPTY ' | cCols | ' ON COLUMNS, NON EMPTY ' | sRows | ' ON ROWS FROM [Merch Plan Reporting] WHERE ([Merch Version].[Merch Version].[' | sSrc | '])';
+        sClearMDX = 'SELECT NON EMPTY ' | cCols | ' ON COLUMNS, NON EMPTY ' | sRows | ' ON ROWS FROM [Merch Plan Reporting] WHERE ([Merch Version].[Merch Version].[' | sVer | '])';
+        nPartIdx = nPartIdx + 1;
+        sJobId = RunProcess('Merch.Version.Copy.PlanReporting.Week', 'pSourceVersion', sSrc, 'pTargetVersion', sVer, 'pLoadMDX', sLoadMDX, 'pClearMDX', sClearMDX, 'pClear', nClear, 'pPartIdx', nPartIdx, 'pLogLevel', sWorkerLog);
+        IF(sJobIDs @= '');
+          sJobIDs = sJobId;
+        ELSE;
+          sJobIDs = sJobIDs | ',' | sJobId;
+        ENDIF;
+        nDispatched = nDispatched + 1;
+        nInBatch = nInBatch + 1;
+
+        IF(nInBatch >= nBatchJobs);
+          sRemaining = sJobIDs;
+          WHILE(sRemaining @<> '');
+            nComma = SCAN(',', sRemaining);
+            IF(nComma = 0);
+              sOne = sRemaining;
+              sRemaining = '';
+            ELSE;
+              sOne = SUBST(sRemaining, 1, nComma - 1);
+              sRemaining = SUBST(sRemaining, nComma + 1, LONG(sRemaining) - nComma);
+            ENDIF;
+            IF(sOne @<> '');
+              WaitForAllJobs(sOne);
+            ENDIF;
+          END;
+          sJobIDs = '';
+          nInBatch = 0;
+        ENDIF;
+      ENDIF;
+      nI = nI + 1;
+    END;
+  ENDIF;
+  nW = nW + 1;
+END;
+
+# Final partial batch.
+sRemaining = sJobIDs;
+WHILE(sRemaining @<> '');
+  nComma = SCAN(',', sRemaining);
+  IF(nComma = 0);
+    sOne = sRemaining;
+    sRemaining = '';
+  ELSE;
+    sOne = SUBST(sRemaining, 1, nComma - 1);
+    sRemaining = SUBST(sRemaining, nComma + 1, LONG(sRemaining) - nComma);
+  ENDIF;
+  IF(sOne @<> '');
+    WaitForAllJobs(sOne);
+  ENDIF;
+END;
+
+IF(SubsetExists(cVerDim, sSubVer) = 1);
+  SubsetDestroy(cVerDim, sSubVer);
+ENDIF;
+IF(SubsetExists(cTPDim, sSubTP) = 1);
+  SubsetDestroy(cTPDim, sSubTP);
+ENDIF;
+
+LogOutput('INFO', 'TIMING END: ' | cProcessName | ' | Dispatched=' | TRIM(STR(nDispatched, 10, 0)) | ' | Elapsed=' | TRIM(STR((NOW - nStartTime) * 86400, 12, 1)) | 's', 1);
+
+#endregion

@@ -4,24 +4,45 @@
 #Region : Process Header
 # DEVELOPER: Steve Waterbury
 # CREATED ON: 2026-05-14
+# LAST UPDATE: 2026-08-29
 # CHANGED BY: Steve Waterbury
 # CHANGE HISTORY:
 #   2026-05-17 | Steve Waterbury | Epilog dispatch + WaitForAllJobs
 #   2026-06-15 | Steve Waterbury | Rewrite: index fan-out over SKU-leaf partitions; pMaxParts; pCategory dropped
+#   2026-08-05 | Steve Waterbury | Batched reload dispatch: nBatchParts per batch with per-batch barrier (full fan-out exhausted server memory)
+#   2026-08-28 | Steve Waterbury | Run-unique counting subset; ProcessControl write deleted; block-style IFs
+#   2026-08-29 | Steve Waterbury | Barrier rebuilt on the Close.Cat.Orch GetJobStatus poll; worker counters; ProcessError on a lost worker
 #EndRegion
 
 cProcessName = GetProcessName();
 nDispatches = 0;
+nBatches = 0;
+nOK = 0;
+nFailed = 0;
+nTimedOut = 0;
 sJobIDs = '';
 nPartSize = 2500;
 nMaxParts = pMaxParts;
+nWorkerTimeoutSec = pWorkerTimeoutSec;
+IF(nWorkerTimeoutSec <= 0);
+  nWorkerTimeoutSec = 1800;
+ENDIF;
+nWorkerTimeoutMs = nWorkerTimeoutSec * 1000;
 
 IF(pSourceVersion @= '' % pTargetVersion @= '' % pLY @= '' % pCY @= '' % pNY @= '' % pBatchTag @= '');
   LogOutput('ERROR', cProcessName | ' | missing param', 1);
   ProcessError;
 ENDIF;
 
-sCountSub = 'TI_VCFcstCountR_' | TRIM(STR(NOW, 15, 0));
+# RUN-UNIQUE COUNTING SUBSET. The name was the DAY serial on the SHARED Merch SKU
+# dimension. Kept rather than removed because it exists only to call SubsetGetSize.
+nNowTok = NOW;
+nRunSec = INT((nNowTok - INT(nNowTok)) * 86400);
+IF(nRunSec <= 0);
+  nRunSec = 1;
+ENDIF;
+sCountSub = 'TI_VCFcstCountR_' | TRIM(STR(INT(nNowTok), 15, 0)) | 'x' | TRIM(STR(nRunSec, 6, 0));
+
 IF(SubsetExists('Merch SKU', sCountSub) = 1);
   SubsetDestroy('Merch SKU', sCountSub);
 ENDIF;
@@ -44,7 +65,7 @@ ENDIF;
 DatasourceType = 'NULL';
 
 nStartTime = NOW;
-LogOutput('INFO', 'TIMING START: ' | cProcessName | ' | Src=' | pSourceVersion | ' | Tgt=' | pTargetVersion | ' | Parts=' | TRIM(STR(nParts, 8, 0)), 1);
+LogOutput('INFO', 'TIMING START: ' | cProcessName | ' | Src=' | pSourceVersion | ' | Tgt=' | pTargetVersion | ' | Parts=' | TRIM(STR(nParts, 8, 0)) | ' | WorkerTimeout=' | TRIM(STR(nWorkerTimeoutSec, 10, 0)) | 's', 1);
 
 #endregion
 #region Metadata
@@ -60,33 +81,117 @@ LogOutput('INFO', 'TIMING START: ' | cProcessName | ' | Src=' | pSourceVersion |
 #region Epilog
 #****Begin: Generated Statements***
 #****End: Generated Statements****
+# Batched dispatch. nBatchParts caps concurrency and each batch is joined before the next
+# starts - added 2026-08-05 because the full fan-out exhausted server memory. Do not widen
+# it without measuring memory again. Until 2026-08-29 the 'join' was WaitForAllJobs, which
+# does not hold, so this cap was cosmetic and the full fan-out ran anyway.
+nBatchParts = 3;
 nIdx = 1;
 WHILE(nIdx <= nParts);
-  sJobId = RunProcess('Merch.Version.Copy.Forecast.Reload', 'pSourceVersion', pSourceVersion, 'pTargetVersion', pTargetVersion, 'pPartIdx', nIdx, 'pFiscalYear', pLY, 'pBatchTag', pBatchTag);
-  IF(sJobIDs @= ''); sJobIDs = sJobId; ELSE; sJobIDs = sJobIDs | ',' | sJobId; ENDIF;
-  nDispatches = nDispatches + 1;
+  nBatchEnd = nIdx + nBatchParts - 1;
+  IF(nBatchEnd > nParts);
+    nBatchEnd = nParts;
+  ENDIF;
 
-  sJobId = RunProcess('Merch.Version.Copy.Forecast.Reload', 'pSourceVersion', pSourceVersion, 'pTargetVersion', pTargetVersion, 'pPartIdx', nIdx, 'pFiscalYear', pCY, 'pBatchTag', pBatchTag);
-  IF(sJobIDs @= ''); sJobIDs = sJobId; ELSE; sJobIDs = sJobIDs | ',' | sJobId; ENDIF;
-  nDispatches = nDispatches + 1;
+  sJobIDs = '';
+  WHILE(nIdx <= nBatchEnd);
+    sJobId = RunProcess('Merch.Version.Copy.Forecast.Reload', 'pSourceVersion', pSourceVersion, 'pTargetVersion', pTargetVersion, 'pPartIdx', nIdx, 'pFiscalYear', pLY, 'pBatchTag', pBatchTag);
+    IF(sJobId @= '');
+      nFailed = nFailed + 1;
+      LogOutput('ERROR', cProcessName | ' | RunProcess returned an empty JobID | Part=' | TRIM(STR(nIdx, 8, 0)) | ' FY=' | pLY, 1);
+    ELSE;
+      IF(sJobIDs @= '');
+        sJobIDs = sJobId;
+      ELSE;
+        sJobIDs = sJobIDs | ',' | sJobId;
+      ENDIF;
+    ENDIF;
+    nDispatches = nDispatches + 1;
 
-  sJobId = RunProcess('Merch.Version.Copy.Forecast.Reload', 'pSourceVersion', pSourceVersion, 'pTargetVersion', pTargetVersion, 'pPartIdx', nIdx, 'pFiscalYear', pNY, 'pBatchTag', pBatchTag);
-  IF(sJobIDs @= ''); sJobIDs = sJobId; ELSE; sJobIDs = sJobIDs | ',' | sJobId; ENDIF;
-  nDispatches = nDispatches + 1;
+    sJobId = RunProcess('Merch.Version.Copy.Forecast.Reload', 'pSourceVersion', pSourceVersion, 'pTargetVersion', pTargetVersion, 'pPartIdx', nIdx, 'pFiscalYear', pCY, 'pBatchTag', pBatchTag);
+    IF(sJobId @= '');
+      nFailed = nFailed + 1;
+      LogOutput('ERROR', cProcessName | ' | RunProcess returned an empty JobID | Part=' | TRIM(STR(nIdx, 8, 0)) | ' FY=' | pCY, 1);
+    ELSE;
+      IF(sJobIDs @= '');
+        sJobIDs = sJobId;
+      ELSE;
+        sJobIDs = sJobIDs | ',' | sJobId;
+      ENDIF;
+    ENDIF;
+    nDispatches = nDispatches + 1;
 
-  nIdx = nIdx + 1;
+    sJobId = RunProcess('Merch.Version.Copy.Forecast.Reload', 'pSourceVersion', pSourceVersion, 'pTargetVersion', pTargetVersion, 'pPartIdx', nIdx, 'pFiscalYear', pNY, 'pBatchTag', pBatchTag);
+    IF(sJobId @= '');
+      nFailed = nFailed + 1;
+      LogOutput('ERROR', cProcessName | ' | RunProcess returned an empty JobID | Part=' | TRIM(STR(nIdx, 8, 0)) | ' FY=' | pNY, 1);
+    ELSE;
+      IF(sJobIDs @= '');
+        sJobIDs = sJobId;
+      ELSE;
+        sJobIDs = sJobIDs | ',' | sJobId;
+      ENDIF;
+    ENDIF;
+    nDispatches = nDispatches + 1;
+
+    nIdx = nIdx + 1;
+  END;
+
+  nBatches = nBatches + 1;
+
+  # -------------------------------------------------------------------------
+  # THE BARRIER. Poll GetJobStatus per JobID - the Merch.Period.Close.Cat.Orch
+  # pattern. WaitForAllJobs was here until 2026-08-29 and DID NOT HOLD: measured
+  # in this very process on 2026-08-28 it logged three 'Failed to convert READ
+  # locks into READONLY locks before waiting for async jobs' errors, returned
+  # Elapsed=0.0s, and the parent finished while a Reload worker was still
+  # starting. GetJobStatus reports the job's real state whether or not it has
+  # started, so nBatchParts is finally an actual concurrency cap.
+  # -------------------------------------------------------------------------
+  sRest = sJobIDs;
+  WHILE(sRest @<> '');
+    nComma = SCAN(',', sRest);
+    IF(nComma = 0);
+      sJob = sRest;
+      sRest = '';
+    ELSE;
+      sJob = SUBST(sRest, 1, nComma - 1);
+      sRest = SUBST(sRest, nComma + 1, LONG(sRest) - nComma);
+    ENDIF;
+
+    IF(sJob @<> '');
+      nWaited = 0;
+      nStatus = GetJobStatus(sJob);
+      WHILE(nStatus = ProcessExecutionInProgress() & nWaited < nWorkerTimeoutMs);
+        Sleep(250);
+        nWaited = nWaited + 250;
+        nStatus = GetJobStatus(sJob);
+      END;
+
+      IF(nStatus = ProcessExecutionInProgress());
+        nTimedOut = nTimedOut + 1;
+        LogOutput('ERROR', cProcessName | ' | reload job ' | sJob | ' STILL RUNNING after ' | TRIM(STR(nWorkerTimeoutSec, 10, 0)) | 's - barrier gave up waiting', 1);
+      ELSE;
+        IF(nStatus = ProcessExitNormal());
+          nOK = nOK + 1;
+        ELSE;
+          nFailed = nFailed + 1;
+          LogOutput('ERROR', cProcessName | ' | reload job ' | sJob | ' exited abnormally, status=' | TRIM(STR(nStatus, 10, 0)), 1);
+        ENDIF;
+      ENDIF;
+    ENDIF;
+  END;
 END;
 
-IF(sJobIDs @<> '');
-  WaitForAllJobs(sJobIDs);
-ENDIF;
+# UNCONDITIONAL and BEFORE any abort. The ProcessControl write is gone; these counters
+# are the whole diagnosis of whether the reload completed.
+LogOutput('INFO', 'TIMING END: ' | cProcessName | ' | Dispatches=' | TRIM(STR(nDispatches, 12, 0)) | ' | Batches=' | TRIM(STR(nBatches, 12, 0)) | ' | OK=' | TRIM(STR(nOK, 12, 0)) | ' | Failed=' | TRIM(STR(nFailed, 12, 0)) | ' | TimedOut=' | TRIM(STR(nTimedOut, 12, 0)) | ' | Elapsed=' | TRIM(STR((NOW - nStartTime) * 86400, 12, 1)) | 's', 1);
 
-IF(CellIsUpdateable('ProcessControl', cProcessName, 'SubsetCount') = 0);
-  LogOutput('ERROR', cProcessName | ' | ProcessControl.SubsetCount not updateable', 1);
-ELSE;
-  CellPutN(nDispatches, 'ProcessControl', cProcessName, 'SubsetCount');
+# A reload that silently drops partitions leaves a target that is NOT an exact match of
+# its source - the defect this whole sweep exists to fix. Fail loudly instead.
+IF(nFailed > 0 % nTimedOut > 0);
+  LogOutput('ERROR', cProcessName | ' | ABORTING: ' | TRIM(STR(nFailed, 12, 0)) | ' reload worker(s) failed and ' | TRIM(STR(nTimedOut, 12, 0)) | ' timed out of ' | TRIM(STR(nDispatches, 12, 0)) | ' dispatched. ' | pTargetVersion | ' is PARTIALLY reloaded.', 1);
+  ProcessError;
 ENDIF;
-
-LogOutput('INFO', 'TIMING END: ' | cProcessName | ' | Dispatches=' | TRIM(STR(nDispatches, 12, 0)) | ' | Elapsed=' | TRIM(STR((NOW - nStartTime) * 86400, 12, 1)) | 's', 1);
 
 #endregion

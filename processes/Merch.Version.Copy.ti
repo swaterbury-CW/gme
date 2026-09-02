@@ -1,0 +1,434 @@
+#region Prolog
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+#Region : Process Header
+# DEVELOPER: Steve Waterbury
+# CREATED ON: 2026-03-22
+# LAST UPDATE: 2026-08-31
+# CHANGED BY: Steve Waterbury
+# CHANGE HISTORY:
+#   2026-03-22 | Steve Waterbury | Creation - orchestrator
+#   2026-05-14 | Steve Waterbury | Add Merch Forecast routing branch
+#   2026-06-10 | Steve Waterbury | Epilog copy Merch Version attributes; LogOutput 3-arg
+#   2026-06-19 | Steve Waterbury | Add nDimCount=6 branch -> Copy.PlanReporting
+#   2026-08-27 | Steve Waterbury | Explicit pSkipCalcs to every worker; unique run token; optional pTimePeriod
+#   2026-08-31 | Steve Waterbury | Barrier rebuilt on the Close.Cat.Orch GetJobStatus poll; Data tab collects, Epilog dispatches in batches; abort before the attribute copy
+#   2026-08-31 | Steve Waterbury | Drop the stale category argument - Copy.Forecast no longer has that parameter
+#   2026-08-31 | Steve Waterbury | Joined clear phase; self-copy guard drives pFreeze/pClear; pMaxParts forwarded
+#   2026-08-31 | Steve Waterbury | Self-copy guard extended to the attribute copy - Copy.Attributes rejects identical source and target
+#EndRegion
+
+cProcessName = GetProcessName();
+
+sLogLevel = CellGetS('ProcessControl', cProcessName, 'LoggingLevel');
+IF(sLogLevel @= '');
+  sLogLevel = 'OFF';
+ENDIF;
+bLogInfo = 0;
+IF(sLogLevel @= 'INFO' % sLogLevel @= 'DEBUG');
+  bLogInfo = 1;
+ENDIF;
+bLogDebug = 0;
+IF(sLogLevel @= 'DEBUG');
+  bLogDebug = 1;
+ENDIF;
+
+IF(pSourceVersion @= '' % pTargetVersion @= '');
+  LogOutput('ERROR', cProcessName | ' | Missing parameters', 1);
+  ProcessError;
+ENDIF;
+IF(DIMIX('Merch Version', pSourceVersion) = 0);
+  LogOutput('ERROR', cProcessName | ' | Source version not found: ' | pSourceVersion, 1);
+  ProcessError;
+ENDIF;
+IF(DIMIX('Merch Version', pTargetVersion) = 0);
+  LogOutput('ERROR', cProcessName | ' | Target version not found: ' | pTargetVersion, 1);
+  ProcessError;
+ENDIF;
+IF(pTimePeriod @<> '' & DIMIX('Merch Time Period', pTimePeriod) = 0);
+  LogOutput('ERROR', cProcessName | ' | Invalid pTimePeriod: ' | pTimePeriod, 1);
+  ProcessError;
+ENDIF;
+
+nBatchSize = pBatchSize;
+IF(nBatchSize <= 0);
+  nBatchSize = 6;
+ENDIF;
+nWorkerTimeoutSec = pWorkerTimeoutSec;
+IF(nWorkerTimeoutSec <= 0);
+  nWorkerTimeoutSec = 1800;
+ENDIF;
+nWorkerTimeoutMs = nWorkerTimeoutSec * 1000;
+nUseRun = pUseRunProcess;
+nMaxParts = pMaxParts;
+IF(nMaxParts < 0);
+  nMaxParts = 0;
+ENDIF;
+
+# SELF-COPY GUARD. Merch.Version.ConvertToStatic freezes a version by copying it onto
+# ITSELF. Clearing the target there DESTROYS THE SOURCE before it is read. Copy.Forecast
+# already models this with pFreeze - '1 = self-copy freeze; suppresses the clear' - but
+# this orchestrator passed NOTHING for it, so it defaulted to 0 and a self-copy routed
+# through here would have cleared the Forecast target. Resolved once, here, and applied to
+# FOUR paths: pFreeze on the Forecast leg, pClear on Plan Reporting, the generic clear
+# phase, and the attribute copy at the very end.
+nFreeze = 0;
+IF(pSourceVersion @= pTargetVersion);
+  nFreeze = 1;
+ENDIF;
+nClear = 1 - nFreeze;
+
+# RUN TOKEN. The old name was 'TI_VersionCopy_' | TRIM(STR(NOW, 15, 0)); STR(NOW,15,0) is
+# ZERO DECIMALS and therefore the DAY serial, so every run on one day built the SAME
+# subset name on }Cubes and a second run destroyed the first run's live datasource.
+nNow = NOW;
+nRunToken = INT((nNow - INT(nNow)) * 86400);
+IF(nRunToken <= 0);
+  nRunToken = 1;
+ENDIF;
+
+# SkipCalcs is resolved ONCE, here. Workers run in their OWN transactions and cannot see
+# an uncommitted AttrPutS - they read BLANK - so they are TOLD, not left to infer.
+nSkipParam = pSkipCalcs;
+sTgtType = TRIM(ATTRS('Merch Version', pTargetVersion, 'Version_Type'));
+IF(nSkipParam >= 0);
+  nSkip = nSkipParam;
+  sSkipSource = 'param';
+ELSE;
+  nSkip = 1;
+  IF(sTgtType @= 'Static');
+    nSkip = 0;
+  ENDIF;
+  sSkipSource = 'inferred';
+ENDIF;
+
+nStart = NOW;
+nCubes = 0;
+nDispatched = 0;
+nBatches = 0;
+nOK = 0;
+nFailed = 0;
+nTimedOut = 0;
+nUnsupported = 0;
+nClrDispatched = 0;
+nClrBatches = 0;
+nClrOK = 0;
+nClrFailed = 0;
+nClrTimedOut = 0;
+
+sDelim = CHAR(9);
+sCubeList = '';
+
+LogOutput('INFO', 'TIMING START: ' | cProcessName | ' | ' | pSourceVersion | ' -> ' | pTargetVersion | ' | TargetType=' | sTgtType | ' | SkipCalcs=' | TRIM(STR(nSkip, 1, 0)) | ' (' | sSkipSource | ') | Freeze=' | TRIM(STR(nFreeze, 1, 0)) | ' | TP=' | pTimePeriod | ' | MaxParts=' | TRIM(STR(nMaxParts, 10, 0)) | ' | BatchSize=' | TRIM(STR(nBatchSize, 10, 0)) | ' | Parallel=' | TRIM(STR(nUseRun, 1, 0)) | ' | Run=' | TRIM(STR(nRunToken, 10, 0)), 1);
+
+sSubset = 'TI_VersionCopy_' | TRIM(STR(nRunToken, 10, 0));
+IF(SubsetExists('}Cubes', sSubset) = 1);
+  SubsetDestroy('}Cubes', sSubset);
+ENDIF;
+SubsetCreateByMDX(sSubset, '{TM1SUBSETALL([}Cubes])}', '}Cubes', 0);
+
+DatasourceType = 'SUBSET';
+DatasourceNameForServer = '}Cubes';
+DatasourceDimensionSubset = sSubset;
+
+#endregion
+#region Metadata
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+
+#endregion
+#region Data
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+# COLLECT ONLY. The Epilog owns dispatch so the barrier can bound concurrency - the
+# Close.Cat.Orch shape. Dispatching from here made every worker start as its row was read,
+# so no batch size could bound anything.
+sCubeName = vCube;
+
+IF(SUBST(sCubeName, 1, 1) @= '}');
+  IF(bLogDebug = 1);
+    LogOutput('DEBUG', cProcessName | ' | Skipping system cube: ' | sCubeName, 1);
+  ENDIF;
+ELSE;
+  nDimCount = CubeDimensionCountGet(sCubeName);
+  nDimIdx = 1;
+  bHasVersion = 0;
+  WHILE(nDimIdx <= nDimCount);
+    IF(TABDIM(sCubeName, nDimIdx) @= 'Merch Version');
+      bHasVersion = 1;
+      nDimIdx = nDimCount;
+    ENDIF;
+    nDimIdx = nDimIdx + 1;
+  END;
+
+  IF(bHasVersion = 1);
+    IF(nDimCount >= 3 & nDimCount <= 6);
+      sCubeList = sCubeList | sCubeName | sDelim;
+      nCubes = nCubes + 1;
+    ELSE;
+      nUnsupported = nUnsupported + 1;
+      LogOutput('ERROR', cProcessName | ' | Unsupported dim count ' | TRIM(STR(nDimCount, 2, 0)) | ' - cube NOT copied: ' | sCubeName, 1);
+    ENDIF;
+  ENDIF;
+ENDIF;
+
+#endregion
+#region Epilog
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+IF(SubsetExists('}Cubes', sSubset) = 1);
+  SubsetDestroy('}Cubes', sSubset);
+ENDIF;
+
+#Region : PHASE 1 - CLEAR THE TARGET. Separate committed jobs, JOINED before any copy.
+# Steve Waterbury 2026-08-31: the clear goes on a separate commit. It is dispatched as its
+# own job and joined here, never inlined into a copy worker - a clear still sitting in this
+# transaction is invisible to a child, which runs in its own transaction.
+# WHY IT EXISTS: Copy.5Dim, Copy.TPSKU and Copy.SKU never cleared their target. Their
+# extract skips zeroes and their Data tab skips nVal=0, so a cell that is zero or empty in
+# the SOURCE and non-zero in the TARGET was never overwritten and survived the copy.
+# Merch Forecast is EXCLUDED - Copy.Forecast owns its clear through pFreeze.
+# The 6-dim Merch Plan Reporting is EXCLUDED - Copy.PlanReporting owns its clear via pClear.
+IF(nFreeze = 0);
+  sClrRemaining = sCubeList;
+  WHILE(sClrRemaining @<> '');
+
+    sJobIDs = '';
+    nInBatch = 0;
+
+    WHILE(nInBatch < nBatchSize & sClrRemaining @<> '');
+      nPos = SCAN(sDelim, sClrRemaining);
+      IF(nPos = 0);
+        sOne = sClrRemaining;
+        sClrRemaining = '';
+      ELSE;
+        sOne = SUBST(sClrRemaining, 1, nPos - 1);
+        sClrRemaining = SUBST(sClrRemaining, nPos + 1, LONG(sClrRemaining) - nPos);
+      ENDIF;
+
+      IF(sOne @<> '' & sOne @<> 'Merch Forecast');
+        nThisDims = CubeDimensionCountGet(sOne);
+        IF(nThisDims >= 3 & nThisDims <= 5);
+          nClrDispatched = nClrDispatched + 1;
+          IF(nUseRun = 1);
+            sJobId = RunProcess('Merch.Version.Copy.Clear', 'pCubeName', sOne, 'pTargetVersion', pTargetVersion);
+            IF(sJobId @= '');
+              nClrFailed = nClrFailed + 1;
+              LogOutput('ERROR', cProcessName | ' | clear dispatch returned an empty JobID for cube ' | sOne, 1);
+            ELSE;
+              IF(sJobIDs @= '');
+                sJobIDs = sJobId;
+              ELSE;
+                sJobIDs = sJobIDs | ',' | sJobId;
+              ENDIF;
+            ENDIF;
+          ELSE;
+            nRC = ExecuteProcess('Merch.Version.Copy.Clear', 'pCubeName', sOne, 'pTargetVersion', pTargetVersion);
+            IF(nRC = 0);
+              nClrOK = nClrOK + 1;
+            ELSE;
+              nClrFailed = nClrFailed + 1;
+              LogOutput('ERROR', cProcessName | ' | serial clear FAILED for cube ' | sOne | ' RC=' | TRIM(STR(nRC, 10, 0)), 1);
+            ENDIF;
+          ENDIF;
+          nInBatch = nInBatch + 1;
+        ENDIF;
+      ENDIF;
+    END;
+
+    IF(nInBatch > 0);
+      nClrBatches = nClrBatches + 1;
+    ENDIF;
+
+    sRest = sJobIDs;
+    WHILE(sRest @<> '');
+      nComma = SCAN(',', sRest);
+      IF(nComma = 0);
+        sJob = sRest;
+        sRest = '';
+      ELSE;
+        sJob = SUBST(sRest, 1, nComma - 1);
+        sRest = SUBST(sRest, nComma + 1, LONG(sRest) - nComma);
+      ENDIF;
+
+      IF(sJob @<> '');
+        nWaited = 0;
+        nStatus = GetJobStatus(sJob);
+        WHILE(nStatus = ProcessExecutionInProgress() & nWaited < nWorkerTimeoutMs);
+          Sleep(250);
+          nWaited = nWaited + 250;
+          nStatus = GetJobStatus(sJob);
+        END;
+
+        IF(nStatus = ProcessExecutionInProgress());
+          nClrTimedOut = nClrTimedOut + 1;
+          LogOutput('ERROR', cProcessName | ' | clear job ' | sJob | ' STILL RUNNING after ' | TRIM(STR(nWorkerTimeoutSec, 10, 0)) | 's - barrier gave up waiting', 1);
+        ELSE;
+          IF(nStatus = ProcessExitNormal());
+            nClrOK = nClrOK + 1;
+          ELSE;
+            nClrFailed = nClrFailed + 1;
+            LogOutput('ERROR', cProcessName | ' | clear job ' | sJob | ' exited abnormally, status=' | TRIM(STR(nStatus, 10, 0)), 1);
+          ENDIF;
+        ENDIF;
+      ENDIF;
+    END;
+
+  END;
+
+  LogOutput('INFO', 'TIMING CLEAR DONE: ' | cProcessName | ' | Tgt=' | pTargetVersion | ' | Dispatched=' | TRIM(STR(nClrDispatched, 10, 0)) | ' | Batches=' | TRIM(STR(nClrBatches, 10, 0)) | ' | OK=' | TRIM(STR(nClrOK, 10, 0)) | ' | Failed=' | TRIM(STR(nClrFailed, 10, 0)) | ' | TimedOut=' | TRIM(STR(nClrTimedOut, 10, 0)) | ' | Elapsed=' | TRIM(STR((NOW - nStart) * 86400, 12, 1)) | 's', 1);
+
+  # A HALF-CLEARED TARGET MUST NOT BE COPIED ONTO. Abort while the damage is still just
+  # an empty slice, not a silent mixture of new and stale cells.
+  IF(nClrFailed > 0 % nClrTimedOut > 0);
+    LogOutput('ERROR', cProcessName | ' | ABORTING before the copy: ' | TRIM(STR(nClrFailed, 10, 0)) | ' clear worker(s) failed and ' | TRIM(STR(nClrTimedOut, 10, 0)) | ' timed out of ' | TRIM(STR(nClrDispatched, 10, 0)) | ' dispatched. ' | pTargetVersion | ' is PARTIALLY cleared - do not copy onto it.', 1);
+    ProcessError;
+  ENDIF;
+ELSE;
+  LogOutput('INFO', cProcessName | ' | SELF-COPY of ' | pSourceVersion | ' - clear phase SKIPPED. Clearing the target here would destroy the source before it is read.', 1);
+ENDIF;
+#EndRegion
+
+#Region : PHASE 2 - COPY, dispatched in bounded batches, JOINING each before the next
+sRemaining = sCubeList;
+WHILE(sRemaining @<> '');
+
+  sJobIDs = '';
+  nInBatch = 0;
+
+  WHILE(nInBatch < nBatchSize & sRemaining @<> '');
+    nPos = SCAN(sDelim, sRemaining);
+    IF(nPos = 0);
+      sOne = sRemaining;
+      sRemaining = '';
+    ELSE;
+      sOne = SUBST(sRemaining, 1, nPos - 1);
+      sRemaining = SUBST(sRemaining, nPos + 1, LONG(sRemaining) - nPos);
+    ENDIF;
+
+    IF(sOne @<> '');
+      nThisDims = CubeDimensionCountGet(sOne);
+      nDispatched = nDispatched + 1;
+      sJobId = '';
+      nRC = 0;
+
+      # The stale category argument is NOT passed - EP-CTS8q removed that parameter from
+      # Copy.Forecast and this caller was left passing it, which aborted every Forecast copy
+      # on initialization. Compilation does not catch that: child parameter names resolve
+      # when the CHILD initialises.
+      IF(nUseRun = 1);
+        IF(sOne @= 'Merch Forecast');
+          sJobId = RunProcess('Merch.Version.Copy.Forecast', 'pSourceVersion', pSourceVersion, 'pTargetVersion', pTargetVersion, 'pFreeze', nFreeze, 'pSkipCalcs', nSkip, 'pMaxParts', nMaxParts);
+        ELSEIF(nThisDims = 6);
+          sJobId = RunProcess('Merch.Version.Copy.PlanReporting', 'pSourceVersion', pSourceVersion, 'pTargetVersion', pTargetVersion, 'pClear', nClear, 'pSkipCalcs', nSkip, 'pTimePeriod', pTimePeriod, 'pPartIdx', (nRunToken * 100) + nDispatched);
+        ELSEIF(nThisDims = 5);
+          sJobId = RunProcess('Merch.Version.Copy.5Dim', 'pCubeName', sOne, 'pSourceVersion', pSourceVersion, 'pTargetVersion', pTargetVersion, 'pSkipCalcs', nSkip);
+        ELSEIF(nThisDims = 4);
+          sJobId = RunProcess('Merch.Version.Copy.TPSKU', 'pCubeName', sOne, 'pSourceVersion', pSourceVersion, 'pTargetVersion', pTargetVersion, 'pSkipCalcs', nSkip);
+        ELSE;
+          sJobId = RunProcess('Merch.Version.Copy.SKU', 'pCubeName', sOne, 'pSourceVersion', pSourceVersion, 'pTargetVersion', pTargetVersion, 'pSkipCalcs', nSkip);
+        ENDIF;
+
+        IF(sJobId @= '');
+          nFailed = nFailed + 1;
+          LogOutput('ERROR', cProcessName | ' | copy dispatch returned an empty JobID for cube ' | sOne, 1);
+        ELSE;
+          IF(sJobIDs @= '');
+            sJobIDs = sJobId;
+          ELSE;
+            sJobIDs = sJobIDs | ',' | sJobId;
+          ENDIF;
+        ENDIF;
+      ELSE;
+        IF(sOne @= 'Merch Forecast');
+          nRC = ExecuteProcess('Merch.Version.Copy.Forecast', 'pSourceVersion', pSourceVersion, 'pTargetVersion', pTargetVersion, 'pFreeze', nFreeze, 'pSkipCalcs', nSkip, 'pMaxParts', nMaxParts);
+        ELSEIF(nThisDims = 6);
+          nRC = ExecuteProcess('Merch.Version.Copy.PlanReporting', 'pSourceVersion', pSourceVersion, 'pTargetVersion', pTargetVersion, 'pClear', nClear, 'pSkipCalcs', nSkip, 'pTimePeriod', pTimePeriod, 'pPartIdx', (nRunToken * 100) + nDispatched);
+        ELSEIF(nThisDims = 5);
+          nRC = ExecuteProcess('Merch.Version.Copy.5Dim', 'pCubeName', sOne, 'pSourceVersion', pSourceVersion, 'pTargetVersion', pTargetVersion, 'pSkipCalcs', nSkip);
+        ELSEIF(nThisDims = 4);
+          nRC = ExecuteProcess('Merch.Version.Copy.TPSKU', 'pCubeName', sOne, 'pSourceVersion', pSourceVersion, 'pTargetVersion', pTargetVersion, 'pSkipCalcs', nSkip);
+        ELSE;
+          nRC = ExecuteProcess('Merch.Version.Copy.SKU', 'pCubeName', sOne, 'pSourceVersion', pSourceVersion, 'pTargetVersion', pTargetVersion, 'pSkipCalcs', nSkip);
+        ENDIF;
+
+        IF(nRC = 0);
+          nOK = nOK + 1;
+        ELSE;
+          nFailed = nFailed + 1;
+          LogOutput('ERROR', cProcessName | ' | serial worker FAILED for cube ' | sOne | ' RC=' | TRIM(STR(nRC, 10, 0)), 1);
+        ENDIF;
+      ENDIF;
+
+      nInBatch = nInBatch + 1;
+    ENDIF;
+  END;
+
+  IF(nInBatch > 0);
+    nBatches = nBatches + 1;
+  ENDIF;
+
+  # THE BARRIER. Poll GetJobStatus per JobID - the Merch.Period.Close.Cat.Orch pattern.
+  # WaitForAllJobs does NOT hold: it does not block on a job that is queued but not yet
+  # started, and it fails outright with 'Failed to convert READ locks into READONLY locks'
+  # when the caller holds read locks - which this process does, for its entire run, via the
+  # }Cubes subset datasource.
+  sRest = sJobIDs;
+  WHILE(sRest @<> '');
+    nComma = SCAN(',', sRest);
+    IF(nComma = 0);
+      sJob = sRest;
+      sRest = '';
+    ELSE;
+      sJob = SUBST(sRest, 1, nComma - 1);
+      sRest = SUBST(sRest, nComma + 1, LONG(sRest) - nComma);
+    ENDIF;
+
+    IF(sJob @<> '');
+      nWaited = 0;
+      nStatus = GetJobStatus(sJob);
+      WHILE(nStatus = ProcessExecutionInProgress() & nWaited < nWorkerTimeoutMs);
+        Sleep(250);
+        nWaited = nWaited + 250;
+        nStatus = GetJobStatus(sJob);
+      END;
+
+      IF(nStatus = ProcessExecutionInProgress());
+        nTimedOut = nTimedOut + 1;
+        LogOutput('ERROR', cProcessName | ' | copy job ' | sJob | ' STILL RUNNING after ' | TRIM(STR(nWorkerTimeoutSec, 10, 0)) | 's - barrier gave up waiting', 1);
+      ELSE;
+        IF(nStatus = ProcessExitNormal());
+          nOK = nOK + 1;
+        ELSE;
+          nFailed = nFailed + 1;
+          LogOutput('ERROR', cProcessName | ' | copy job ' | sJob | ' exited abnormally, status=' | TRIM(STR(nStatus, 10, 0)), 1);
+        ENDIF;
+      ENDIF;
+    ENDIF;
+  END;
+
+END;
+#EndRegion
+
+# UNCONDITIONAL and BEFORE any abort - one line, and it is the whole diagnosis.
+LogOutput('INFO', 'TIMING END: ' | cProcessName | ' | ' | pSourceVersion | ' -> ' | pTargetVersion | ' | SkipCalcs=' | TRIM(STR(nSkip, 1, 0)) | ' | Freeze=' | TRIM(STR(nFreeze, 1, 0)) | ' | Cubes=' | TRIM(STR(nCubes, 10, 0)) | ' | Cleared=' | TRIM(STR(nClrOK, 10, 0)) | '/' | TRIM(STR(nClrDispatched, 10, 0)) | ' | Dispatched=' | TRIM(STR(nDispatched, 10, 0)) | ' | Batches=' | TRIM(STR(nBatches, 10, 0)) | ' | OK=' | TRIM(STR(nOK, 10, 0)) | ' | Failed=' | TRIM(STR(nFailed, 10, 0)) | ' | TimedOut=' | TRIM(STR(nTimedOut, 10, 0)) | ' | Unsupported=' | TRIM(STR(nUnsupported, 10, 0)) | ' | Elapsed=' | TRIM(STR((NOW - nStart) * 86400, 12, 1)) | 's', 1);
+
+# ABORT BEFORE THE ATTRIBUTE COPY. Merch.Version.Copy.Attributes stamps the target as a
+# complete copy of the source; running it over a partial copy is what makes a target that
+# is not an exact match of its source and says nothing is wrong.
+IF(nFailed > 0 % nTimedOut > 0 % nUnsupported > 0);
+  LogOutput('ERROR', cProcessName | ' | ABORTING before the attribute copy: Failed=' | TRIM(STR(nFailed, 10, 0)) | ' TimedOut=' | TRIM(STR(nTimedOut, 10, 0)) | ' Unsupported=' | TRIM(STR(nUnsupported, 10, 0)) | ' of ' | TRIM(STR(nDispatched, 10, 0)) | ' dispatched. ' | pTargetVersion | ' is PARTIALLY copied.', 1);
+  ProcessError;
+ENDIF;
+
+# THE ATTRIBUTE COPY IS PART OF THE SELF-COPY GUARD TOO. Merch.Version.Copy.Attributes
+# ProcessErrors on 'Source and target versions are identical', so a freeze routed through
+# here completed every worker correctly and then aborted on this one line. Copying a
+# version's attributes onto itself is meaningless, so the benign path is an IF/ELSE.
+IF(nFreeze = 0);
+  ExecuteProcess('Merch.Version.Copy.Attributes', 'pSourceVersion', pSourceVersion, 'pTargetVersion', pTargetVersion);
+ELSE;
+  LogOutput('INFO', cProcessName | ' | SELF-COPY - attribute copy SKIPPED. Merch.Version.Copy.Attributes rejects identical source and target.', 1);
+ENDIF;
+
+#endregion

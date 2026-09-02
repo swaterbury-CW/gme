@@ -1,0 +1,151 @@
+#region Prolog
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+#Region : Process Header
+# DEVELOPER: Steve Waterbury
+# CREATED ON: 2026-03-22
+# LAST UPDATE: 2026-08-28
+# CHANGED BY: Steve Waterbury
+# CHANGE HISTORY:
+#   2026-03-22 | Steve Waterbury | Creation
+#   2026-04-26 | Steve Waterbury | TM1CubeView datasource, MDX-axis-order vars
+#   2026-04-27 | Steve Waterbury | Always-on TIMING logs
+#   2026-05-06 | Steve Waterbury | Fix MDX: explicit [Dim].[Dim] for multi-hierarchy compat
+#   2026-08-25 | Steve Waterbury | Explicit pSkipCalcs (-1 infers)
+#   2026-08-28 | Steve Waterbury | Run-unique view name
+#   2026-08-28 | Steve Waterbury | Stack TP * Category on ROWS; ON 2 dropped the dimension from the view
+#EndRegion
+
+cProcessName = GetProcessName();
+sLogLevel = CellGetS('ProcessControl', cProcessName, 'LoggingLevel');
+IF(sLogLevel @= '');
+  sLogLevel = 'OFF';
+ENDIF;
+bLogInfo = 0;
+IF(sLogLevel @= 'INFO' % sLogLevel @= 'DEBUG');
+  bLogInfo = 1;
+ENDIF;
+nCellsCopied = 0;
+
+# Local numeric copy of the parameter; only nSkipParam is used downstream.
+nSkipParam = pSkipCalcs;
+
+IF(pCubeName @= '' % pSourceVersion @= '' % pTargetVersion @= '');
+  LogOutput('ERROR', cProcessName | ' | missing param', 1);
+  ProcessError;
+ENDIF;
+IF(CubeExists(pCubeName) = 0);
+  LogOutput('ERROR', cProcessName | ' | cube missing: ' | pCubeName, 1);
+  ProcessError;
+ENDIF;
+IF(DIMIX('Merch Version', pSourceVersion) = 0);
+  LogOutput('ERROR', cProcessName | ' | bad source version: ' | pSourceVersion, 1);
+  ProcessError;
+ENDIF;
+IF(DIMIX('Merch Version', pTargetVersion) = 0);
+  LogOutput('ERROR', cProcessName | ' | bad target version: ' | pTargetVersion, 1);
+  ProcessError;
+ENDIF;
+
+# SkipCalcs is the CALLER's decision. Inferring it from the target's CURRENT
+# Version_Type is what makes a freeze lose everything: ConvertToStatic flips the
+# type only AFTER the copies land. -1 keeps the old inference for existing callers.
+sTargetVersionType = TRIM(ATTRS('Merch Version', pTargetVersion, 'Version_Type'));
+IF(nSkipParam >= 0);
+  nSkipRuleCalcs = nSkipParam;
+  sSkipSource = 'param';
+ELSE;
+  nSkipRuleCalcs = 1;
+  IF(sTargetVersionType @= 'Static');
+    nSkipRuleCalcs = 0;
+  ENDIF;
+  sSkipSource = 'inferred';
+ENDIF;
+
+nStart = NOW;
+LogOutput('INFO', 'TIMING START: ' | cProcessName | ' | Cube=' | pCubeName | ' | Src=' | pSourceVersion | ' | Tgt=' | pTargetVersion | ' | TargetType=' | sTargetVersionType | ' | SkipCalcs=' | TRIM(STR(nSkipRuleCalcs, 1, 0)) | ' (' | sSkipSource | ')', 1);
+
+cDimVer = TABDIM(pCubeName, 1);
+cDimTP = TABDIM(pCubeName, 2);
+cDimSKU = TABDIM(pCubeName, 3);
+cDimMeasure = TABDIM(pCubeName, 4);
+
+# RUN TOKEN. TRIM(STR(NOW,15,0)) is ZERO DECIMALS and therefore the DAY serial.
+nRunSec = INT((nStart - INT(nStart)) * 86400);
+IF(nRunSec <= 0);
+  nRunSec = 1;
+ENDIF;
+sView = 'TI_CopyTPSKU_' | TRIM(STR(INT(nStart), 15, 0)) | 'x' | TRIM(STR(nRunSec, 6, 0));
+
+# A TM1 VIEW HAS ONLY COLUMNS AND ROWS, PLUS TITLE DIMENSIONS. The previous form put
+# one dimension per axis - ON 0, ON 1, ON 2 - which does NOT give each its own axis.
+# Dimensions STACK onto an axis with the * operator. This is the shape
+# Merch.Version.Copy.PlanReporting.ToCalc uses for the SIX-dim Merch Plan Reporting cube.
+#
+# VARIABLE BINDING IS PRESERVED: a TM1CubeView binds in MDX-axis order, and the order
+# here is measure (columns) then TP, Category (rows, stack order) - identical to the
+# registered vMeasure/vTP/vSKU. The Data tab is unchanged.
+sMDX = 'SELECT NON EMPTY {TM1FILTERBYLEVEL({TM1SUBSETALL([' | cDimMeasure | '].[' | cDimMeasure | '])}, 0)} ON COLUMNS, ';
+sMDX = sMDX | 'NON EMPTY {TM1FILTERBYLEVEL({TM1SUBSETALL([' | cDimTP | '].[' | cDimTP | '])}, 0)}';
+sMDX = sMDX | ' * {TM1FILTERBYLEVEL({TM1SUBSETALL([' | cDimSKU | '].[' | cDimSKU | '])}, 0)} ON ROWS ';
+sMDX = sMDX | 'FROM [' | pCubeName | '] ';
+sMDX = sMDX | 'WHERE ([' | cDimVer | '].[' | cDimVer | '].[' | pSourceVersion | '])';
+
+IF(ViewExists(pCubeName, sView) = 1);
+  ViewDestroy(pCubeName, sView);
+ENDIF;
+ViewCreateByMDX(pCubeName, sView, sMDX, 1);
+ViewExtractSkipCalcsSet(pCubeName, sView, nSkipRuleCalcs);
+ViewExtractSkipZeroesSet(pCubeName, sView, 1);
+LogOutput('INFO', 'TIMING VIEW READY: ' | cProcessName | ' | Cube=' | pCubeName | ' | BuildSec=' | TRIM(STR((NOW - nStart) * 86400, 12, 1)), 1);
+
+DatasourceType = 'VIEW';
+DatasourceNameForServer = pCubeName;
+DatasourceCubeview = sView;
+
+#endregion
+#region Metadata
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+
+#endregion
+#region Data
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+sMeasType = DTYPE(cDimMeasure, vMeasure);
+IF(sMeasType @<> 'N' & sMeasType @<> 'S' & sMeasType @<> 'C');
+    ItemReject('Bad data: unknown measure type ' | sMeasType);
+ENDIF;
+
+IF(sMeasType @= 'S');
+    IF(Value @= '');
+        ItemSkip;
+    ENDIF;
+    IF(CellIsUpdateable(pCubeName, pTargetVersion, vTP, vSKU, vMeasure) = 0);
+        ItemSkip;
+    ENDIF;
+    CellPutS(Value, pCubeName, pTargetVersion, vTP, vSKU, vMeasure);
+    nCellsCopied = nCellsCopied + 1;
+    ItemSkip;
+ENDIF;
+
+nVal = NUMBR(Value);
+IF(nVal = 0);
+    ItemSkip;
+ENDIF;
+IF(CellIsUpdateable(pCubeName, pTargetVersion, vTP, vSKU, vMeasure) = 0);
+    ItemSkip;
+ENDIF;
+CellPutN(nVal, pCubeName, pTargetVersion, vTP, vSKU, vMeasure);
+nCellsCopied = nCellsCopied + 1;
+
+#endregion
+#region Epilog
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+IF(ViewExists(pCubeName, sView) = 1);
+  ViewDestroy(pCubeName, sView);
+ENDIF;
+LogOutput('INFO', 'TIMING END: ' | cProcessName | ' | Cube=' | pCubeName | ' | Src=' | pSourceVersion | ' | Tgt=' | pTargetVersion | ' | SkipCalcs=' | TRIM(STR(nSkipRuleCalcs, 1, 0)) | ' (' | sSkipSource | ') | Elapsed=' | TRIM(STR((NOW - nStart) * 86400, 12, 1)) | 's | Cells=' | TRIM(STR(nCellsCopied, 12, 0)), 1);
+
+#endregion

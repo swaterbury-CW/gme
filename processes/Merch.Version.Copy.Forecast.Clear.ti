@@ -1,0 +1,126 @@
+#region Prolog
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+#Region : Process Header
+# DEVELOPER: Steve Waterbury
+# CREATED ON: 2026-08-24
+# LAST UPDATE: 2026-08-28
+# CHANGED BY: Steve Waterbury
+# CHANGE HISTORY:
+#   2026-08-24 | Steve Waterbury | Initial: serial ViewZeroOut of copy target over LY/CY/NY
+#   2026-08-28 | Steve Waterbury | SkipCalcs=1; DISTINCT year window; run-unique view; drop ProcessControl write; split the timing log
+#   2026-08-28 | Steve Waterbury | Stack the year window * Roles leaves on ROWS; ON 2 dropped the dimension from the view
+#EndRegion
+
+cProcessName = GetProcessName();
+
+#Region : Logging Init
+sLogLevel = CellGetS('ProcessControl', cProcessName, 'LoggingLevel');
+IF(sLogLevel @= '');
+  sLogLevel = 'OFF';
+ENDIF;
+bLogInfo = 0;
+IF(sLogLevel @= 'INFO' % sLogLevel @= 'DEBUG');
+  bLogInfo = 1;
+ENDIF;
+#EndRegion
+
+#Region : Validation - all of it before the first ViewCreate
+IF(pTargetVersion @= '' % pLY @= '' % pCY @= '' % pNY @= '');
+  LogOutput('ERROR', cProcessName | ' | missing param', 1);
+  ProcessError;
+ENDIF;
+IF(DIMIX('Merch Version', pTargetVersion) = 0);
+  LogOutput('ERROR', cProcessName | ' | bad target version: ' | pTargetVersion, 1);
+  ProcessError;
+ENDIF;
+IF(DIMIX('Merch Time Period', pLY) = 0);
+  LogOutput('ERROR', cProcessName | ' | bad fiscal year: ' | pLY, 1);
+  ProcessError;
+ENDIF;
+IF(DIMIX('Merch Time Period', pCY) = 0);
+  LogOutput('ERROR', cProcessName | ' | bad fiscal year: ' | pCY, 1);
+  ProcessError;
+ENDIF;
+IF(DIMIX('Merch Time Period', pNY) = 0);
+  LogOutput('ERROR', cProcessName | ' | bad fiscal year: ' | pNY, 1);
+  ProcessError;
+ENDIF;
+#EndRegion
+
+nStartTime = NOW;
+
+# RUN TOKEN. TRIM(STR(NOW,15,0)) is ZERO DECIMALS and therefore the DAY serial, and this
+# process does ViewExists -> ViewDestroy before creating, so a second same-day run
+# destroyed the first run's live view mid-ViewZeroOut.
+nNow = NOW;
+nRunSec = INT((nNow - INT(nNow)) * 86400);
+IF(nRunSec <= 0);
+  nRunSec = 1;
+ENDIF;
+sView = 'TI_VCClrView_' | TRIM(STR(INT(nNow), 15, 0)) | 'x' | TRIM(STR(nRunSec, 6, 0));
+
+LogOutput('INFO', 'TIMING START: ' | cProcessName | ' | Tgt=' | pTargetVersion | ' | Years=' | pLY | '/' | pCY | '/' | pNY | ' | View=' | sView, 1);
+
+#Region : Clear view
+# A TM1 VIEW HAS ONLY COLUMNS AND ROWS, PLUS TITLE DIMENSIONS. The previous form put the
+# year window on ON 1 and the Roles leaves on ON 2; a third axis does not give that
+# dimension its own axis. Dimensions STACK onto an axis with the * operator - the shape
+# Merch.Version.Copy.PlanReporting.ToCalc uses for the SIX-dim Merch Plan Reporting cube.
+# This process has an EMPTY Data tab and binds no datasource variables, so unlike its
+# siblings there is no variable-order consideration here.
+#
+# DISTINCT wraps the three year sets: pLY / pCY / pNY may legitimately overlap or repeat,
+# and without it those DESCENDANTS sets put duplicate members on the axis.
+sMDX = 'SELECT NON EMPTY {TM1FILTERBYLEVEL({TM1SUBSETALL([Merch Forecast Measure].[Merch Forecast Measure])}, 0)} ON COLUMNS, ';
+sMDX = sMDX | 'NON EMPTY {DISTINCT({';
+sMDX = sMDX | 'TM1FILTERBYLEVEL({DESCENDANTS([Merch Time Period].[Merch Time Period].[' | pLY | '])}, 0), ';
+sMDX = sMDX | 'TM1FILTERBYLEVEL({DESCENDANTS([Merch Time Period].[Merch Time Period].[' | pCY | '])}, 0), ';
+sMDX = sMDX | 'TM1FILTERBYLEVEL({DESCENDANTS([Merch Time Period].[Merch Time Period].[' | pNY | '])}, 0)';
+sMDX = sMDX | '})}';
+sMDX = sMDX | ' * {TM1FILTERBYLEVEL({TM1SUBSETALL([Merch SKU].[Roles])}, 0)} ON ROWS ';
+sMDX = sMDX | 'FROM [Merch Forecast] ';
+sMDX = sMDX | 'WHERE ([Merch Version].[Merch Version].[' | pTargetVersion | '])';
+
+IF(ViewExists('Merch Forecast', sView) = 1);
+  ViewDestroy('Merch Forecast', sView);
+ENDIF;
+ViewCreateByMDX('Merch Forecast', sView, sMDX, 1);
+
+# SkipCalcs = 1. A RULE-DERIVED cell is not writable, so ViewZeroOut could never have
+# cleared it - carrying it in the view only forces the engine to evaluate rules. Where a
+# rule STETs the cell is STORED, so skip-calcs does not drop it and it still gets cleared.
+ViewExtractSkipCalcsSet('Merch Forecast', sView, 1);
+ViewExtractSkipZeroesSet('Merch Forecast', sView, 1);
+#EndRegion
+
+LogOutput('INFO', 'TIMING VIEW READY: ' | cProcessName | ' | Tgt=' | pTargetVersion | ' | BuildSec=' | TRIM(STR((NOW - nStartTime) * 86400, 12, 1)), 1);
+
+nZeroStart = NOW;
+ViewZeroOut('Merch Forecast', sView);
+LogOutput('INFO', 'TIMING ZEROOUT DONE: ' | cProcessName | ' | Tgt=' | pTargetVersion | ' | ZeroSec=' | TRIM(STR((NOW - nZeroStart) * 86400, 12, 1)), 1);
+
+DatasourceType = 'NULL';
+
+#endregion
+#region Metadata
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+
+#endregion
+#region Data
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+
+#endregion
+#region Epilog
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+IF(ViewExists('Merch Forecast', sView) = 1);
+  ViewDestroy('Merch Forecast', sView);
+ENDIF;
+
+# No ProcessControl write. Workers log; they do not write shared control cubes.
+LogOutput('INFO', 'TIMING END: ' | cProcessName | ' | Tgt=' | pTargetVersion | ' | Years=' | pLY | '/' | pCY | '/' | pNY | ' | Elapsed=' | TRIM(STR((NOW - nStartTime) * 86400, 12, 1)) | 's', 1);
+
+#endregion

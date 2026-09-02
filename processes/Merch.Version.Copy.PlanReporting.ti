@@ -1,0 +1,196 @@
+#region Prolog
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+#Region : Process Header
+# DEVELOPER: Steve Waterbury
+# CREATED ON: 2026-06-19
+# LAST UPDATE: 2026-08-27
+# CHANGED BY: Steve Waterbury
+# COMMENTS: Version copy for the 6-dim Merch Plan Reporting cube. Fans out one .Week worker per
+#  scoped leaf week; each worker is bounded to a single week and receives prebuilt MDX.
+#  pTimePeriod scopes to descendants of pTimePeriod; blank = all leaf weeks.
+# CHANGE HISTORY:
+#   2026-06-19 | Steve Waterbury | Initial native-view PR version copy
+#   2026-06-24 | Steve Waterbury | Add pClear (default 1) clear-before-load
+#   2026-06-24 | Steve Waterbury | Add pPartIdx for collision-free view names under fan-out
+#   2026-06-29 | Steve Waterbury | Add pTimePeriod scope
+#   2026-08-25 | Steve Waterbury | Fan out per week; single whole-cube view stalled
+#   2026-08-27 | Steve Waterbury | Explicit pSkipCalcs resolved once and passed to every worker
+#   2026-08-27 | Steve Waterbury | Remove the Merch Time Period subset; enumerate leaves in the Epilog
+#EndRegion
+
+cProcessName = GetProcessName();
+sLogLevel = CellGetS('ProcessControl', cProcessName, 'LoggingLevel');
+IF(sLogLevel @= '');
+  sLogLevel = 'OFF';
+ENDIF;
+bLogInfo = 0;
+IF(sLogLevel @= 'INFO' % sLogLevel @= 'DEBUG');
+  bLogInfo = 1;
+ENDIF;
+
+IF(pSourceVersion @= '' % pTargetVersion @= '');
+  LogOutput('ERROR', cProcessName | ' | Missing version param', 1);
+  ProcessError;
+ENDIF;
+IF(DIMIX('Merch Version', pSourceVersion) = 0 % DIMIX('Merch Version', pTargetVersion) = 0);
+  LogOutput('ERROR', cProcessName | ' | Bad version', 1);
+  ProcessError;
+ENDIF;
+IF(pTimePeriod @<> '' & DIMIX('Merch Time Period', pTimePeriod) = 0);
+  LogOutput('ERROR', cProcessName | ' | Invalid pTimePeriod: ' | pTimePeriod, 1);
+  ProcessError;
+ENDIF;
+
+nClear = pClear;
+
+# pPartIdx names this run's worker views. The old fallback was INT(NOW), which truncates
+# the time fraction and is the DAY serial - every run on one day produced identical object
+# names. Seconds-within-day is used instead, and the caller should pass an explicit index.
+nPartIdx = pPartIdx;
+IF(nPartIdx <= 0);
+  nNow = NOW;
+  nPartIdx = INT((nNow - INT(nNow)) * 86400);
+  IF(nPartIdx <= 0);
+    nPartIdx = 1;
+  ENDIF;
+ENDIF;
+
+cCube = 'Merch Plan Reporting';
+cTPDim = 'Merch Time Period';
+
+# TRIM: a hand-entered ' Static' must not read as a non-Static type.
+sTargetVersionType = TRIM(ATTRS('Merch Version', pTargetVersion, 'Version_Type'));
+
+# SkipCalcs is resolved ONCE here and passed to every worker. The workers are RunProcess
+# children and cannot see a Version_Type the caller wrote in the caller's own transaction.
+nSkipParam = pSkipCalcs;
+IF(nSkipParam >= 0);
+  nSkipRuleCalcs = nSkipParam;
+  sSkipSource = 'param';
+ELSE;
+  nSkipRuleCalcs = 1;
+  IF(sTargetVersionType @= 'Static');
+    nSkipRuleCalcs = 0;
+  ENDIF;
+  sSkipSource = 'inferred';
+ENDIF;
+
+# Worker logging level, read ONCE so the fan-out does not have every job reading the same
+# ProcessControl cell.
+sWorkerLog = CellGetS('ProcessControl', 'Merch.Version.Copy.PlanReporting.Week', 'LoggingLevel');
+
+DatasourceType = 'NULL';
+
+nStartTime = NOW;
+LogOutput('INFO', 'TIMING START: ' | cProcessName | ' | ' | pSourceVersion | ' -> ' | pTargetVersion | ' | TargetType=' | sTargetVersionType | ' | SkipCalcs=' | TRIM(STR(nSkipRuleCalcs, 1, 0)) | ' (' | sSkipSource | ') | Clear=' | TRIM(STR(nClear, 3, 0)) | ' | TP=' | pTimePeriod | ' | Part=' | TRIM(STR(nPartIdx, 15, 0)), 1);
+
+#endregion
+#region Metadata
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+
+#endregion
+#region Data
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+
+#endregion
+#region Epilog
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+# NO SUBSET IS CREATED ON Merch Time Period. The previous version built
+# 'TI_CopyPRfan_tp_' | nPartIdx and walked it with SubsetGetElementName. Two concurrent
+# dispatches of this process computed the same name and destroyed each other's subset,
+# and holding any subset on this dimension contends with sibling Copy.Forecast, which
+# holds its own subset datasource on it. Leaf weeks are enumerated directly instead.
+# TI-BUILTIN-001 forbids this loop in the PROLOG; the Epilog is where dispatch already is.
+cCols = '{TM1FILTERBYLEVEL({TM1SUBSETALL([Merch Plan Reporting Measure].[Merch Plan Reporting Measure])},0)}';
+nBatchWeeks = 6;
+nDispatched = 0;
+nWeeks = 0;
+
+nDimSize = DIMSIZ(cTPDim);
+nIdx = 1;
+sJobIDs = '';
+nInBatch = 0;
+
+WHILE(nIdx <= nDimSize);
+  sWk = DIMNM(cTPDim, nIdx);
+  bTake = 0;
+  IF(ELLEV(cTPDim, sWk) = 0);
+    IF(pTimePeriod @= '');
+      bTake = 1;
+    ELSEIF(sWk @= pTimePeriod);
+      bTake = 1;
+    ELSEIF(ELISANC(cTPDim, pTimePeriod, sWk) = 1);
+      bTake = 1;
+    ENDIF;
+  ENDIF;
+
+  IF(bTake = 1);
+    nWeeks = nWeeks + 1;
+    sRows = '{[Merch Time Period].[Merch Time Period].[' | sWk | ']} * {TM1FILTERBYLEVEL({TM1SUBSETALL([Merch SKU].[Merch SKU])},0)} * {TM1FILTERBYLEVEL({TM1SUBSETALL([Merch Channel].[Merch Channel])},0)} * {TM1FILTERBYLEVEL({TM1SUBSETALL([Merch Lifecycle].[Merch Lifecycle])},0)}';
+    sLoadMDX = 'SELECT NON EMPTY ' | cCols | ' ON COLUMNS, NON EMPTY ' | sRows | ' ON ROWS FROM [Merch Plan Reporting] WHERE ([Merch Version].[Merch Version].[' | pSourceVersion | '])';
+    sClearMDX = 'SELECT NON EMPTY ' | cCols | ' ON COLUMNS, NON EMPTY ' | sRows | ' ON ROWS FROM [Merch Plan Reporting] WHERE ([Merch Version].[Merch Version].[' | pTargetVersion | '])';
+
+    nWorkerIdx = (nPartIdx * 1000) + nWeeks;
+    sJobId = RunProcess('Merch.Version.Copy.PlanReporting.Week', 'pSourceVersion', pSourceVersion, 'pTargetVersion', pTargetVersion, 'pLoadMDX', sLoadMDX, 'pClearMDX', sClearMDX, 'pClear', nClear, 'pPartIdx', nWorkerIdx, 'pLogLevel', sWorkerLog, 'pSkipCalcs', nSkipRuleCalcs);
+    IF(sJobIDs @= '');
+      sJobIDs = sJobId;
+    ELSE;
+      sJobIDs = sJobIDs | ',' | sJobId;
+    ENDIF;
+    nDispatched = nDispatched + 1;
+    nInBatch = nInBatch + 1;
+
+    # Join each batch before dispatching the next, so concurrency stays bounded.
+    IF(nInBatch >= nBatchWeeks);
+      sRemaining = sJobIDs;
+      WHILE(sRemaining @<> '');
+        nComma = SCAN(',', sRemaining);
+        IF(nComma = 0);
+          sOne = sRemaining;
+          sRemaining = '';
+        ELSE;
+          sOne = SUBST(sRemaining, 1, nComma - 1);
+          sRemaining = SUBST(sRemaining, nComma + 1, LONG(sRemaining) - nComma);
+        ENDIF;
+        IF(sOne @<> '');
+          WaitForAllJobs(sOne);
+        ENDIF;
+      END;
+      sJobIDs = '';
+      nInBatch = 0;
+    ENDIF;
+  ENDIF;
+
+  nIdx = nIdx + 1;
+END;
+
+# Final partial batch. WaitForAllJobs is VARIADIC - a comma-joined string is one
+# nonexistent JobID and waits on NOTHING - so the accumulated IDs are split and waited
+# on one at a time.
+sRemaining = sJobIDs;
+WHILE(sRemaining @<> '');
+  nComma = SCAN(',', sRemaining);
+  IF(nComma = 0);
+    sOne = sRemaining;
+    sRemaining = '';
+  ELSE;
+    sOne = SUBST(sRemaining, 1, nComma - 1);
+    sRemaining = SUBST(sRemaining, nComma + 1, LONG(sRemaining) - nComma);
+  ENDIF;
+  IF(sOne @<> '');
+    WaitForAllJobs(sOne);
+  ENDIF;
+END;
+
+IF(nWeeks = 0);
+  LogOutput('ERROR', cProcessName | ' | no leaf weeks in scope: ' | pTimePeriod, 1);
+  ProcessError;
+ENDIF;
+
+LogOutput('INFO', 'TIMING END: ' | cProcessName | ' | ' | pSourceVersion | ' -> ' | pTargetVersion | ' | SkipCalcs=' | TRIM(STR(nSkipRuleCalcs, 1, 0)) | ' | Weeks=' | TRIM(STR(nWeeks, 8, 0)) | ' | Dispatched=' | TRIM(STR(nDispatched, 10, 0)) | ' | Elapsed=' | TRIM(STR((NOW - nStartTime) * 86400, 12, 1)) | 's', 1);
+
+#endregion

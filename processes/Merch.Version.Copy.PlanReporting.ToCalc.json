@@ -1,45 +1,39 @@
 {
 	"@type":"Process",
-	"Name":"Merch.Version.Copy.Forecast",
+	"Name":"Merch.Version.Copy.PlanReporting.ToCalc",
 	"HasSecurityAccess":false,
-	"Code@Code.link":"Merch.Version.Copy.Forecast.ti",
+	"Code@Code.link":"Merch.Version.Copy.PlanReporting.ToCalc.ti",
 	"DataSource":
 	{
 		"Type":"TM1DimensionSubset",
 		"dataSourceNameForServer":"Merch Time Period",
 		"dataSourceNameForClient":"Merch Time Period",
-		"subset":"ForecastTPLookup_bootstrap"
+		"subset":"CustomWeeks"
 	},
 	"Parameters":
 	[
 		{
 			"Name":"pSourceVersion",
 			"Prompt":"Source version",
-			"Value":"",
+			"Value":"Actual",
 			"Type":"String"
 		},
 		{
 			"Name":"pTargetVersion",
-			"Prompt":"Target version",
+			"Prompt":"Single target version (blank=all calc)",
 			"Value":"",
 			"Type":"String"
 		},
 		{
-			"Name":"pFreeze",
-			"Prompt":"1 = self-copy freeze; suppresses the clear",
-			"Value":0,
-			"Type":"Numeric"
+			"Name":"pTimePeriod",
+			"Prompt":"Scope to period (blank=all weeks)",
+			"Value":"",
+			"Type":"String"
 		},
 		{
-			"Name":"pSkipCalcs",
-			"Prompt":"1 skip rule-derived, 0 include, -1 infer",
-			"Value":-1,
-			"Type":"Numeric"
-		},
-		{
-			"Name":"pMaxParts",
-			"Prompt":"Cap on partitions; 0 = all",
-			"Value":0,
+			"Name":"pClear",
+			"Prompt":"Clear target first (1=yes)",
+			"Value":1,
 			"Type":"Numeric"
 		}
 	],
@@ -53,8 +47,8 @@
 			"EndByte":0
 		}
 	],
-	"UID": "1778771855000",
-	"UIData": "CubeAction=1511\fDataAction=1503\fCubeLogChanges=0\f",
+	"UID": "1782316120000",
+	"UIData": "",
 	"VariablesUIData": [
 		"VarType=32\fColType=827\f"
 	]

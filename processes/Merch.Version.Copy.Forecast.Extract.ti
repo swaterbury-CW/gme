@@ -4,10 +4,12 @@
 #Region : Process Header
 # DEVELOPER: Steve Waterbury
 # CREATED ON: 2026-05-14
+# LAST UPDATE: 2026-08-25
 # CHANGED BY: Steve Waterbury
 # CHANGE HISTORY:
 #   2026-05-14 | Steve Waterbury | Initial (DESCENDANTS for TP)
-#   2026-06-15 | Steve Waterbury | Rewrite: index-SUBSET partition over Roles leaves; fixed 3-axis MDX (no SGM_Category, no crossjoin, no malformed DESCENDANTS); pPartIdx/pStart/pCount/pSkipCalcs; pPartIdx+FY view name and slice file
+#   2026-06-15 | Steve Waterbury | Rewrite: index-SUBSET partition over Roles leaves; fixed 3-axis MDX; pPartIdx/pStart/pCount/pSkipCalcs; pPartIdx+FY view name and slice file
+#   2026-08-25 | Steve Waterbury | ASCIIOutput to 15 decimals (6 truncated every ratio); drop per-worker ProcessControl write, rows go to LogOutput only
 #EndRegion
 
 cProcessName = GetProcessName();
@@ -95,7 +97,9 @@ IF(vMerch_Forecast_Measure @= 'Calc Units');
   nCalcUnitsSum = nCalcUnitsSum + nVal;
 ENDIF;
 
-ASCIIOutput(sFile, vMerch_Time_Period, vMerch_SKU, vMerch_Forecast_Measure, TRIM(STR(nVal, 25, 6)), 'N');
+# 15 decimals, not 6. At 6 every ratio lost precision on the round trip - Velocity
+# 1.108140246 came back as 1.10814 and Seasonality 1.2943319463999998 as 1.294332.
+ASCIIOutput(sFile, vMerch_Time_Period, vMerch_SKU, vMerch_Forecast_Measure, TRIM(STR(nVal, 30, 15)), 'N');
 nRowsWritten = nRowsWritten + 1;
 
 #endregion
@@ -106,12 +110,9 @@ IF(ViewExists('Merch Forecast', sView) = 1);
   ViewDestroy('Merch Forecast', sView);
 ENDIF;
 
-IF(CellIsUpdateable('ProcessControl', cProcessName, 'SubsetCount') = 0);
-  LogOutput('ERROR', cProcessName | ' | ProcessControl.SubsetCount not updateable', 1);
-ELSE;
-  CellPutN(nRowsWritten, 'ProcessControl', cProcessName, 'SubsetCount');
-ENDIF;
-
-LogOutput('INFO', 'TIMING END: ' | cProcessName | ' | Rows=' | TRIM(STR(nRowsWritten, 12, 0)) | ' | CalcUnits=' | TRIM(STR(nCalcUnitsSum, 25, 2)) | ' | Elapsed=' | TRIM(STR((NOW - nStartTime) * 86400, 12, 1)) | 's', 1);
+# Row count goes to the LOG only. Roughly 177 of these workers run in parallel and all
+# shared one ProcessControl cell, so that value was last-writer-wins and could never
+# attribute a count to a partition. The TIMING END line below is per job.
+LogOutput('INFO', 'TIMING END: ' | cProcessName | ' | Part=' | TRIM(STR(nPartIdx, 10, 0)) | ' | FY=' | pFiscalYear | ' | Rows=' | TRIM(STR(nRowsWritten, 12, 0)) | ' | CalcUnits=' | TRIM(STR(nCalcUnitsSum, 25, 2)) | ' | Elapsed=' | TRIM(STR((NOW - nStartTime) * 86400, 12, 1)) | 's', 1);
 
 #endregion

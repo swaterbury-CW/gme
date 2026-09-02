@@ -1,0 +1,28 @@
+{
+	"@type":"Process",
+	"Name":"Merch.Version.Copy.Clear",
+	"HasSecurityAccess":false,
+	"Code@Code.link":"Merch.Version.Copy.Clear.ti",
+	"DataSource":
+	{
+		"Type":"None"
+	},
+	"Parameters":
+	[
+		{
+			"Name":"pCubeName",
+			"Prompt":"Cube to clear",
+			"Value":"",
+			"Type":"String"
+		},
+		{
+			"Name":"pTargetVersion",
+			"Prompt":"Target version to clear",
+			"Value":"",
+			"Type":"String"
+		}
+	],
+	"Variables":[],
+	"UIData": "CubeAction=1511\fDataAction=1503\fCubeLogChanges=0\f",
+	"VariablesUIData": []
+}

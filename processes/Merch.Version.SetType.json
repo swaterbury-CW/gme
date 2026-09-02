@@ -1,0 +1,28 @@
+{
+	"@type":"Process",
+	"Name":"Merch.Version.SetType",
+	"HasSecurityAccess":false,
+	"Code@Code.link":"Merch.Version.SetType.ti",
+	"DataSource":
+	{
+		"Type":"None"
+	},
+	"Parameters":
+	[
+		{
+			"Name":"pVersion",
+			"Prompt":"Version to retype",
+			"Value":"",
+			"Type":"String"
+		},
+		{
+			"Name":"pVersionType",
+			"Prompt":"Calculated | Static | Actual",
+			"Value":"",
+			"Type":"String"
+		}
+	],
+	"Variables":[],
+	"UIData": "CubeAction=1511\fDataAction=1503\fCubeLogChanges=0\f",
+	"VariablesUIData": []
+}

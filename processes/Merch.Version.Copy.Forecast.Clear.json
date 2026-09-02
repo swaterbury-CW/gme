@@ -1,0 +1,41 @@
+{
+	"@type":"Process",
+	"Name":"Merch.Version.Copy.Forecast.Clear",
+	"HasSecurityAccess":false,
+	"Code@Code.link":"Merch.Version.Copy.Forecast.Clear.ti",
+	"DataSource":
+	{
+		"Type":"None"
+	},
+	"Parameters":
+	[
+		{
+			"Name":"pTargetVersion",
+			"Prompt":"Target version to clear",
+			"Value":"",
+			"Type":"String"
+		},
+		{
+			"Name":"pLY",
+			"Prompt":"Prior fiscal year",
+			"Value":"",
+			"Type":"String"
+		},
+		{
+			"Name":"pCY",
+			"Prompt":"Current fiscal year",
+			"Value":"",
+			"Type":"String"
+		},
+		{
+			"Name":"pNY",
+			"Prompt":"Next fiscal year",
+			"Value":"",
+			"Type":"String"
+		}
+	],
+	"Variables":[],
+	"UID": "1787594924000",
+	"UIData": "CubeAction=1511\fDataAction=1503\fCubeLogChanges=0\f",
+	"VariablesUIData": []
+}

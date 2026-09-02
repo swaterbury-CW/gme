@@ -1,0 +1,285 @@
+#region Prolog
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+#Region : Process Header
+# DEVELOPER : Steve Waterbury
+# CREATED ON : 2026-03-22
+# LAST UPDATE: 2026-08-29
+# CHANGED BY : Steve Waterbury
+# COMMENTS:
+# Freezes a Calculated version: stores every rule-derived value by copying the
+# version to ITSELF across all versioned cubes, then marks it Static.
+#
+# THE BARRIER IS THE Merch.Period.Close.Cat.Orch PATTERN, NOT WaitForAllJobs.
+# That process's header records the measurement: 13 sequential batches of 6
+# 'joined' in 1.0s with 738 lock-contention rollbacks and only 50 of 74 workers
+# logging a TIMING END, because WaitForAllJobs does not block on a job that is
+# queued but not yet started. A ProcessLog from 2026-08-28 shows the same call
+# failing outright in Copy.Forecast.ReloadByCat - 'Failed to convert READ locks
+# into READONLY locks before waiting for async jobs', Elapsed=0.0s, children
+# still logging after the parent finished. GetJobStatus reports a job's real
+# state whether or not it has started, so pBatchSize is an actual cap.
+#
+# CHANGE HISTORY:
+#   2026-03-22 | Steve Waterbury | Creation; RunProcess parallelism
+#   2026-04-01 | Steve Waterbury | Dynamic iteration of all versioned cubes
+#   2026-08-28 | Steve Waterbury | Rewrite: Epilog dispatch, explicit pSkipCalcs=0, failure counting, Forecast and Plan Reporting routed correctly, Version_Type_Code synced
+#   2026-08-29 | Steve Waterbury | Barrier rebuilt on the Close.Cat.Orch GetJobStatus poll; batching, worker timeout, serial valve
+#EndRegion
+
+cProcessName = GetProcessName();
+
+#Region : Logging Init - the ONE control-cube read; workers are told, not made to look
+sLogLevel = CellGetS('ProcessControl', cProcessName, 'LoggingLevel');
+IF(sLogLevel @= '');
+  sLogLevel = 'OFF';
+ENDIF;
+nLogInfo = 0;
+IF(sLogLevel @= 'INFO' % sLogLevel @= 'DEBUG');
+  nLogInfo = 1;
+ENDIF;
+#EndRegion
+
+# Local numeric copies - a p-prefixed parameter must not appear in a numeric context.
+nMaxParts = pMaxParts;
+nBatchSize = pBatchSize;
+IF(nBatchSize <= 0);
+  nBatchSize = 6;
+ENDIF;
+nWorkerTimeoutSec = pWorkerTimeoutSec;
+IF(nWorkerTimeoutSec <= 0);
+  nWorkerTimeoutSec = 900;
+ENDIF;
+nWorkerTimeoutMs = nWorkerTimeoutSec * 1000;
+nUseRun = pUseRunProcess;
+
+#Region : ALL validation here, before anything is dispatched
+IF(pVersion @= '');
+  LogOutput('ERROR', cProcessName | ' | pVersion is empty', 1);
+  ProcessError;
+ENDIF;
+IF(DIMIX('Merch Version', pVersion) = 0);
+  LogOutput('ERROR', cProcessName | ' | version not found: ' | pVersion, 1);
+  ProcessError;
+ENDIF;
+sCurType = TRIM(ATTRS('Merch Version', pVersion, 'Version_Type'));
+IF(sCurType @<> 'Calculated');
+  LogOutput('ERROR', cProcessName | ' | version is not Calculated: ' | pVersion | ' | Type=' | sCurType, 1);
+  ProcessError;
+ENDIF;
+IF(pTimePeriod @<> '' & DIMIX('Merch Time Period', pTimePeriod) = 0);
+  LogOutput('ERROR', cProcessName | ' | invalid pTimePeriod: ' | pTimePeriod, 1);
+  ProcessError;
+ENDIF;
+#EndRegion
+
+nStart = NOW;
+nCubes = 0;
+nDispatched = 0;
+nBatches = 0;
+nOK = 0;
+nFailed = 0;
+nTimedOut = 0;
+nUnsupported = 0;
+
+# TAB, not comma - the same convention Close.Cat.Orch uses for free-text node names.
+sDelim = CHAR(9);
+sCubeList = '';
+
+# Dispatch lives in the EPILOG - TI-BUILTIN-001 blocks a Prolog loop over dimension
+# elements, and }Cubes is a dimension.
+DatasourceType = 'NULL';
+
+LogOutput('INFO', 'TIMING START: ' | cProcessName | ' | Version=' | pVersion | ' | MaxParts=' | TRIM(STR(nMaxParts, 10, 0)) | ' | TimePeriod=' | pTimePeriod | ' | BatchSize=' | TRIM(STR(nBatchSize, 10, 0)) | ' | Parallel=' | TRIM(STR(nUseRun, 1, 0)) | ' | WorkerTimeout=' | TRIM(STR(nWorkerTimeoutSec, 10, 0)) | 's', 1);
+
+#endregion
+#region Metadata
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+
+#endregion
+#region Data
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+
+#endregion
+#region Epilog
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+#Region : COLLECT the versioned cubes. Dispatch is separate so the barrier can bound it.
+nCubeIdx = 1;
+WHILE(nCubeIdx <= DIMSIZ('}Cubes'));
+  sCubeName = DIMNM('}Cubes', nCubeIdx);
+
+  IF(SUBST(sCubeName, 1, 1) @<> '}');
+    nDimCount = CubeDimensionCountGet(sCubeName);
+    nDimIdx = 1;
+    bHasVersion = 0;
+    WHILE(nDimIdx <= nDimCount);
+      IF(TABDIM(sCubeName, nDimIdx) @= 'Merch Version');
+        bHasVersion = 1;
+        nDimIdx = nDimCount;
+      ENDIF;
+      nDimIdx = nDimIdx + 1;
+    END;
+
+    IF(bHasVersion = 1);
+      IF(nDimCount >= 3 & nDimCount <= 6);
+        sCubeList = sCubeList | sCubeName | sDelim;
+        nCubes = nCubes + 1;
+      ELSE;
+        # Previously a WARN and silently skipped, which is how six-dimension cubes
+        # were never frozen at all. An unfrozen cube makes the snapshot incomplete.
+        nUnsupported = nUnsupported + 1;
+        LogOutput('ERROR', cProcessName | ' | UNSUPPORTED dim count ' | TRIM(STR(nDimCount, 2, 0)) | ' - cube NOT frozen: ' | sCubeName, 1);
+      ENDIF;
+    ENDIF;
+  ENDIF;
+
+  nCubeIdx = nCubeIdx + 1;
+END;
+#EndRegion
+
+#Region : Dispatch in bounded batches, JOINING each batch before starting the next
+# EVERY worker is told pSkipCalcs = 0. This is the heart of the fix: previously nothing
+# was passed, so each worker inferred from Version_Type - which still reads 'Calculated'
+# during the freeze - concluded 'not Static', set nSkipRuleCalcs = 1 and DROPPED EVERY
+# RULE-DERIVED CELL. A freeze exists to store exactly those values.
+#
+# SELF-COPY SAFETY: source and target are the SAME version, so a worker that clears the
+# target first destroys what it is about to read. Copy.Forecast gets pFreeze=1, which
+# suppresses its clear; Copy.PlanReporting gets pClear=0, whose parameter DEFAULTS TO 1.
+sRemaining = sCubeList;
+WHILE(sRemaining @<> '');
+
+  sJobIDs = '';
+  nInBatch = 0;
+
+  WHILE(nInBatch < nBatchSize & sRemaining @<> '');
+    nPos = SCAN(sDelim, sRemaining);
+    IF(nPos = 0);
+      sOne = sRemaining;
+      sRemaining = '';
+    ELSE;
+      sOne = SUBST(sRemaining, 1, nPos - 1);
+      sRemaining = SUBST(sRemaining, nPos + 1, LONG(sRemaining) - nPos);
+    ENDIF;
+
+    IF(sOne @<> '');
+      nThisDims = CubeDimensionCountGet(sOne);
+      sJobId = '';
+      nRC = 0;
+
+      IF(nUseRun = 1);
+        IF(sOne @= 'Merch Forecast');
+          sJobId = RunProcess('Merch.Version.Copy.Forecast', 'pSourceVersion', pVersion, 'pTargetVersion', pVersion, 'pFreeze', 1, 'pSkipCalcs', 0, 'pMaxParts', nMaxParts);
+        ELSEIF(nThisDims = 6);
+          sJobId = RunProcess('Merch.Version.Copy.PlanReporting', 'pSourceVersion', pVersion, 'pTargetVersion', pVersion, 'pClear', 0, 'pSkipCalcs', 0, 'pTimePeriod', pTimePeriod);
+        ELSEIF(nThisDims = 5);
+          sJobId = RunProcess('Merch.Version.Copy.5Dim', 'pCubeName', sOne, 'pSourceVersion', pVersion, 'pTargetVersion', pVersion, 'pSkipCalcs', 0);
+        ELSEIF(nThisDims = 4);
+          sJobId = RunProcess('Merch.Version.Copy.TPSKU', 'pCubeName', sOne, 'pSourceVersion', pVersion, 'pTargetVersion', pVersion, 'pSkipCalcs', 0);
+        ELSE;
+          sJobId = RunProcess('Merch.Version.Copy.SKU', 'pCubeName', sOne, 'pSourceVersion', pVersion, 'pTargetVersion', pVersion, 'pSkipCalcs', 0);
+        ENDIF;
+
+        IF(sJobId @= '');
+          nFailed = nFailed + 1;
+          LogOutput('ERROR', cProcessName | ' | RunProcess returned an empty JobID for cube ' | sOne, 1);
+        ELSE;
+          IF(sJobIDs @= '');
+            sJobIDs = sJobId;
+          ELSE;
+            sJobIDs = sJobIDs | ',' | sJobId;
+          ENDIF;
+        ENDIF;
+      ELSE;
+        IF(sOne @= 'Merch Forecast');
+          nRC = ExecuteProcess('Merch.Version.Copy.Forecast', 'pSourceVersion', pVersion, 'pTargetVersion', pVersion, 'pFreeze', 1, 'pSkipCalcs', 0, 'pMaxParts', nMaxParts);
+        ELSEIF(nThisDims = 6);
+          nRC = ExecuteProcess('Merch.Version.Copy.PlanReporting', 'pSourceVersion', pVersion, 'pTargetVersion', pVersion, 'pClear', 0, 'pSkipCalcs', 0, 'pTimePeriod', pTimePeriod);
+        ELSEIF(nThisDims = 5);
+          nRC = ExecuteProcess('Merch.Version.Copy.5Dim', 'pCubeName', sOne, 'pSourceVersion', pVersion, 'pTargetVersion', pVersion, 'pSkipCalcs', 0);
+        ELSEIF(nThisDims = 4);
+          nRC = ExecuteProcess('Merch.Version.Copy.TPSKU', 'pCubeName', sOne, 'pSourceVersion', pVersion, 'pTargetVersion', pVersion, 'pSkipCalcs', 0);
+        ELSE;
+          nRC = ExecuteProcess('Merch.Version.Copy.SKU', 'pCubeName', sOne, 'pSourceVersion', pVersion, 'pTargetVersion', pVersion, 'pSkipCalcs', 0);
+        ENDIF;
+
+        IF(nRC = 0);
+          nOK = nOK + 1;
+        ELSE;
+          nFailed = nFailed + 1;
+          LogOutput('ERROR', cProcessName | ' | serial worker FAILED for cube ' | sOne | ' RC=' | TRIM(STR(nRC, 10, 0)), 1);
+        ENDIF;
+      ENDIF;
+
+      nDispatched = nDispatched + 1;
+      nInBatch = nInBatch + 1;
+    ENDIF;
+  END;
+
+  IF(nInBatch > 0);
+    nBatches = nBatches + 1;
+  ENDIF;
+
+  # -------------------------------------------------------------------------
+  # THE BARRIER. Poll GetJobStatus per JobID. WaitForAllJobs is deliberately NOT
+  # used - it returns immediately for a job that is queued but not yet started,
+  # and on this server it also fails outright with 'Failed to convert READ locks
+  # into READONLY locks' when the caller holds read locks.
+  # -------------------------------------------------------------------------
+  sRest = sJobIDs;
+  WHILE(sRest @<> '');
+    nComma = SCAN(',', sRest);
+    IF(nComma = 0);
+      sJob = sRest;
+      sRest = '';
+    ELSE;
+      sJob = SUBST(sRest, 1, nComma - 1);
+      sRest = SUBST(sRest, nComma + 1, LONG(sRest) - nComma);
+    ENDIF;
+
+    IF(sJob @<> '');
+      nWaited = 0;
+      nStatus = GetJobStatus(sJob);
+      WHILE(nStatus = ProcessExecutionInProgress() & nWaited < nWorkerTimeoutMs);
+        Sleep(250);
+        nWaited = nWaited + 250;
+        nStatus = GetJobStatus(sJob);
+      END;
+
+      IF(nStatus = ProcessExecutionInProgress());
+        nTimedOut = nTimedOut + 1;
+        LogOutput('ERROR', cProcessName | ' | freeze job ' | sJob | ' STILL RUNNING after ' | TRIM(STR(nWorkerTimeoutSec, 10, 0)) | 's - barrier gave up waiting', 1);
+      ELSE;
+        IF(nStatus = ProcessExitNormal());
+          nOK = nOK + 1;
+        ELSE;
+          nFailed = nFailed + 1;
+          LogOutput('ERROR', cProcessName | ' | freeze job ' | sJob | ' exited abnormally, status=' | TRIM(STR(nStatus, 10, 0)), 1);
+        ENDIF;
+      ENDIF;
+    ENDIF;
+  END;
+
+END;
+#EndRegion
+
+# UNCONDITIONAL and BEFORE any ProcessError - one line, and it is the whole diagnosis.
+LogOutput('INFO', 'TIMING END: ' | cProcessName | ' | Version=' | pVersion | ' | Cubes=' | TRIM(STR(nCubes, 10, 0)) | ' | Dispatched=' | TRIM(STR(nDispatched, 10, 0)) | ' | Batches=' | TRIM(STR(nBatches, 10, 0)) | ' | OK=' | TRIM(STR(nOK, 10, 0)) | ' | Failed=' | TRIM(STR(nFailed, 10, 0)) | ' | TimedOut=' | TRIM(STR(nTimedOut, 10, 0)) | ' | Unsupported=' | TRIM(STR(nUnsupported, 10, 0)) | ' | Elapsed=' | TRIM(STR((NOW - nStart) * 86400, 12, 1)) | 's', 1);
+
+# ABORT BEFORE THE FLIP. Marking a version Static over an incomplete snapshot is
+# irreversible in effect: once Static the rules STET and whatever was not stored reads
+# as empty for good. Leaving it Calculated is recoverable.
+IF(nFailed > 0 % nTimedOut > 0 % nUnsupported > 0);
+  LogOutput('ERROR', cProcessName | ' | ABORTING BEFORE THE FLIP: Failed=' | TRIM(STR(nFailed, 10, 0)) | ' TimedOut=' | TRIM(STR(nTimedOut, 10, 0)) | ' Unsupported=' | TRIM(STR(nUnsupported, 10, 0)) | '. ' | pVersion | ' remains Calculated.', 1);
+  ProcessError;
+ENDIF;
+
+#Region : Flip the type, and keep the numeric code in step
+AttrPutS('Static', 'Merch Version', pVersion, 'Version_Type');
+AttrPutN(2, 'Merch Version', pVersion, 'Version_Type_Code');
+#EndRegion
+
+#endregion

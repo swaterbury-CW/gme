@@ -1,0 +1,97 @@
+#region Prolog
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+#Region : Process Header
+# DEVELOPER : Steve Waterbury
+# CREATED ON : 2026-06-10
+# LAST UPDATE: 2026-06-10
+# CHANGED BY: Steve Waterbury
+# CHANGE HISTORY:
+#   2026-06-10 | Steve Waterbury | Creation - copy Merch Version element attributes source -> target (excludes Version_Type/Version_Type_Code; alias attributes skipped) (design plan eddbd5caaf92)
+#EndRegion
+
+cProcessName = GetProcessName();
+
+sLogLevel = CellGetS('ProcessControl', cProcessName, 'LoggingLevel');
+IF(sLogLevel @= ''); sLogLevel = 'OFF'; ENDIF;
+bLogInfo = 0;
+IF(sLogLevel @= 'INFO' % sLogLevel @= 'DEBUG'); bLogInfo = 1; ENDIF;
+bLogDebug = 0;
+IF(sLogLevel @= 'DEBUG'); bLogDebug = 1; ENDIF;
+
+IF(pSourceVersion @= '' % pTargetVersion @= '');
+  LogOutput('ERROR', cProcessName | ' | Missing parameters', 1);
+  ProcessError;
+ENDIF;
+IF(DIMIX('Merch Version', pSourceVersion) = 0);
+  LogOutput('ERROR', cProcessName | ' | Source version not found: ' | pSourceVersion, 1);
+  ProcessError;
+ENDIF;
+IF(DIMIX('Merch Version', pTargetVersion) = 0);
+  LogOutput('ERROR', cProcessName | ' | Target version not found: ' | pTargetVersion, 1);
+  ProcessError;
+ENDIF;
+IF(pSourceVersion @= pTargetVersion);
+  LogOutput('ERROR', cProcessName | ' | Source and target versions are identical: ' | pSourceVersion, 1);
+  ProcessError;
+ENDIF;
+
+IF(bLogInfo = 1);
+  LogOutput('INFO', 'START: ' | cProcessName | ' | ' | pSourceVersion | ' -> ' | pTargetVersion, 1);
+ENDIF;
+
+cAttrDim = '}ElementAttributes_Merch Version';
+nAttrsCopied = 0;
+
+sSubset = 'TI_VerCopyAttr_' | TRIM(STR(NOW, 15, 0));
+SubsetCreateByMDX(sSubset, '{TM1SUBSETALL([}ElementAttributes_Merch Version])}', cAttrDim, 0);
+
+DatasourceType = 'SUBSET';
+DatasourceNameForServer = cAttrDim;
+DatasourceDimensionSubset = sSubset;
+
+#endregion
+#region Metadata
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+
+#endregion
+#region Data
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+sAttr = vAttr;
+
+# Version_Type / Version_Type_Code are owned by Merch.Version.Create - never copied
+# (a blind copy would clobber a Static snapshot's type with the source's Calculated)
+IF(sAttr @= 'Version_Type' % sAttr @= 'Version_Type_Code');
+    ItemSkip;
+ENDIF;
+
+# CellIsUpdateable not needed: targets are element attributes written via
+# AttrPutN/AttrPutS, not cube cells (no rule-derived cells involved)
+sAttrType = DTYPE(cAttrDim, sAttr);
+
+IF(sAttrType @= 'AN');
+    AttrPutN(AttrN('Merch Version', pSourceVersion, sAttr), 'Merch Version', pTargetVersion, sAttr);
+    nAttrsCopied = nAttrsCopied + 1;
+ELSEIF(sAttrType @= 'AS');
+    AttrPutS(AttrS('Merch Version', pSourceVersion, sAttr), 'Merch Version', pTargetVersion, sAttr);
+    nAttrsCopied = nAttrsCopied + 1;
+ELSE;
+    # Alias attributes are never copied - alias values must remain unique per element
+    IF(bLogDebug = 1);
+        LogOutput('DEBUG', cProcessName | ' | Skipping alias attribute: ' | sAttr, 1);
+    ENDIF;
+ENDIF;
+
+#endregion
+#region Epilog
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+SubsetDestroy(cAttrDim, sSubset);
+
+IF(bLogInfo = 1);
+  LogOutput('INFO', 'END: ' | cProcessName | ' | Attributes copied=' | TRIM(STR(nAttrsCopied, 10, 0)), 1);
+ENDIF;
+
+#endregion

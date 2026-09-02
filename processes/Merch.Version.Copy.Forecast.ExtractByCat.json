@@ -20,38 +20,44 @@
 		},
 		{
 			"Name":"pLY",
-			"Prompt":"Last year FY",
+			"Prompt":"Prior fiscal year",
 			"Value":"",
 			"Type":"String"
 		},
 		{
 			"Name":"pCY",
-			"Prompt":"Current year FY",
+			"Prompt":"Current fiscal year",
 			"Value":"",
 			"Type":"String"
 		},
 		{
 			"Name":"pNY",
-			"Prompt":"Next year FY",
+			"Prompt":"Next fiscal year",
 			"Value":"",
 			"Type":"String"
 		},
 		{
 			"Name":"pBatchTag",
-			"Prompt":"Batch tag",
+			"Prompt":"Batch tag naming the CSV files",
 			"Value":"",
 			"Type":"String"
 		},
 		{
 			"Name":"pSkipCalcs",
-			"Prompt":"1=inputs only, 0=full",
-			"Value":1,
+			"Prompt":"1 skip rule-derived, 0 include",
+			"Value":-1,
 			"Type":"Numeric"
 		},
 		{
 			"Name":"pMaxParts",
-			"Prompt":"0=all partitions, N=first N",
+			"Prompt":"Cap on partitions; 0 = all",
 			"Value":0,
+			"Type":"Numeric"
+		},
+		{
+			"Name":"pWorkerTimeoutSec",
+			"Prompt":"Per-worker barrier timeout",
+			"Value":1800,
 			"Type":"Numeric"
 		}
 	],

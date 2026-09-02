@@ -1,0 +1,43 @@
+{
+	"@type":"Process",
+	"Name":"Merch.Version.Copy.Attributes",
+	"HasSecurityAccess":false,
+	"Code@Code.link":"Merch.Version.Copy.Attributes.ti",
+	"DataSource":
+	{
+		"Type":"TM1DimensionSubset",
+		"dataSourceNameForServer":"}ElementAttributes_Merch Version",
+		"dataSourceNameForClient":"}ElementAttributes_Merch Version",
+		"subset":"TI_VerCopyAttr_placeholder"
+	},
+	"Parameters":
+	[
+		{
+			"Name":"pSourceVersion",
+			"Prompt":"Source version (copy attributes from)",
+			"Value":"",
+			"Type":"String"
+		},
+		{
+			"Name":"pTargetVersion",
+			"Prompt":"Target version (copy attributes to)",
+			"Value":"",
+			"Type":"String"
+		}
+	],
+	"Variables":
+	[
+		{
+			"Name":"vAttr",
+			"Type":"String",
+			"Position":1,
+			"StartByte":0,
+			"EndByte":0
+		}
+	],
+	"UID": "17811093370003",
+	"UIData": "CubeAction=1511\fDataAction=1503\fCubeLogChanges=0\f",
+	"VariablesUIData": [
+		"VarType=32\fColType=827\f"
+	]
+}

@@ -1,0 +1,52 @@
+{
+	"@type":"Process",
+	"Name":"Merch.Version.Copy.TPSKU.Cat",
+	"HasSecurityAccess":false,
+	"Code@Code.link":"Merch.Version.Copy.TPSKU.Cat.ti",
+	"DataSource":
+	{
+		"Type":"None"
+	},
+	"Parameters":
+	[
+		{
+			"Name":"pCubeName",
+			"Prompt":"Cube to copy",
+			"Value":"",
+			"Type":"String"
+		},
+		{
+			"Name":"pSourceVersion",
+			"Prompt":"Source version",
+			"Value":"",
+			"Type":"String"
+		},
+		{
+			"Name":"pTargetVersion",
+			"Prompt":"Target version",
+			"Value":"",
+			"Type":"String"
+		},
+		{
+			"Name":"pSkipCalcs",
+			"Prompt":"1 skip rule-derived, 0 include, -1 infer",
+			"Value":-1,
+			"Type":"Numeric"
+		},
+		{
+			"Name":"pCategory",
+			"Prompt":"Single element of cube dimension 3 to copy",
+			"Value":"",
+			"Type":"String"
+		},
+		{
+			"Name":"pPartIdx",
+			"Prompt":"Partition index from the orchestrator; names this worker's view",
+			"Value":0,
+			"Type":"Numeric"
+		}
+	],
+	"Variables":[],
+	"UIData": "CubeAction=1511\fDataAction=1503\fCubeLogChanges=0\f",
+	"VariablesUIData": []
+}

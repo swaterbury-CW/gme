@@ -1,0 +1,123 @@
+#region Prolog
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+#Region : Process Header
+# DEVELOPER: Steve Waterbury
+# CREATED ON: 2026-06-24
+# LAST UPDATE: 2026-08-26
+# CHANGED BY: Steve Waterbury
+# CHANGE HISTORY:
+#   2026-06-24 | Steve Waterbury | Initial subset-free per-week copy worker
+#   2026-08-26 | Steve Waterbury | Explicit pSkipCalcs; TRIM Version_Type; log SkipCalcs source
+#EndRegion
+
+cProcessName = GetProcessName();
+sLogLevel = pLogLevel;
+IF(sLogLevel @= '');
+  sLogLevel = CellGetS('ProcessControl', cProcessName, 'LoggingLevel');
+ENDIF;
+IF(sLogLevel @= '');
+  sLogLevel = 'OFF';
+ENDIF;
+bLogInfo = 0;
+IF(sLogLevel @= 'INFO' % sLogLevel @= 'DEBUG');
+  bLogInfo = 1;
+ENDIF;
+nCellsCopied = 0;
+
+IF(pSourceVersion @= '' % pTargetVersion @= '');
+  LogOutput('ERROR', cProcessName | ' | Missing version param', 1);
+  ProcessError;
+ENDIF;
+IF(DIMIX('Merch Version', pSourceVersion) = 0 % DIMIX('Merch Version', pTargetVersion) = 0);
+  LogOutput('ERROR', cProcessName | ' | Bad version', 1);
+  ProcessError;
+ENDIF;
+IF(pLoadMDX @= '');
+  LogOutput('ERROR', cProcessName | ' | pLoadMDX required (subset-free worker)', 1);
+  ProcessError;
+ENDIF;
+
+nClear = pClear;
+nPartIdx = pPartIdx;
+IF(nPartIdx <= 0);
+  nPartIdx = 1;
+ENDIF;
+sSfx = TRIM(STR(nPartIdx, 15, 0));
+
+cCube = 'Merch Plan Reporting';
+
+# SkipCalcs comes from the caller. This worker is a RunProcess child, so it cannot see a
+# Version_Type that Merch.Version.Create wrote in the caller's own transaction - inferring
+# it here reads the attribute BLANK, concludes 'not Static' and drops every rule-derived
+# cell from BOTH the clear view and the load view. -1 keeps the legacy inference.
+nSkipParam = pSkipCalcs;
+sTargetVersionType = TRIM(ATTRS('Merch Version', pTargetVersion, 'Version_Type'));
+IF(nSkipParam >= 0);
+  nSkipRuleCalcs = nSkipParam;
+  sSkipSource = 'param';
+ELSE;
+  nSkipRuleCalcs = 1;
+  IF(sTargetVersionType @= 'Static');
+    nSkipRuleCalcs = 0;
+  ENDIF;
+  sSkipSource = 'inferred';
+ENDIF;
+
+LogOutput('INFO', 'TIMING START: ' | cProcessName | ' | ' | pSourceVersion | ' -> ' | pTargetVersion | ' | Part=' | sSfx | ' | TargetType=' | sTargetVersionType | ' | SkipCalcs=' | TRIM(STR(nSkipRuleCalcs, 1, 0)) | ' (' | sSkipSource | ')', 1);
+
+IF(nClear >= 1 & pClearMDX @<> '');
+  sClrV = 'TI_CopyPRwk_clr_' | sSfx;
+  IF(ViewExists(cCube, sClrV) = 1);
+    ViewDestroy(cCube, sClrV);
+  ENDIF;
+  ViewCreateByMDX(cCube, sClrV, pClearMDX, 1);
+  ViewExtractSkipCalcsSet(cCube, sClrV, nSkipRuleCalcs);
+  ViewExtractSkipZeroesSet(cCube, sClrV, 1);
+  ViewZeroOut(cCube, sClrV);
+  IF(ViewExists(cCube, sClrV) = 1);
+    ViewDestroy(cCube, sClrV);
+  ENDIF;
+ENDIF;
+
+sView = 'TI_CopyPRwk_' | sSfx;
+IF(ViewExists(cCube, sView) = 1);
+  ViewDestroy(cCube, sView);
+ENDIF;
+ViewCreateByMDX(cCube, sView, pLoadMDX, 1);
+ViewExtractSkipCalcsSet(cCube, sView, nSkipRuleCalcs);
+ViewExtractSkipZeroesSet(cCube, sView, 1);
+
+DatasourceType = 'VIEW';
+DatasourceNameForServer = cCube;
+DatasourceCubeview = sView;
+
+#endregion
+#region Metadata
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+
+#endregion
+#region Data
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+nV = Value;
+IF(nV = 0);
+  ItemSkip;
+ENDIF;
+IF(CellIsUpdateable(cCube, pTargetVersion, vMerch_Time_Period, vMerch_SKU, vMerch_Channel, vMerch_Lifecycle, vMerch_Plan_Reporting_Measure) = 0);
+  ItemSkip;
+ENDIF;
+CellPutN(nV, cCube, pTargetVersion, vMerch_Time_Period, vMerch_SKU, vMerch_Channel, vMerch_Lifecycle, vMerch_Plan_Reporting_Measure);
+nCellsCopied = nCellsCopied + 1;
+
+#endregion
+#region Epilog
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+IF(ViewExists(cCube, sView) = 1);
+  ViewDestroy(cCube, sView);
+ENDIF;
+LogOutput('INFO', 'TIMING END: ' | cProcessName | ' | Part=' | sSfx | ' | Cells=' | TRIM(STR(nCellsCopied, 12, 0)), 1);
+
+#endregion

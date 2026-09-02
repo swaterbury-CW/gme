@@ -1,0 +1,137 @@
+#region Prolog
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+#Region : Process Header
+# DEVELOPER: Steve Waterbury
+# CREATED ON: 2026-03-22
+# LAST UPDATE: 2026-08-28
+# CHANGED BY: Steve Waterbury
+# CHANGE HISTORY:
+#   2026-03-22 | Steve Waterbury | Creation
+#   2026-04-26 | Steve Waterbury | TM1CubeView datasource, MDX-axis-order vars
+#   2026-04-27 | Steve Waterbury | Always-on TIMING logs
+#   2026-05-06 | Steve Waterbury | Fix MDX: explicit [Dim].[Dim] for multi-hierarchy compat
+#   2026-08-26 | Steve Waterbury | Explicit pSkipCalcs; TRIM Version_Type; validate pTargetVersion
+#   2026-08-28 | Steve Waterbury | Run-unique view name; was day-granular and self-destructing
+#EndRegion
+
+cProcessName = GetProcessName();
+sLogLevel = CellGetS('ProcessControl', cProcessName, 'LoggingLevel');
+IF(sLogLevel @= '');
+  sLogLevel = 'OFF';
+ENDIF;
+bLogInfo = 0;
+IF(sLogLevel @= 'INFO' % sLogLevel @= 'DEBUG');
+  bLogInfo = 1;
+ENDIF;
+nCellsCopied = 0;
+
+IF(pCubeName @= '' % pSourceVersion @= '' % pTargetVersion @= '');
+  LogOutput('ERROR', cProcessName | ' | Missing parameters', 1);
+  ProcessError;
+ENDIF;
+IF(CubeExists(pCubeName) = 0);
+  LogOutput('ERROR', cProcessName | ' | Cube missing: ' | pCubeName, 1);
+  ProcessError;
+ENDIF;
+IF(DIMIX('Merch Version', pSourceVersion) = 0);
+  LogOutput('ERROR', cProcessName | ' | Source version not found: ' | pSourceVersion, 1);
+  ProcessError;
+ENDIF;
+IF(DIMIX('Merch Version', pTargetVersion) = 0);
+  LogOutput('ERROR', cProcessName | ' | Target version not found: ' | pTargetVersion, 1);
+  ProcessError;
+ENDIF;
+
+# SkipCalcs comes from the caller. Merch.Version.Copy can read the target's
+# Version_Type correctly because Merch.Version.Create invokes it in the SAME
+# transaction, but a RunProcess worker cannot - it reads the attribute as blank,
+# concludes 'not Static' and drops every rule-derived cell from the extract.
+# -1 keeps the legacy inference for direct callers.
+nSkipParam = pSkipCalcs;
+sTargetVersionType = TRIM(ATTRS('Merch Version', pTargetVersion, 'Version_Type'));
+IF(nSkipParam >= 0);
+  nSkipRuleCalcs = nSkipParam;
+  sSkipSource = 'param';
+ELSE;
+  nSkipRuleCalcs = 1;
+  IF(sTargetVersionType @= 'Static');
+    nSkipRuleCalcs = 0;
+  ENDIF;
+  sSkipSource = 'inferred';
+ENDIF;
+
+nStart = NOW;
+LogOutput('INFO', 'TIMING START: ' | cProcessName | ' | Cube=' | pCubeName | ' | Src=' | pSourceVersion | ' | Tgt=' | pTargetVersion | ' | TargetType=' | sTargetVersionType | ' | SkipCalcs=' | TRIM(STR(nSkipRuleCalcs, 1, 0)) | ' (' | sSkipSource | ')', 1);
+
+cDimVer = TABDIM(pCubeName, 1);
+cDimSKU = TABDIM(pCubeName, 2);
+cDimMeasure = TABDIM(pCubeName, 3);
+
+# RUN TOKEN. This was 'TI_CopySKU_' | TRIM(STR(NOW, 15, 0)). STR(NOW,15,0) is ZERO
+# DECIMALS and therefore the DAY serial, so every run on a given day computed the SAME
+# view name. The name is not qualified by pCubeName either, but views are namespaced per
+# cube so that never collided; what DID collide was two runs against the SAME cube on one
+# day - the second run's Epilog ViewDestroy tore down the first run's live view while it
+# was still being extracted. Seconds resolution off the nStart already captured above.
+nRunSec = INT((nStart - INT(nStart)) * 86400);
+IF(nRunSec <= 0);
+  nRunSec = 1;
+ENDIF;
+sView = 'TI_CopySKU_' | TRIM(STR(INT(nStart), 15, 0)) | 'x' | TRIM(STR(nRunSec, 6, 0));
+
+sMDX = 'SELECT NON EMPTY {TM1FILTERBYLEVEL({TM1SUBSETALL([' | cDimMeasure | '].[' | cDimMeasure | '])}, 0)} ON COLUMNS, NON EMPTY {TM1FILTERBYLEVEL({TM1SUBSETALL([' | cDimSKU | '].[' | cDimSKU | '])}, 0)} ON ROWS FROM [' | pCubeName | '] WHERE ([' | cDimVer | '].[' | cDimVer | '].[' | pSourceVersion | '])';
+ViewCreateByMDX(pCubeName, sView, sMDX, 1);
+ViewExtractSkipCalcsSet(pCubeName, sView, nSkipRuleCalcs);
+ViewExtractSkipZeroesSet(pCubeName, sView, 1);
+LogOutput('INFO', 'TIMING VIEW READY: ' | cProcessName | ' | Cube=' | pCubeName | ' | BuildSec=' | TRIM(STR((NOW - nStart) * 86400, 12, 1)), 1);
+DatasourceType = 'VIEW';
+DatasourceNameForServer = pCubeName;
+DatasourceCubeview = sView;
+
+#endregion
+#region Metadata
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+
+#endregion
+#region Data
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+sMeasType = DTYPE(cDimMeasure, vMeasure);
+IF(sMeasType @<> 'N' & sMeasType @<> 'S' & sMeasType @<> 'C');
+    ItemReject('Bad data: unknown measure type ' | sMeasType);
+ENDIF;
+
+IF(sMeasType @= 'S');
+    IF(Value @= '');
+        ItemSkip;
+    ENDIF;
+    IF(CellIsUpdateable(pCubeName, pTargetVersion, vSKU, vMeasure) = 0);
+        ItemSkip;
+    ENDIF;
+    CellPutS(Value, pCubeName, pTargetVersion, vSKU, vMeasure);
+    nCellsCopied = nCellsCopied + 1;
+    ItemSkip;
+ENDIF;
+
+nVal = NUMBR(Value);
+IF(nVal = 0);
+    ItemSkip;
+ENDIF;
+IF(CellIsUpdateable(pCubeName, pTargetVersion, vSKU, vMeasure) = 0);
+    ItemSkip;
+ENDIF;
+CellPutN(nVal, pCubeName, pTargetVersion, vSKU, vMeasure);
+nCellsCopied = nCellsCopied + 1;
+
+#endregion
+#region Epilog
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+IF(ViewExists(pCubeName, sView) = 1);
+  ViewDestroy(pCubeName, sView);
+ENDIF;
+LogOutput('INFO', 'TIMING END: ' | cProcessName | ' | Cube=' | pCubeName | ' | Src=' | pSourceVersion | ' | Tgt=' | pTargetVersion | ' | Elapsed=' | TRIM(STR((NOW - nStart) * 86400, 12, 1)) | 's | Cells=' | TRIM(STR(nCellsCopied, 12, 0)), 1);
+
+#endregion

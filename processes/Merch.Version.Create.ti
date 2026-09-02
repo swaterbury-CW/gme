@@ -1,0 +1,106 @@
+#region Prolog
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+#Region : Process Header
+# DEVELOPER: Steve Waterbury
+# CREATED ON: 2026-03-22
+# LAST UPDATE: 2026-08-28
+# CHANGED BY: Steve Waterbury
+# CHANGE HISTORY:
+#   2026-03-22 | Steve Waterbury | Creation
+#   2026-05-17 | Steve Waterbury | Move AttrPutS + ExecuteProcess(Merch.Version.Copy) to Epilog
+#   2026-05-23 | Steve Waterbury | Sync Version_Type_Code numeric attr in Epilog
+#   2026-06-12 | Rose Morgan     | Add version to All Versions consolidation
+#   2026-08-28 | Steve Waterbury | Pass pSkipCalcs explicitly to Merch.Version.Copy; 3-arg LogOutput
+#EndRegion
+
+cProcessName = GetProcessName();
+sLogLevel = CellGetS('ProcessControl', cProcessName, 'LoggingLevel');
+IF(sLogLevel @= '');
+  sLogLevel = 'OFF';
+ENDIF;
+bLogInfo = 0;
+IF(sLogLevel @= 'INFO' % sLogLevel @= 'DEBUG');
+  bLogInfo = 1;
+ENDIF;
+
+IF(pVersionName @= '');
+  LogOutput('ERROR', cProcessName | ' | pVersionName is empty', 1);
+  ProcessError;
+ENDIF;
+IF(pVersionType @<> 'Calculated' & pVersionType @<> 'Static' & pVersionType @<> 'Actual');
+  LogOutput('ERROR', cProcessName | ' | invalid pVersionType: ' | pVersionType, 1);
+  ProcessError;
+ENDIF;
+IF(DIMIX('Merch Version', pVersionName) > 0);
+  LogOutput('ERROR', cProcessName | ' | version already exists: ' | pVersionName, 1);
+  ProcessError;
+ENDIF;
+IF(pCopyFrom @<> '' & DIMIX('Merch Version', pCopyFrom) = 0);
+  LogOutput('ERROR', cProcessName | ' | source version missing: ' | pCopyFrom, 1);
+  ProcessError;
+ENDIF;
+
+IF(bLogInfo = 1);
+  LogOutput('INFO', 'START Create: ' | pVersionName | ' | Type=' | pVersionType | ' | CopyFrom=' | pCopyFrom, 1);
+ENDIF;
+
+DimensionElementInsertDirect('Merch Version', '', pVersionName, 'N');
+DimensionElementComponentAddDirect('Merch Version', 'All Versions', pVersionName, 1);
+
+#endregion
+#region Metadata
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+
+#endregion
+#region Data
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+
+#endregion
+#region Epilog
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+AttrPutS(pVersionType, 'Merch Version', pVersionName, 'Version_Type');
+
+# Version_Type_Code sync (Actual=0, Calculated=1, Static=2)
+IF(pVersionType @= 'Actual');
+  AttrPutN(0, 'Merch Version', pVersionName, 'Version_Type_Code');
+ELSEIF(pVersionType @= 'Calculated');
+  AttrPutN(1, 'Merch Version', pVersionName, 'Version_Type_Code');
+ELSEIF(pVersionType @= 'Static');
+  AttrPutN(2, 'Merch Version', pVersionName, 'Version_Type_Code');
+ENDIF;
+
+# THE ROOT DEFECT, AND ITS FIX.
+# The AttrPutS above is UNCOMMITTED while this transaction is alive. ExecuteProcess runs
+# Merch.Version.Copy inside this same transaction, so Copy itself reads Version_Type
+# correctly - but Copy dispatches its five shape workers via RunProcess, and each child
+# runs in its OWN transaction where that AttrPutS is not yet visible. They read the
+# attribute BLANK, conclude 'not Static', set nSkipRuleCalcs = 1, and drop every
+# rule-derived cell from the extract. Once the version becomes Static its rules STET and
+# those values read as empty permanently - which is exactly why a Calculated-to-Static
+# copy was not an exact match of its source.
+#
+# The fix is to TELL the copy the answer rather than let the children infer it. This
+# mirrors the workers' own table: Static extracts rule-derived values (skip = 0), anything
+# else does not (skip = 1). Merch.Version.Copy forwards pSkipCalcs to all five workers, so
+# none of them consults Version_Type and its commit timing stops mattering.
+nSkipCalcs = 1;
+IF(pVersionType @= 'Static');
+  nSkipCalcs = 0;
+ENDIF;
+
+IF(pCopyFrom @<> '');
+  IF(bLogInfo = 1);
+    LogOutput('INFO', cProcessName | ' | dispatching copy ' | pCopyFrom | ' -> ' | pVersionName | ' | SkipCalcs=' | TRIM(STR(nSkipCalcs, 1, 0)) | ' (explicit, from pVersionType)', 1);
+  ENDIF;
+  ExecuteProcess('Merch.Version.Copy', 'pSourceVersion', pCopyFrom, 'pTargetVersion', pVersionName, 'pSkipCalcs', nSkipCalcs);
+ENDIF;
+
+IF(bLogInfo = 1);
+  LogOutput('INFO', 'END Create: ' | pVersionName, 1);
+ENDIF;
+
+#endregion

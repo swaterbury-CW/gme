@@ -1,0 +1,167 @@
+#region Prolog
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+#Region : Process Header
+# DEVELOPER: Steve Waterbury
+# CREATED ON: 2026-08-31
+# LAST UPDATE: 2026-08-31
+# CHANGED BY: Steve Waterbury
+# CHANGE HISTORY:
+#   2026-08-31 | Steve Waterbury | Creation - generic target clear for the non-Forecast copy legs
+#EndRegion
+
+# WHY THIS PROCESS EXISTS. Merch.Version.Copy.5Dim, .TPSKU and .SKU never cleared their
+# target. They write source cells over whatever is already there, and two things guarantee
+# stale cells survive: ViewExtractSkipZeroesSet(...,1) drops zero source cells from the
+# extract view, and their Data tab does IF(nVal = 0); ItemSkip; ENDIF;. So a cell that is
+# zero or empty in the SOURCE and non-zero in the TARGET was never overwritten, and
+# Merch.Version.Copy.Attributes then stamped that target as a complete copy of its source.
+# Measured 2026-08-31 on Merch Channel Split FY2026 Split Pct: source 583.42, target
+# 587.30 - the target held 3.88 that the source did not.
+#
+# THE CLEAR IS A SEPARATE COMMITTED JOB, NOT CODE INSIDE THE COPY WORKER. A clear that is
+# still inside the parent transaction is invisible to an asynchronous child, because the
+# child runs in its own transaction. Merch.Version.Copy therefore dispatches this worker
+# and JOINS it before any copy worker starts, the same way the Forecast leg already uses
+# Merch.Version.Copy.Forecast.Clear.
+#
+# THIS WORKER CLEARS WHATEVER TARGET IT IS GIVEN. Merch.Version.ConvertToStatic freezes a
+# version by copying it onto ITSELF, where clearing the target would destroy the source
+# before it is read. That guard belongs to the CALLER: Merch.Version.Copy must skip the
+# clear phase entirely when pSourceVersion @= pTargetVersion.
+
+cProcessName = GetProcessName();
+
+#Region : Logging Init
+sLogLevel = CellGetS('ProcessControl', cProcessName, 'LoggingLevel');
+IF(sLogLevel @= '');
+  sLogLevel = 'OFF';
+ENDIF;
+bLogInfo = 0;
+IF(sLogLevel @= 'INFO' % sLogLevel @= 'DEBUG');
+  bLogInfo = 1;
+ENDIF;
+#EndRegion
+
+#Region : Validation - all of it before the first ViewCreate so ProcessError stays legal
+IF(pCubeName @= '' % pTargetVersion @= '');
+  LogOutput('ERROR', cProcessName | ' | missing param', 1);
+  ProcessError;
+ENDIF;
+IF(CubeExists(pCubeName) = 0);
+  LogOutput('ERROR', cProcessName | ' | cube missing: ' | pCubeName, 1);
+  ProcessError;
+ENDIF;
+IF(DIMIX('Merch Version', pTargetVersion) = 0);
+  LogOutput('ERROR', cProcessName | ' | bad target version: ' | pTargetVersion, 1);
+  ProcessError;
+ENDIF;
+
+nDims = CubeDimensionCountGet(pCubeName);
+cDimVer = TABDIM(pCubeName, 1);
+IF(cDimVer @<> 'Merch Version');
+  LogOutput('ERROR', cProcessName | ' | dimension 1 is not Merch Version on cube ' | pCubeName | ' - it is ' | cDimVer, 1);
+  ProcessError;
+ENDIF;
+IF(nDims < 3 % nDims > 6);
+  LogOutput('ERROR', cProcessName | ' | unsupported dim count ' | TRIM(STR(nDims, 2, 0)) | ' on cube ' | pCubeName, 1);
+  ProcessError;
+ENDIF;
+#EndRegion
+
+nStartTime = NOW;
+cDimMeasure = TABDIM(pCubeName, nDims);
+
+# RUN TOKEN. TRIM(STR(NOW,15,0)) is ZERO DECIMALS and therefore the DAY serial, and this
+# process does ViewExists -> ViewDestroy before creating, so a second same-day run would
+# destroy the first run's live view mid-ViewZeroOut.
+nNow = NOW;
+nRunSec = INT((nNow - INT(nNow)) * 86400);
+IF(nRunSec <= 0);
+  nRunSec = 1;
+ENDIF;
+sView = 'TI_VCClrGen_' | TRIM(STR(INT(nNow), 15, 0)) | 'x' | TRIM(STR(nRunSec, 6, 0));
+
+LogOutput('INFO', 'TIMING START: ' | cProcessName | ' | Cube=' | pCubeName | ' | Dims=' | TRIM(STR(nDims, 2, 0)) | ' | Tgt=' | pTargetVersion | ' | View=' | sView, 1);
+
+#Region : Build the ROWS stack
+# A TM1 VIEW HAS ONLY COLUMNS AND ROWS, PLUS TITLE DIMENSIONS. A third axis does NOT give
+# a dimension its own axis - it ELIMINATES that dimension from the returned view. The
+# middle dimensions therefore STACK onto ROWS with the * operator.
+# Branched explicitly rather than looped, matching the routing style in Merch.Version.Copy.
+sRows = '';
+IF(nDims = 3);
+  cD2 = TABDIM(pCubeName, 2);
+  sRows = '{TM1FILTERBYLEVEL({TM1SUBSETALL([' | cD2 | '].[' | cD2 | '])}, 0)}';
+ELSEIF(nDims = 4);
+  cD2 = TABDIM(pCubeName, 2);
+  cD3 = TABDIM(pCubeName, 3);
+  sRows = '{TM1FILTERBYLEVEL({TM1SUBSETALL([' | cD2 | '].[' | cD2 | '])}, 0)}';
+  sRows = sRows | ' * {TM1FILTERBYLEVEL({TM1SUBSETALL([' | cD3 | '].[' | cD3 | '])}, 0)}';
+ELSEIF(nDims = 5);
+  cD2 = TABDIM(pCubeName, 2);
+  cD3 = TABDIM(pCubeName, 3);
+  cD4 = TABDIM(pCubeName, 4);
+  sRows = '{TM1FILTERBYLEVEL({TM1SUBSETALL([' | cD2 | '].[' | cD2 | '])}, 0)}';
+  sRows = sRows | ' * {TM1FILTERBYLEVEL({TM1SUBSETALL([' | cD3 | '].[' | cD3 | '])}, 0)}';
+  sRows = sRows | ' * {TM1FILTERBYLEVEL({TM1SUBSETALL([' | cD4 | '].[' | cD4 | '])}, 0)}';
+ELSE;
+  cD2 = TABDIM(pCubeName, 2);
+  cD3 = TABDIM(pCubeName, 3);
+  cD4 = TABDIM(pCubeName, 4);
+  cD5 = TABDIM(pCubeName, 5);
+  sRows = '{TM1FILTERBYLEVEL({TM1SUBSETALL([' | cD2 | '].[' | cD2 | '])}, 0)}';
+  sRows = sRows | ' * {TM1FILTERBYLEVEL({TM1SUBSETALL([' | cD3 | '].[' | cD3 | '])}, 0)}';
+  sRows = sRows | ' * {TM1FILTERBYLEVEL({TM1SUBSETALL([' | cD4 | '].[' | cD4 | '])}, 0)}';
+  sRows = sRows | ' * {TM1FILTERBYLEVEL({TM1SUBSETALL([' | cD5 | '].[' | cD5 | '])}, 0)}';
+ENDIF;
+#EndRegion
+
+#Region : Clear view
+sMDX = 'SELECT NON EMPTY {TM1FILTERBYLEVEL({TM1SUBSETALL([' | cDimMeasure | '].[' | cDimMeasure | '])}, 0)} ON COLUMNS, ';
+sMDX = sMDX | 'NON EMPTY ' | sRows | ' ON ROWS ';
+sMDX = sMDX | 'FROM [' | pCubeName | '] ';
+sMDX = sMDX | 'WHERE ([' | cDimVer | '].[' | cDimVer | '].[' | pTargetVersion | '])';
+
+IF(ViewExists(pCubeName, sView) = 1);
+  ViewDestroy(pCubeName, sView);
+ENDIF;
+ViewCreateByMDX(pCubeName, sView, sMDX, 1);
+
+# SkipCalcs = 1. A RULE-DERIVED cell is not writable, so ViewZeroOut could never clear it -
+# carrying it in the view only forces the engine to evaluate rules. Where a rule STETs, the
+# cell is STORED, so skip-calcs does not drop it and it still gets cleared.
+ViewExtractSkipCalcsSet(pCubeName, sView, 1);
+ViewExtractSkipZeroesSet(pCubeName, sView, 1);
+#EndRegion
+
+LogOutput('INFO', 'TIMING VIEW READY: ' | cProcessName | ' | Cube=' | pCubeName | ' | Tgt=' | pTargetVersion | ' | BuildSec=' | TRIM(STR((NOW - nStartTime) * 86400, 12, 1)), 1);
+
+nZeroStart = NOW;
+ViewZeroOut(pCubeName, sView);
+LogOutput('INFO', 'TIMING ZEROOUT DONE: ' | cProcessName | ' | Cube=' | pCubeName | ' | Tgt=' | pTargetVersion | ' | ZeroSec=' | TRIM(STR((NOW - nZeroStart) * 86400, 12, 1)), 1);
+
+DatasourceType = 'NULL';
+
+#endregion
+#region Metadata
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+
+#endregion
+#region Data
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+
+#endregion
+#region Epilog
+#****Begin: Generated Statements***
+#****End: Generated Statements****
+IF(ViewExists(pCubeName, sView) = 1);
+  ViewDestroy(pCubeName, sView);
+ENDIF;
+
+# No ProcessControl write. Workers log; they do not write shared control cubes. TI-009.
+LogOutput('INFO', 'TIMING END: ' | cProcessName | ' | Cube=' | pCubeName | ' | Tgt=' | pTargetVersion | ' | Elapsed=' | TRIM(STR((NOW - nStartTime) * 86400, 12, 1)) | 's', 1);
+
+#endregion

@@ -1,22 +1,23 @@
 {
 	"@type":"Process",
-	"Name":"Merch.Version.Copy.Forecast.Reload",
+	"Name":"Merch.Version.Copy.TPSKU",
 	"HasSecurityAccess":false,
-	"Code@Code.link":"Merch.Version.Copy.Forecast.Reload.ti",
+	"Code@Code.link":"Merch.Version.Copy.TPSKU.ti",
 	"DataSource":
 	{
-		"Type":"ASCII",
-		"dataSourceNameForServer":"./version_copy/cts15_run1_Forecast_VC_Test6_part1_FY2026.csv",
-		"dataSourceNameForClient":"./version_copy/cts15_run1_Forecast_VC_Test6_part1_FY2026.csv",
-		"asciiHeaderRecords":0,
-		"asciiQuoteCharacter":"\"",
-		"asciiDecimalSeparator":".",
-		"asciiThousandSeparator":",",
-		"asciiDelimiterType":"Character",
-		"asciiDelimiterChar":","
+		"Type":"TM1CubeView",
+		"dataSourceNameForServer":"Merch PreOwned Forecast",
+		"dataSourceNameForClient":"Merch PreOwned Forecast",
+		"view":"TI_CopyTPSKU_placeholder"
 	},
 	"Parameters":
 	[
+		{
+			"Name":"pCubeName",
+			"Prompt":"Cube to copy",
+			"Value":"",
+			"Type":"String"
+		},
 		{
 			"Name":"pSourceVersion",
 			"Prompt":"Source version",
@@ -30,63 +31,51 @@
 			"Type":"String"
 		},
 		{
-			"Name":"pPartIdx",
-			"Prompt":"Partition index",
-			"Value":0,
+			"Name":"pSkipCalcs",
+			"Prompt":"1 skip rule-derived, 0 include, -1 infer",
+			"Value":-1,
 			"Type":"Numeric"
-		},
-		{
-			"Name":"pFiscalYear",
-			"Prompt":"Fiscal year",
-			"Value":"",
-			"Type":"String"
-		},
-		{
-			"Name":"pBatchTag",
-			"Prompt":"Batch tag naming the CSV files",
-			"Value":"",
-			"Type":"String"
 		}
 	],
 	"Variables":
 	[
 		{
-			"Name":"vTP",
+			"Name":"vMeasure",
 			"Type":"String",
 			"Position":1,
 			"StartByte":0,
 			"EndByte":0
 		},
 		{
-			"Name":"vSKU",
+			"Name":"vTP",
 			"Type":"String",
 			"Position":2,
 			"StartByte":0,
 			"EndByte":0
 		},
 		{
-			"Name":"vMeasure",
+			"Name":"vSKU",
 			"Type":"String",
 			"Position":3,
 			"StartByte":0,
 			"EndByte":0
 		},
 		{
-			"Name":"vValue",
+			"Name":"vVersion",
 			"Type":"String",
 			"Position":4,
 			"StartByte":0,
 			"EndByte":0
 		},
 		{
-			"Name":"vDType",
+			"Name":"Value",
 			"Type":"String",
 			"Position":5,
 			"StartByte":0,
 			"EndByte":0
 		}
 	],
-	"UID": "1778769805000",
+	"UID": "1774276487000",
 	"UIData": "CubeAction=1511\fDataAction=1503\fCubeLogChanges=0\f",
 	"VariablesUIData": [
 		"VarType=32\fColType=827\f",

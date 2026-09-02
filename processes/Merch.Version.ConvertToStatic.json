@@ -1,0 +1,53 @@
+{
+	"@type":"Process",
+	"Name":"Merch.Version.ConvertToStatic",
+	"HasSecurityAccess":false,
+	"Code@Code.link":"Merch.Version.ConvertToStatic.ti",
+	"DataSource":
+	{
+		"Type":"None"
+	},
+	"Parameters":
+	[
+		{
+			"Name":"pVersion",
+			"Prompt":"Calculated version to freeze",
+			"Value":"",
+			"Type":"String"
+		},
+		{
+			"Name":"pMaxParts",
+			"Prompt":"Cap partitions on the Forecast leg; 0 = all",
+			"Value":0,
+			"Type":"Numeric"
+		},
+		{
+			"Name":"pTimePeriod",
+			"Prompt":"Scope the Plan Reporting leg; blank = all weeks",
+			"Value":"",
+			"Type":"String"
+		},
+		{
+			"Name":"pBatchSize",
+			"Prompt":"Max concurrent freeze workers",
+			"Value":6,
+			"Type":"Numeric"
+		},
+		{
+			"Name":"pWorkerTimeoutSec",
+			"Prompt":"Per-worker barrier timeout",
+			"Value":900,
+			"Type":"Numeric"
+		},
+		{
+			"Name":"pUseRunProcess",
+			"Prompt":"1 = parallel RunProcess; 0 = serial ExecuteProcess",
+			"Value":1,
+			"Type":"Numeric"
+		}
+	],
+	"Variables":[],
+	"UID": "1774218871000",
+	"UIData": "CubeAction=1511\fDataAction=1503\fCubeLogChanges=0\f",
+	"VariablesUIData": []
+}

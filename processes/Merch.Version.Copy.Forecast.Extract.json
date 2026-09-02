@@ -20,25 +20,25 @@
 		},
 		{
 			"Name":"pPartIdx",
-			"Prompt":"Partition index (1-based)",
-			"Value":0,
+			"Prompt":"Partition index",
+			"Value":1,
 			"Type":"Numeric"
 		},
 		{
 			"Name":"pStart",
-			"Prompt":"SUBSET start (0-based)",
+			"Prompt":"Subset start offset",
 			"Value":0,
 			"Type":"Numeric"
 		},
 		{
 			"Name":"pCount",
-			"Prompt":"SUBSET count",
-			"Value":0,
+			"Prompt":"Partition size",
+			"Value":2500,
 			"Type":"Numeric"
 		},
 		{
 			"Name":"pFiscalYear",
-			"Prompt":"Fiscal year element",
+			"Prompt":"Fiscal year",
 			"Value":"",
 			"Type":"String"
 		},
@@ -50,7 +50,7 @@
 		},
 		{
 			"Name":"pSkipCalcs",
-			"Prompt":"1=skip rule calcs, 0=full snapshot",
+			"Prompt":"1=skip rule-calculated, 0=include",
 			"Value":1,
 			"Type":"Numeric"
 		}

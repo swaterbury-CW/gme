@@ -4,25 +4,47 @@
 #Region : Process Header
 # DEVELOPER: Steve Waterbury
 # CREATED ON: 2026-05-14
+# LAST UPDATE: 2026-08-29
 # CHANGED BY: Steve Waterbury
 # CHANGE HISTORY:
 #   2026-05-17 | Steve Waterbury | Epilog dispatch + WaitForAllJobs
-#   2026-06-15 | Steve Waterbury | Rewrite: index fan-out over SKU-leaf partitions (SUBSET start/count) instead of Merch Category; pSkipCalcs + pMaxParts
+#   2026-06-15 | Steve Waterbury | Rewrite: index fan-out over SKU-leaf partitions (SUBSET start/count); pSkipCalcs + pMaxParts
+#   2026-08-28 | Steve Waterbury | Run-unique counting subset; ProcessControl write deleted; block-style IFs
+#   2026-08-29 | Steve Waterbury | Batched dispatch + Close.Cat.Orch GetJobStatus barrier; counters; ProcessError on a lost extract
 #EndRegion
 
 cProcessName = GetProcessName();
 nDispatches = 0;
+nBatches = 0;
+nOK = 0;
+nFailed = 0;
+nTimedOut = 0;
 sJobIDs = '';
 nPartSize = 2500;
 nSkipCalcs = pSkipCalcs;
 nMaxParts = pMaxParts;
+nWorkerTimeoutSec = pWorkerTimeoutSec;
+IF(nWorkerTimeoutSec <= 0);
+  nWorkerTimeoutSec = 1800;
+ENDIF;
+nWorkerTimeoutMs = nWorkerTimeoutSec * 1000;
 
 IF(pSourceVersion @= '' % pLY @= '' % pCY @= '' % pNY @= '' % pBatchTag @= '');
   LogOutput('ERROR', cProcessName | ' | missing param', 1);
   ProcessError;
 ENDIF;
 
-sCountSub = 'TI_VCFcstCount_' | TRIM(STR(NOW, 15, 0));
+# RUN-UNIQUE COUNTING SUBSET. The name was TRIM(STR(NOW, 15, 0)), which is ZERO DECIMALS
+# and therefore the DAY serial, so two runs on one day computed the SAME name on the
+# SHARED Merch SKU dimension - and this process does SubsetExists -> SubsetDestroy before
+# creating. Kept rather than removed because it exists only to call SubsetGetSize.
+nNowTok = NOW;
+nRunSec = INT((nNowTok - INT(nNowTok)) * 86400);
+IF(nRunSec <= 0);
+  nRunSec = 1;
+ENDIF;
+sCountSub = 'TI_VCFcstCount_' | TRIM(STR(INT(nNowTok), 15, 0)) | 'x' | TRIM(STR(nRunSec, 6, 0));
+
 IF(SubsetExists('Merch SKU', sCountSub) = 1);
   SubsetDestroy('Merch SKU', sCountSub);
 ENDIF;
@@ -45,7 +67,7 @@ ENDIF;
 DatasourceType = 'NULL';
 
 nStartTime = NOW;
-LogOutput('INFO', 'TIMING START: ' | cProcessName | ' | Src=' | pSourceVersion | ' | Total=' | TRIM(STR(nTotal, 12, 0)) | ' | Parts=' | TRIM(STR(nParts, 8, 0)) | ' | Skip=' | TRIM(STR(nSkipCalcs, 1, 0)), 1);
+LogOutput('INFO', 'TIMING START: ' | cProcessName | ' | Src=' | pSourceVersion | ' | Total=' | TRIM(STR(nTotal, 12, 0)) | ' | Parts=' | TRIM(STR(nParts, 8, 0)) | ' | Skip=' | TRIM(STR(nSkipCalcs, 1, 0)) | ' | WorkerTimeout=' | TRIM(STR(nWorkerTimeoutSec, 10, 0)) | 's', 1);
 
 #endregion
 #region Metadata
@@ -61,35 +83,120 @@ LogOutput('INFO', 'TIMING START: ' | cProcessName | ' | Src=' | pSourceVersion |
 #region Epilog
 #****Begin: Generated Statements***
 #****End: Generated Statements****
+# BATCHED DISPATCH. Until 2026-08-29 every part was dispatched in ONE unbatched loop -
+# 45 parts x 3 years = 135 concurrent extract jobs on a full run - and then 'joined' with
+# WaitForAllJobs, which returned in 17.0s while the extracts were still running. Its
+# sibling ReloadByCat has had nBatchParts=3 since 2026-08-05 precisely because the full
+# fan-out exhausted server memory; this process never got the same cap. Same value here.
+nBatchParts = 3;
 nIdx = 1;
 WHILE(nIdx <= nParts);
-  nStart = (nIdx - 1) * nPartSize;
+  nBatchEnd = nIdx + nBatchParts - 1;
+  IF(nBatchEnd > nParts);
+    nBatchEnd = nParts;
+  ENDIF;
 
-  sJobId = RunProcess('Merch.Version.Copy.Forecast.Extract', 'pSourceVersion', pSourceVersion, 'pPartIdx', nIdx, 'pStart', nStart, 'pCount', nPartSize, 'pFiscalYear', pLY, 'pBatchTag', pBatchTag, 'pSkipCalcs', nSkipCalcs);
-  IF(sJobIDs @= ''); sJobIDs = sJobId; ELSE; sJobIDs = sJobIDs | ',' | sJobId; ENDIF;
-  nDispatches = nDispatches + 1;
+  sJobIDs = '';
+  WHILE(nIdx <= nBatchEnd);
+    nStart = (nIdx - 1) * nPartSize;
 
-  sJobId = RunProcess('Merch.Version.Copy.Forecast.Extract', 'pSourceVersion', pSourceVersion, 'pPartIdx', nIdx, 'pStart', nStart, 'pCount', nPartSize, 'pFiscalYear', pCY, 'pBatchTag', pBatchTag, 'pSkipCalcs', nSkipCalcs);
-  IF(sJobIDs @= ''); sJobIDs = sJobId; ELSE; sJobIDs = sJobIDs | ',' | sJobId; ENDIF;
-  nDispatches = nDispatches + 1;
+    sJobId = RunProcess('Merch.Version.Copy.Forecast.Extract', 'pSourceVersion', pSourceVersion, 'pPartIdx', nIdx, 'pStart', nStart, 'pCount', nPartSize, 'pFiscalYear', pLY, 'pBatchTag', pBatchTag, 'pSkipCalcs', nSkipCalcs);
+    IF(sJobId @= '');
+      nFailed = nFailed + 1;
+      LogOutput('ERROR', cProcessName | ' | RunProcess returned an empty JobID | Part=' | TRIM(STR(nIdx, 8, 0)) | ' FY=' | pLY, 1);
+    ELSE;
+      IF(sJobIDs @= '');
+        sJobIDs = sJobId;
+      ELSE;
+        sJobIDs = sJobIDs | ',' | sJobId;
+      ENDIF;
+    ENDIF;
+    nDispatches = nDispatches + 1;
 
-  sJobId = RunProcess('Merch.Version.Copy.Forecast.Extract', 'pSourceVersion', pSourceVersion, 'pPartIdx', nIdx, 'pStart', nStart, 'pCount', nPartSize, 'pFiscalYear', pNY, 'pBatchTag', pBatchTag, 'pSkipCalcs', nSkipCalcs);
-  IF(sJobIDs @= ''); sJobIDs = sJobId; ELSE; sJobIDs = sJobIDs | ',' | sJobId; ENDIF;
-  nDispatches = nDispatches + 1;
+    sJobId = RunProcess('Merch.Version.Copy.Forecast.Extract', 'pSourceVersion', pSourceVersion, 'pPartIdx', nIdx, 'pStart', nStart, 'pCount', nPartSize, 'pFiscalYear', pCY, 'pBatchTag', pBatchTag, 'pSkipCalcs', nSkipCalcs);
+    IF(sJobId @= '');
+      nFailed = nFailed + 1;
+      LogOutput('ERROR', cProcessName | ' | RunProcess returned an empty JobID | Part=' | TRIM(STR(nIdx, 8, 0)) | ' FY=' | pCY, 1);
+    ELSE;
+      IF(sJobIDs @= '');
+        sJobIDs = sJobId;
+      ELSE;
+        sJobIDs = sJobIDs | ',' | sJobId;
+      ENDIF;
+    ENDIF;
+    nDispatches = nDispatches + 1;
 
-  nIdx = nIdx + 1;
+    sJobId = RunProcess('Merch.Version.Copy.Forecast.Extract', 'pSourceVersion', pSourceVersion, 'pPartIdx', nIdx, 'pStart', nStart, 'pCount', nPartSize, 'pFiscalYear', pNY, 'pBatchTag', pBatchTag, 'pSkipCalcs', nSkipCalcs);
+    IF(sJobId @= '');
+      nFailed = nFailed + 1;
+      LogOutput('ERROR', cProcessName | ' | RunProcess returned an empty JobID | Part=' | TRIM(STR(nIdx, 8, 0)) | ' FY=' | pNY, 1);
+    ELSE;
+      IF(sJobIDs @= '');
+        sJobIDs = sJobId;
+      ELSE;
+        sJobIDs = sJobIDs | ',' | sJobId;
+      ENDIF;
+    ENDIF;
+    nDispatches = nDispatches + 1;
+
+    nIdx = nIdx + 1;
+  END;
+
+  nBatches = nBatches + 1;
+
+  # -------------------------------------------------------------------------
+  # THE BARRIER. Poll GetJobStatus per JobID - the Merch.Period.Close.Cat.Orch
+  # pattern. WaitForAllJobs was here until 2026-08-29 and DOES NOT HOLD, for two
+  # independently measured reasons: it does not block on a job that is queued but
+  # not yet started, and it fails outright with 'Failed to convert READ locks into
+  # READONLY locks' when the caller holds read locks. Measured HERE on 2026-08-29:
+  # Dispatches=135 | Elapsed=17.0s, after which ReloadByCat found no CSVs and 132
+  # of its 135 workers exited with status=8.
+  # -------------------------------------------------------------------------
+  sRest = sJobIDs;
+  WHILE(sRest @<> '');
+    nComma = SCAN(',', sRest);
+    IF(nComma = 0);
+      sJob = sRest;
+      sRest = '';
+    ELSE;
+      sJob = SUBST(sRest, 1, nComma - 1);
+      sRest = SUBST(sRest, nComma + 1, LONG(sRest) - nComma);
+    ENDIF;
+
+    IF(sJob @<> '');
+      nWaited = 0;
+      nStatus = GetJobStatus(sJob);
+      WHILE(nStatus = ProcessExecutionInProgress() & nWaited < nWorkerTimeoutMs);
+        Sleep(250);
+        nWaited = nWaited + 250;
+        nStatus = GetJobStatus(sJob);
+      END;
+
+      IF(nStatus = ProcessExecutionInProgress());
+        nTimedOut = nTimedOut + 1;
+        LogOutput('ERROR', cProcessName | ' | extract job ' | sJob | ' STILL RUNNING after ' | TRIM(STR(nWorkerTimeoutSec, 10, 0)) | 's - barrier gave up waiting', 1);
+      ELSE;
+        IF(nStatus = ProcessExitNormal());
+          nOK = nOK + 1;
+        ELSE;
+          nFailed = nFailed + 1;
+          LogOutput('ERROR', cProcessName | ' | extract job ' | sJob | ' exited abnormally, status=' | TRIM(STR(nStatus, 10, 0)), 1);
+        ENDIF;
+      ENDIF;
+    ENDIF;
+  END;
 END;
 
-IF(sJobIDs @<> '');
-  WaitForAllJobs(sJobIDs);
-ENDIF;
+# UNCONDITIONAL and BEFORE any abort.
+LogOutput('INFO', 'TIMING END: ' | cProcessName | ' | Dispatches=' | TRIM(STR(nDispatches, 12, 0)) | ' | Batches=' | TRIM(STR(nBatches, 12, 0)) | ' | OK=' | TRIM(STR(nOK, 12, 0)) | ' | Failed=' | TRIM(STR(nFailed, 12, 0)) | ' | TimedOut=' | TRIM(STR(nTimedOut, 12, 0)) | ' | Elapsed=' | TRIM(STR((NOW - nStartTime) * 86400, 12, 1)) | 's', 1);
 
-IF(CellIsUpdateable('ProcessControl', cProcessName, 'SubsetCount') = 0);
-  LogOutput('ERROR', cProcessName | ' | ProcessControl.SubsetCount not updateable', 1);
-ELSE;
-  CellPutN(nDispatches, 'ProcessControl', cProcessName, 'SubsetCount');
+# A LOST EXTRACT IS A MISSING CSV, WHICH BECOMES A MISSING PARTITION IN THE TARGET and
+# nothing downstream can tell the difference between that and a partition with no data.
+# Fail loudly instead of handing ReloadByCat an incomplete file set.
+IF(nFailed > 0 % nTimedOut > 0);
+  LogOutput('ERROR', cProcessName | ' | ABORTING: ' | TRIM(STR(nFailed, 12, 0)) | ' extract worker(s) failed and ' | TRIM(STR(nTimedOut, 12, 0)) | ' timed out of ' | TRIM(STR(nDispatches, 12, 0)) | ' dispatched. The CSV set for batch ' | pBatchTag | ' is INCOMPLETE - do not reload it.', 1);
+  ProcessError;
 ENDIF;
-
-LogOutput('INFO', 'TIMING END: ' | cProcessName | ' | Dispatches=' | TRIM(STR(nDispatches, 12, 0)) | ' | Elapsed=' | TRIM(STR((NOW - nStartTime) * 86400, 12, 1)) | 's', 1);
 
 #endregion
